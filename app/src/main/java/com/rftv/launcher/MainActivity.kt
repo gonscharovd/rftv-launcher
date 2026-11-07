@@ -536,6 +536,7 @@ class MainActivity : Activity() {
         body.addView(infoCard("СВЕТЛАЯ ТЕМА", "Обои " + (wallpaperLight + 1) + " из 10",
             if (lightCarousel) "Режим: карусель · смена каждые " + carouselIntervalMinutes + " мин."
             else "Режим: один выбранный фон"))
+        body.addView(wallpaperPicker(false))
         val dayActions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         dayActions.addView(glassButton("◀") {
             wallpaperLight = (wallpaperLight - 1 + lightWallpapers.size) % lightWallpapers.size
@@ -558,6 +559,7 @@ class MainActivity : Activity() {
         body.addView(infoCard("ТЁМНАЯ ТЕМА", "Обои " + (wallpaperDark + 1) + " из 10",
             if (darkCarousel) "Режим: карусель · смена каждые " + carouselIntervalMinutes + " мин."
             else "Режим: один выбранный фон"))
+        body.addView(wallpaperPicker(true))
         val nightActions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         nightActions.addView(glassButton("◀") {
             wallpaperDark = (wallpaperDark - 1 + darkWallpapers.size) % darkWallpapers.size
@@ -581,6 +583,68 @@ class MainActivity : Activity() {
             carouselIntervalMinutes = value
             prefs.edit().putInt("wallpaper_interval", value).apply()
         })
+    }
+
+    private fun wallpaperPicker(dark: Boolean): HorizontalScrollView {
+        val palettes = if (dark) darkWallpapers else lightWallpapers
+        val selected = if (dark) wallpaperDark else wallpaperLight
+        val picker = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        palettes.forEachIndexed { index, colors ->
+            val item = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                isFocusable = true
+                isFocusableInTouchMode = true
+                setPadding(dp(5), dp(5), dp(5), dp(5))
+                background = roundedGlass(
+                    if (index == selected) Color.argb(115, 255, 255, 255)
+                    else Color.argb(32, 255, 255, 255), 15
+                )
+                setOnFocusChangeListener { view, focused ->
+                    if (focused) view.background = roundedGlass(Color.argb(145, 255, 255, 255), 15)
+                    else view.background = roundedGlass(
+                        if (index == selected) Color.argb(115, 255, 255, 255)
+                        else Color.argb(32, 255, 255, 255), 15
+                    )
+                }
+                setOnClickListener {
+                    if (dark) {
+                        wallpaperDark = index
+                        prefs.edit().putInt("wallpaper_dark", index).apply()
+                    } else {
+                        wallpaperLight = index
+                        prefs.edit().putInt("wallpaper_light", index).apply()
+                    }
+                    showLauncherSettings()
+                }
+            }
+            val preview = View(this).apply {
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(colors[0], colors[1], colors[2])
+                ).apply { cornerRadius = dp(10).toFloat() }
+            }
+            item.addView(preview, LinearLayout.LayoutParams(dp(116), dp(66)))
+            item.addView(TextView(this).apply {
+                text = if (index == selected) "✓  " + (index + 1) else (index + 1).toString()
+                textSize = 12f
+                gravity = Gravity.CENTER
+                setTextColor(Color.WHITE)
+                setPadding(0, dp(4), 0, 0)
+            })
+            row.addView(item, LinearLayout.LayoutParams(dp(130), dp(100)).apply {
+                rightMargin = dp(8)
+            })
+        }
+        picker.addView(row)
+        return picker
     }
 
     private fun updateDockSize() {
