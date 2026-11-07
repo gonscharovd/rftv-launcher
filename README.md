@@ -13,7 +13,7 @@ A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direc
 - Control panel with Wi-Fi, Bluetooth, display settings, RAM information, launcher settings and Android settings shortcuts.
 - Dock width and height controls saved locally.
 - TV Cleaner lists user-installed apps and delegates uninstall to Android's confirmation screen.
-- RFTV TV Manager provides a read-only system-package inventory, device fingerprint export, and a reference catalogue with strict hardware/API matching for two CleanYourTV Sber StarOS profiles.
+- RFTV TV Manager provides a read-only system-package inventory, device fingerprint export, and a reference catalogue with strict API + exact board/hardware + exact device/product matching for two CleanYourTV Sber StarOS reference profiles.
 - Remote-control focus states and large TV-friendly controls.
 
 ## Target device
