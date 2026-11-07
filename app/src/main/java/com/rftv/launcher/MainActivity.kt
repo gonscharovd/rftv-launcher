@@ -954,6 +954,37 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun showCleaner() {
+        showPanel("TV Cleaner") { body ->
+            body.addView(infoCard(
+                "БЕЗОПАСНОЕ УДАЛЕНИЕ",
+                "Системные компоненты скрыты",
+                "Выбери пользовательское приложение. Android откроет штатное подтверждение удаления."
+            ))
+            val scroll = ScrollView(this)
+            val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            val userApps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+                .filter { it.packageName != packageName && (it.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
+                .sortedBy { packageManager.getApplicationLabel(it).toString().lowercase(Locale.getDefault()) }
+
+            userApps.forEach { info ->
+                val appName = packageManager.getApplicationLabel(info).toString()
+                list.addView(controlTile(appName, info.packageName) {
+                    try {
+                        startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:" + info.packageName)))
+                    } catch (_: Exception) {
+                        openSettings(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)
+                    }
+                }, LinearLayout.LayoutParams(-1, dp(66)).apply { bottomMargin = dp(7) })
+            }
+            if (userApps.isEmpty()) {
+                list.addView(infoCard("Ничего не найдено", "Пользовательские приложения отсутствуют", ""))
+            }
+            scroll.addView(list)
+            body.addView(scroll, LinearLayout.LayoutParams(-1, dp(300)))
+        }
+    }
+
     private fun showPanel(title: String, content: (LinearLayout) -> Unit) {
         page = "panel"
         handler.removeCallbacks(clockTask)
