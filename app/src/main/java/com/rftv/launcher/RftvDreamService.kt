@@ -120,7 +120,7 @@ class RftvDreamService : DreamService() {
         info = dashboard
         bottom.addView(dashboard, LinearLayout.LayoutParams(-1, -2))
         bottom.addView(TextView(this).apply {
-            text = "Фото: LoremFlickr  ·  Погода: Open-Meteo  ·  Курсы: Банк России  ·  Новости: РИА Новости / BBC"
+            text = "Фото: LoremFlickr  ·  Погода: Open-Meteo  ·  Курсы: Банк России  ·  Новости: РИА Новости / Google News"
             textSize = 10f
             setTextColor(Color.argb(190, 255, 255, 255))
             setPadding(0, 12, 0, 0)
@@ -195,7 +195,7 @@ class RftvDreamService : DreamService() {
         val weather = fetchWeather()
         val rates = fetchRates()
         val russian = fetchRssTitle("https://ria.ru/export/rss2/archive/index.xml")
-        val world = fetchRssTitle("https://feeds.bbci.co.uk/news/world/rss.xml")
+        val world = fetchRssTitle("https://news.google.com/rss/headlines/section/topic/WORLD?hl=ru&gl=RU&ceid=RU:ru")
         return buildString {
             append("ПОГОДА  ").append(weather).append("     ")
             append("ВАЛЮТА  ").append(rates).append('\n')
