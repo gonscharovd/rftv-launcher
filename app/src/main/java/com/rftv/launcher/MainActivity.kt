@@ -259,7 +259,10 @@ class MainActivity : Activity() {
         if (!::wallpaperView.isInitialized) return
         val dark = isDarkTheme()
         val colors = currentWallpaper()
-        wallpaperView.setBackgroundColor(colors[1])
+        wallpaperView.background = GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            intArrayOf(colors[0], colors[1], colors[2])
+        )
         loadPhoto(if (dark) wallpaperDark else wallpaperLight, dark, wallpaperView)
     }
 
