@@ -627,6 +627,10 @@ class MainActivity : Activity() {
                 openSettings("android.settings.DREAM_SETTINGS")
             }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
 
+            body.addView(controlTile("TV Manager", "Аудит встроенных системных пакетов") {
+                showTvManager()
+            }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
+
             body.addView(controlTile("TV Cleaner", "Список пользовательских приложений") {
                 showCleaner()
             }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
@@ -757,6 +761,46 @@ class MainActivity : Activity() {
         params.width = (resources.displayMetrics.widthPixels * dockWidthPercent / 100f).toInt()
         params.height = dp(dockHeightDp)
         dock.layoutParams = params
+    }
+
+    private fun showTvManager() {
+        val systemApps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+            .filter { it.flags and ApplicationInfo.FLAG_SYSTEM != 0 && it.packageName != packageName }
+            .sortedBy { packageManager.getApplicationLabel(it).toString().lowercase(Locale.getDefault()) }
+
+        showPanel("TV Manager · аудит системы") { body ->
+            body.addView(infoCard(
+                "РЕЖИМ ПРОВЕРКИ",
+                "Найдено системных пакетов: " + systemApps.size,
+                "Сейчас RFTV только собирает инвентаризацию. Ничего не отключает и не удаляет. Для безопасного отключения нужен подтверждённый ADB/Shizuku-доступ и профиль именно для Sber / StarOS."
+            ))
+            body.addView(infoCard(
+                "ЗАЩИТА УСТРОЙСТВА",
+                "Сначала точка восстановления",
+                "Перед любым изменением RFTV должен сохранить исходное состояние пакета, показать последствия и дать восстановить его. Системные настройки, оболочка, сеть, пульт, звук и обновление прошивки будут защищены."
+            ))
+            body.addView(sectionLabel("СПИСОК СИСТЕМНЫХ ПАКЕТОВ"))
+            systemApps.take(60).forEach { app ->
+                val label = try {
+                    packageManager.getApplicationLabel(app).toString()
+                } catch (_: Exception) {
+                    app.packageName
+                }
+                val state = try {
+                    when (packageManager.getApplicationEnabledSetting(app.packageName)) {
+                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
+                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED -> "отключено"
+                        else -> "включено"
+                    }
+                } catch (_: Exception) {
+                    if (app.enabled) "включено" else "отключено"
+                }
+                body.addView(infoCard(label, app.packageName, "Состояние: " + state + " · пока только просмотр"))
+            }
+            body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(12) })
+        }
     }
 
     private fun showCleaner() {
