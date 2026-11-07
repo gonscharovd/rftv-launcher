@@ -263,11 +263,13 @@ class MainActivity : Activity() {
         loadPhoto(if (dark) wallpaperDark else wallpaperLight, dark, wallpaperView)
     }
 
-    private fun loadPhoto(index: Int, dark: Boolean, target: ImageView) {
+    private fun loadPhoto(index: Int, dark: Boolean, target: ImageView, thumbnail: Boolean = false) {
         val photos = if (dark) darkPhotos else lightPhotos
         val safeIndex = index.coerceIn(0, photos.lastIndex)
         val photo = photos[safeIndex]
         val tag = "${if (dark) "night" else "day"}-$safeIndex"
+        if (target.tag == tag && target.drawable != null) return
+        if (target.tag != tag) target.setImageDrawable(null)
         target.tag = tag
         val directory = File(filesDir, "wallpapers").apply { mkdirs() }
         val file = File(directory, "${if (dark) "night" else "day"}-$safeIndex.jpg")
@@ -275,7 +277,7 @@ class MainActivity : Activity() {
         fun decodeAndPost() {
             val options = BitmapFactory.Options().apply {
                 inPreferredConfig = Bitmap.Config.RGB_565
-                inSampleSize = if (target.layoutParams?.width?.let { it in 1..dp(200) } == true) 4 else 1
+                inSampleSize = if (thumbnail) 4 else 1
             }
             val bitmap = BitmapFactory.decodeFile(file.absolutePath, options) ?: return
             handler.post { if (target.tag == tag) target.setImageBitmap(bitmap) }
@@ -718,7 +720,7 @@ class MainActivity : Activity() {
                     intArrayOf(colors[0], colors[1], colors[2])
                 ).apply { cornerRadius = dp(10).toFloat() }
             }
-            loadPhoto(index, dark, preview)
+            loadPhoto(index, dark, preview, thumbnail = true)
             item.addView(preview, LinearLayout.LayoutParams(dp(116), dp(66)))
             item.addView(TextView(this).apply {
                 text = if (index == selected) "✓  " + (index + 1) else (index + 1).toString()
