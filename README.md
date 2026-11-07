@@ -7,7 +7,8 @@ A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direc
 - Native Kotlin Android Views (no Compose and no third-party UI dependencies).
 - Home screen with a large clock, date, weather entry point and glass-style settings button.
 - Translucent app dock with focus scaling and a second row revealed with DPAD Down / hidden again with DPAD Up.
-- Separate light and dark wallpaper palettes with a time-based automatic theme mode.
+- Ten separate lightweight day and night wallpaper presets, with independent selection and carousel modes per theme.
+- Wallpaper carousel interval configurable from 1 to 60 minutes; selected presets and modes are persisted locally.
 - Control panel with Wi-Fi, Bluetooth, display settings, RAM information, launcher settings and Android settings shortcuts.
 - Dock width and height controls saved locally.
 - TV Cleaner lists user-installed apps and delegates uninstall to Android's confirmation screen.
@@ -44,7 +45,7 @@ GitHub Actions builds pushes to main and feature/** branches and pull requests t
 ## Important prototype limitations
 
 - The weather tile currently contains demonstration data. A real weather provider and location/source settings are not connected yet.
-- Wallpaper choices are lightweight gradient placeholders. Real photographic wallpaper packs and per-theme carousels are planned.
+- The ten day and ten night wallpaper entries are currently lightweight gradient artwork used to validate selection, persistence and carousel behavior. Photographic wallpaper packs are the next visual-content step.
 - Glass is approximated with translucent fills and strokes. Real-time background blur is intentionally avoided for the low-memory target device.
 - Brightness, Wi-Fi and Bluetooth entries open Android settings. Direct toggles depend on StarOS permissions and firmware APIs and are not claimed to work universally.
 - RAM is informational. Android controls background process lifecycle; this app does not force-stop arbitrary apps or claim to free RAM by killing protected processes.
