@@ -272,17 +272,17 @@ class MainActivity : Activity() {
         val directory = File(filesDir, "wallpapers").apply { mkdirs() }
         val file = File(directory, "${if (dark) "night" else "day"}-$safeIndex.jpg")
 
-        fun display() {
+        fun decodeAndPost() {
             val options = BitmapFactory.Options().apply {
                 inPreferredConfig = Bitmap.Config.RGB_565
-                inSampleSize = 1
+                inSampleSize = if (target.layoutParams?.width?.let { it in 1..dp(200) } == true) 4 else 1
             }
             val bitmap = BitmapFactory.decodeFile(file.absolutePath, options) ?: return
-            if (target.tag == tag) target.setImageBitmap(bitmap)
+            handler.post { if (target.tag == tag) target.setImageBitmap(bitmap) }
         }
 
         if (file.exists() && file.length() > 10_000L) {
-            wallpaperExecutor.execute { handler.post { display() } }
+            wallpaperExecutor.execute { decodeAndPost() }
             return
         }
 
@@ -304,13 +304,7 @@ class MainActivity : Activity() {
                 if (temp.length() > 10_000L) {
                     if (file.exists()) file.delete()
                     temp.renameTo(file)
-                    val options = BitmapFactory.Options().apply {
-                        inPreferredConfig = Bitmap.Config.RGB_565
-                    }
-                    val bitmap = BitmapFactory.decodeFile(file.absolutePath, options)
-                    if (bitmap != null) handler.post {
-                        if (target.tag == tag) target.setImageBitmap(bitmap)
-                    }
+                    decodeAndPost()
                 } else {
                     temp.delete()
                 }

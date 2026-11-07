@@ -5,10 +5,11 @@ A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direc
 ## Current prototype
 
 - Native Kotlin Android Views (no Compose and no third-party UI dependencies).
-- Home screen with a large clock, date, weather entry point and glass-style settings button.
+- Home screen with a large centered clock, date, weather entry point and glass-style settings button.
 - Translucent app dock with focus scaling and a second row revealed with DPAD Down / hidden again with DPAD Up.
-- Ten separate lightweight day and night wallpaper presets, with independent selection and carousel modes per theme.
-- Wallpaper carousel interval configurable from 1 to 60 minutes; selected presets and modes are persisted locally.
+- 10 photographic daytime and 10 photographic nighttime landscape wallpapers from Unsplash.
+- Separate day/night wallpaper selection and carousel modes, with a configurable 1–60 minute interval.
+- Wallpaper photographs are downloaded over HTTPS on first use and cached in app-private storage. Once cached, they work offline.
 - Control panel with Wi-Fi, Bluetooth, display settings, RAM information, launcher settings and Android settings shortcuts.
 - Dock width and height controls saved locally.
 - TV Cleaner lists user-installed apps and delegates uninstall to Android's confirmation screen.
@@ -45,7 +46,7 @@ GitHub Actions builds pushes to main and feature/** branches and pull requests t
 ## Important prototype limitations
 
 - The weather tile currently contains demonstration data. A real weather provider and location/source settings are not connected yet.
-- The ten day and ten night wallpaper entries are currently lightweight gradient artwork used to validate selection, persistence and carousel behavior. Photographic wallpaper packs are the next visual-content step.
+- Wallpaper photos require an internet connection for their first download. The launcher stores each downloaded image privately; previously downloaded wallpapers remain available offline.
 - Glass is approximated with translucent fills and strokes. Real-time background blur is intentionally avoided for the low-memory target device.
 - Brightness, Wi-Fi and Bluetooth entries open Android settings. Direct toggles depend on StarOS permissions and firmware APIs and are not claimed to work universally.
 - RAM is informational. Android controls background process lifecycle; this app does not force-stop arbitrary apps or claim to free RAM by killing protected processes.
@@ -55,3 +56,7 @@ GitHub Actions builds pushes to main and feature/** branches and pull requests t
 ## Cleaner safety
 
 The cleaner does not silently remove packages or clear another app's private cache. It lists non-system apps and opens Android's native uninstall confirmation. ADB / Shizuku support is not implemented yet.
+
+## Wallpaper credits
+
+All 20 photographs are linked to their original Unsplash photo pages and used under the Unsplash License. The app downloads optimized 1920×1080 JPEG derivatives from Unsplash's image CDN. See [WALLPAPER_CREDITS.md](WALLPAPER_CREDITS.md) for photographer attribution and original photo links.
