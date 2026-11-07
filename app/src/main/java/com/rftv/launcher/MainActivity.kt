@@ -62,20 +62,55 @@ class MainActivity : Activity() {
     private var themeMode = 2 // 0 light, 1 dark, 2 automatic
     private var wallpaperLight = 0
     private var wallpaperDark = 0
+    private var lightCarousel = false
+    private var darkCarousel = false
+    private var carouselIntervalMinutes = 5
     private var dockWidthPercent = 88
     private var dockHeightDp = 154
 
+    // Ten lightweight built-in scenes per theme; photographic assets can replace these later.
     private val lightWallpapers = listOf(
-        intArrayOf(Color.rgb(104, 184, 215), Color.rgb(60, 145, 166), Color.rgb(237, 204, 151)),
-        intArrayOf(Color.rgb(110, 177, 211), Color.rgb(126, 190, 157), Color.rgb(242, 219, 165)),
-        intArrayOf(Color.rgb(194, 213, 226), Color.rgb(95, 164, 195), Color.rgb(238, 198, 153))
+        intArrayOf(Color.rgb(104,184,215), Color.rgb(60,145,166), Color.rgb(237,204,151)),
+        intArrayOf(Color.rgb(110,177,211), Color.rgb(126,190,157), Color.rgb(242,219,165)),
+        intArrayOf(Color.rgb(194,213,226), Color.rgb(95,164,195), Color.rgb(238,198,153)),
+        intArrayOf(Color.rgb(247,190,132), Color.rgb(221,132,111), Color.rgb(106,133,165)),
+        intArrayOf(Color.rgb(158,205,220), Color.rgb(103,169,183), Color.rgb(214,224,193)),
+        intArrayOf(Color.rgb(229,211,177), Color.rgb(172,188,169), Color.rgb(94,143,157)),
+        intArrayOf(Color.rgb(185,215,235), Color.rgb(116,169,204), Color.rgb(231,222,196)),
+        intArrayOf(Color.rgb(242,204,168), Color.rgb(205,158,145), Color.rgb(125,150,164)),
+        intArrayOf(Color.rgb(177,216,192), Color.rgb(102,171,153), Color.rgb(231,219,177)),
+        intArrayOf(Color.rgb(216,222,228), Color.rgb(147,183,202), Color.rgb(233,205,166))
     )
 
     private val darkWallpapers = listOf(
-        intArrayOf(Color.rgb(8, 20, 48), Color.rgb(34, 54, 94), Color.rgb(111, 78, 119)),
-        intArrayOf(Color.rgb(9, 25, 38), Color.rgb(24, 67, 82), Color.rgb(73, 94, 116)),
-        intArrayOf(Color.rgb(24, 23, 48), Color.rgb(57, 48, 92), Color.rgb(135, 74, 103))
+        intArrayOf(Color.rgb(8,20,48), Color.rgb(34,54,94), Color.rgb(111,78,119)),
+        intArrayOf(Color.rgb(9,25,38), Color.rgb(24,67,82), Color.rgb(73,94,116)),
+        intArrayOf(Color.rgb(24,23,48), Color.rgb(57,48,92), Color.rgb(135,74,103)),
+        intArrayOf(Color.rgb(8,18,34), Color.rgb(27,52,77), Color.rgb(77,92,117)),
+        intArrayOf(Color.rgb(24,19,42), Color.rgb(62,42,79), Color.rgb(124,67,94)),
+        intArrayOf(Color.rgb(5,29,39), Color.rgb(15,62,72), Color.rgb(48,92,99)),
+        intArrayOf(Color.rgb(17,24,57), Color.rgb(39,53,104), Color.rgb(87,83,132)),
+        intArrayOf(Color.rgb(34,24,28), Color.rgb(79,43,52), Color.rgb(139,77,78)),
+        intArrayOf(Color.rgb(10,30,27), Color.rgb(26,65,54), Color.rgb(76,104,79)),
+        intArrayOf(Color.rgb(19,27,44), Color.rgb(47,65,88), Color.rgb(101,105,122))
     )
+
+    private val carouselTask = object : Runnable {
+        override fun run() {
+            if (page == "home") {
+                if (isDarkTheme() && darkCarousel) {
+                    wallpaperDark = (wallpaperDark + 1) % darkWallpapers.size
+                    prefs.edit().putInt("wallpaper_dark", wallpaperDark).apply()
+                    applyWallpaper()
+                } else if (!isDarkTheme() && lightCarousel) {
+                    wallpaperLight = (wallpaperLight + 1) % lightWallpapers.size
+                    prefs.edit().putInt("wallpaper_light", wallpaperLight).apply()
+                    applyWallpaper()
+                }
+            }
+            handler.postDelayed(this, carouselIntervalMinutes * 60_000L)
+        }
+    }
 
     private val clockTask = object : Runnable {
         override fun run() {
@@ -96,6 +131,9 @@ class MainActivity : Activity() {
         themeMode = prefs.getInt("theme_mode", 2)
         wallpaperLight = prefs.getInt("wallpaper_light", 0)
         wallpaperDark = prefs.getInt("wallpaper_dark", 0)
+        lightCarousel = prefs.getBoolean("wallpaper_light_carousel", false)
+        darkCarousel = prefs.getBoolean("wallpaper_dark_carousel", false)
+        carouselIntervalMinutes = prefs.getInt("wallpaper_interval", 5).coerceIn(1, 60)
         dockWidthPercent = prefs.getInt("dock_width", 88)
         dockHeightDp = prefs.getInt("dock_height", 154)
 
@@ -119,6 +157,7 @@ class MainActivity : Activity() {
     override fun onPause() {
         super.onPause()
         handler.removeCallbacks(clockTask)
+        handler.removeCallbacks(carouselTask)
     }
 
     override fun onDestroy() {
@@ -298,7 +337,9 @@ class MainActivity : Activity() {
 
     private fun startClock() {
         handler.removeCallbacks(clockTask)
+        handler.removeCallbacks(carouselTask)
         clockTask.run()
+        handler.postDelayed(carouselTask, carouselIntervalMinutes * 60_000L)
     }
 
     private fun buildDockContent() {
@@ -477,10 +518,7 @@ class MainActivity : Activity() {
                 updateDockSize()
             })
 
-            body.addView(controlTile("Следующие обои", "Переключить карусель текущей темы") {
-                nextWallpaper()
-                showLauncherSettings()
-            }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(12) })
+            addWallpaperSettings(body)
 
             body.addView(controlTile("Приложения", "Обновить список установленных приложений") {
                 loadInstalledApps()
@@ -491,6 +529,58 @@ class MainActivity : Activity() {
                 showCleaner()
             }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
         }
+    }
+
+    private fun addWallpaperSettings(body: LinearLayout) {
+        body.addView(sectionLabel("ДНЕВНЫЕ ОБОИ · " + (wallpaperLight + 1) + "/10"))
+        body.addView(infoCard("СВЕТЛАЯ ТЕМА", "Обои " + (wallpaperLight + 1) + " из 10",
+            if (lightCarousel) "Режим: карусель · смена каждые " + carouselIntervalMinutes + " мин."
+            else "Режим: один выбранный фон"))
+        val dayActions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        dayActions.addView(glassButton("◀") {
+            wallpaperLight = (wallpaperLight - 1 + lightWallpapers.size) % lightWallpapers.size
+            prefs.edit().putInt("wallpaper_light", wallpaperLight).apply()
+            showLauncherSettings()
+        }, LinearLayout.LayoutParams(dp(72), dp(48)))
+        dayActions.addView(glassButton("Следующий фон") {
+            wallpaperLight = (wallpaperLight + 1) % lightWallpapers.size
+            prefs.edit().putInt("wallpaper_light", wallpaperLight).apply()
+            showLauncherSettings()
+        }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { leftMargin = dp(8) })
+        body.addView(dayActions)
+        body.addView(glassButton(if (lightCarousel) "Дневная карусель: ВКЛ" else "Дневная карусель: ВЫКЛ") {
+            lightCarousel = !lightCarousel
+            prefs.edit().putBoolean("wallpaper_light_carousel", lightCarousel).apply()
+            showLauncherSettings()
+        }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
+
+        body.addView(sectionLabel("НОЧНЫЕ ОБОИ · " + (wallpaperDark + 1) + "/10"))
+        body.addView(infoCard("ТЁМНАЯ ТЕМА", "Обои " + (wallpaperDark + 1) + " из 10",
+            if (darkCarousel) "Режим: карусель · смена каждые " + carouselIntervalMinutes + " мин."
+            else "Режим: один выбранный фон"))
+        val nightActions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        nightActions.addView(glassButton("◀") {
+            wallpaperDark = (wallpaperDark - 1 + darkWallpapers.size) % darkWallpapers.size
+            prefs.edit().putInt("wallpaper_dark", wallpaperDark).apply()
+            showLauncherSettings()
+        }, LinearLayout.LayoutParams(dp(72), dp(48)))
+        nightActions.addView(glassButton("Следующий фон") {
+            wallpaperDark = (wallpaperDark + 1) % darkWallpapers.size
+            prefs.edit().putInt("wallpaper_dark", wallpaperDark).apply()
+            showLauncherSettings()
+        }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { leftMargin = dp(8) })
+        body.addView(nightActions)
+        body.addView(glassButton(if (darkCarousel) "Ночная карусель: ВКЛ" else "Ночная карусель: ВЫКЛ") {
+            darkCarousel = !darkCarousel
+            prefs.edit().putBoolean("wallpaper_dark_carousel", darkCarousel).apply()
+            showLauncherSettings()
+        }, LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(8) })
+
+        body.addView(sectionLabel("ИНТЕРВАЛ КАРУСЕЛИ · " + carouselIntervalMinutes + " мин."))
+        body.addView(settingSlider(1, 60, carouselIntervalMinutes) { value ->
+            carouselIntervalMinutes = value
+            prefs.edit().putInt("wallpaper_interval", value).apply()
+        })
     }
 
     private fun updateDockSize() {
@@ -535,6 +625,7 @@ class MainActivity : Activity() {
     private fun showPanel(title: String, content: (LinearLayout) -> Unit) {
         page = "panel"
         handler.removeCallbacks(clockTask)
+        handler.removeCallbacks(carouselTask)
 
         root = FrameLayout(this).apply {
             setBackgroundColor(Color.rgb(7, 12, 23))
