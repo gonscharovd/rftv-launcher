@@ -804,40 +804,80 @@ class MainActivity : Activity() {
             .filter { it.flags and ApplicationInfo.FLAG_SYSTEM != 0 && it.packageName != packageName }
             .sortedBy { packageManager.getApplicationLabel(it).toString().lowercase(Locale.getDefault()) }
 
+        fun packageState(app: ApplicationInfo): String {
+            return try {
+                when (packageManager.getApplicationEnabledSetting(app.packageName)) {
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED -> "отключено"
+                    else -> if (app.enabled) "включено" else "отключено"
+                }
+            } catch (_: Exception) {
+                if (app.enabled) "включено" else "отключено"
+            }
+        }
+
+        fun packageReport(): String = buildString {
+            appendLine("RFTV TV Manager — инвентаризация системных пакетов")
+            appendLine("Устройство: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+            appendLine("Android: ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
+            appendLine("Пакетов: ${systemApps.size}")
+            appendLine()
+            systemApps.forEach { app ->
+                val label = try { packageManager.getApplicationLabel(app).toString() }
+                    catch (_: Exception) { app.packageName }
+                val type = if (app.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0)
+                    "обновлённое системное" else "системное"
+                appendLine("${app.packageName}\t${packageState(app)}\t$type\t$label")
+            }
+        }
+
         showPanel("TV Manager · аудит системы") { body ->
+            val disabledCount = systemApps.count { packageState(it) == "отключено" }
             body.addView(infoCard(
-                "РЕЖИМ ПРОВЕРКИ",
-                "Найдено системных пакетов: " + systemApps.size,
-                "Сейчас RFTV только собирает инвентаризацию. Ничего не отключает и не удаляет. Для безопасного отключения нужен подтверждённый ADB/Shizuku-доступ и профиль именно для Sber / StarOS."
+                "ИНВЕНТАРИЗАЦИЯ",
+                "Системных пакетов: ${systemApps.size} · отключено: $disabledCount",
+                "RFTV считывает названия, package ID и состояние компонентов. Это безопасный режим просмотра: никаких изменений на телевизоре не выполняется."
             ))
             body.addView(infoCard(
-                "ЗАЩИТА УСТРОЙСТВА",
-                "Сначала точка восстановления",
-                "Перед любым изменением RFTV должен сохранить исходное состояние пакета, показать последствия и дать восстановить его. Системные настройки, оболочка, сеть, пульт, звук и обновление прошивки будут защищены."
+                "ПЕРЕД ОТКЛЮЧЕНИЕМ",
+                "Нужен привилегированный мост",
+                "Обычное Android-приложение не может отключать другие системные пакеты. Для этого потребуется подтверждённый ADB или совместимый Shizuku на StarOS. Без него кнопки отключения не появятся."
             ))
-            body.addView(sectionLabel("СПИСОК СИСТЕМНЫХ ПАКЕТОВ"))
-            systemApps.take(60).forEach { app ->
+            body.addView(infoCard(
+                "ПРАВИЛА ВОССТАНОВЛЕНИЯ",
+                "Журнал исходных состояний",
+                "Перед изменением сохраняем состояние каждого пакета. Не удаляем APK. Не трогаем оболочку, настройки, сеть, пульт, звук, системный интерфейс и обновление прошивки. Любое отключение — только после подтверждения."
+            ))
+            body.addView(glassButton("Поделиться отчётом о пакетах") {
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, "RFTV — системные пакеты телевизора")
+                    putExtra(Intent.EXTRA_TEXT, packageReport())
+                }
+                startActivity(Intent.createChooser(send, "Экспорт инвентаризации RFTV"))
+            }, LinearLayout.LayoutParams(-2, dp(48)).apply { bottomMargin = dp(10) })
+            body.addView(sectionLabel("СИСТЕМНЫЕ ПАКЕТЫ · ПЕРВЫЕ 100"))
+            systemApps.take(100).forEach { app ->
                 val label = try {
                     packageManager.getApplicationLabel(app).toString()
                 } catch (_: Exception) {
                     app.packageName
                 }
-                val state = try {
-                    when (packageManager.getApplicationEnabledSetting(app.packageName)) {
-                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
-                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED -> "отключено"
-                        else -> "включено"
-                    }
-                } catch (_: Exception) {
-                    if (app.enabled) "включено" else "отключено"
-                }
-                body.addView(infoCard(label, app.packageName, "Состояние: " + state + " · пока только просмотр"))
+                val type = if (app.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0)
+                    "обновлённое системное" else "системное"
+                body.addView(infoCard(label, app.packageName,
+                    "$type · ${packageState(app)} · только просмотр"))
+            }
+            if (systemApps.size > 100) {
+                body.addView(infoCard("ПОЛНЫЙ ОТЧЁТ", "Показаны первые 100 из ${systemApps.size}",
+                    "Кнопка экспорта выше включает полный список пакетов."))
             }
             body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
                 LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(12) })
         }
     }
+
 
     private fun showCleaner() {
         showPanel("TV Cleaner") { body ->
