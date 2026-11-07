@@ -7,6 +7,8 @@ import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -20,6 +22,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
+import java.io.File
+import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.concurrent.Executors
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -53,9 +60,10 @@ class MainActivity : Activity() {
     private lateinit var dockContent: LinearLayout
     private lateinit var clockText: TextView
     private lateinit var dateText: TextView
-    private lateinit var wallpaperView: View
+    private lateinit var wallpaperView: ImageView
 
     private val handler = Handler(Looper.getMainLooper())
+    private val wallpaperExecutor = Executors.newSingleThreadExecutor()
     private val installedApps = mutableListOf<TvApp>()
     private var dockExpanded = false
     private var page = "home"
@@ -68,7 +76,37 @@ class MainActivity : Activity() {
     private var dockWidthPercent = 88
     private var dockHeightDp = 154
 
-    // Ten lightweight built-in scenes per theme; photographic assets can replace these later.
+
+    private data class WallpaperPhoto(val title: String, val author: String, val pageUrl: String, val imageUrl: String)
+
+    // Unsplash photographs are cached in app-private storage on first use.
+    private val lightPhotos = listOf(
+        WallpaperPhoto("Emerald Lake at sunrise", "Philipp", "https://unsplash.com/photos/a-large-body-of-water-surrounded-by-mountains-OvfI1PiuTpE", "https://images.unsplash.com/photo-1724169913051-49f6ff76a070?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Calm alpine lake", "Shai Pal", "https://unsplash.com/photos/calm-lake-between-mountains-at-sunrise-WntO4gmkp7E", "https://images.unsplash.com/photo-1777573087870-2cf5cab4421d?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Misty forest valley", "Roberto Shumski", "https://unsplash.com/photos/misty-forest-valley-with-mountains-in-background-oYEGPZebzGw", "https://images.unsplash.com/photo-1765871319901-0aaafe3f1a2a?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Japanese Alps river", "Joris Beugels", "https://unsplash.com/photos/scenic-landscape-with-a-lake-and-a-mountain-qy5VLB3bkjE", "https://images.unsplash.com/photo-1754390032251-953abfedc34c?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Moraine Lake", "Brandon Jean", "https://unsplash.com/photos/lake-mountains-and-trees-w79UXGGlvhQ", "https://images.unsplash.com/photo-1533579436102-fcc5a403c554?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Cadillac Mountain sunrise", "Eugene Krasnaok", "https://unsplash.com/photos/a-scenic-view-of-a-lake-and-mountains-in-the-distance-M4JnO3-hhIQ", "https://images.unsplash.com/photo-1706733839515-c3e809d6b1ed?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Peyto Lake", "Mario Häfliger", "https://unsplash.com/photos/sunlight-shines-over-a-mountain-lake-at-sunrise-Svnrlh3lXZ0", "https://images.unsplash.com/photo-1660162129606-c12ece87e967?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Forest lake morning", "Shai Pal", "https://unsplash.com/photos/sunrise-over-a-tranquil-lake-with-forested-mountains-6CHmP0msPDw", "https://images.unsplash.com/photo-1777573087858-cd1fe80db56a?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Misty green hills", "Andrea Caramello", "https://unsplash.com/photos/misty-forest-landscape-with-rolling-green-hills-ZqlVkilbzhg", "https://images.unsplash.com/photo-1778004494946-ce539160c979?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Golden mist forest", "Fabrice Villard", "https://unsplash.com/photos/misty-forest-landscape-with-soft-golden-light-tkoA1sWwHUg", "https://images.unsplash.com/photo-1768808520785-a4ce8c12c335?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080")
+    )
+
+    private val darkPhotos = listOf(
+        WallpaperPhoto("Snowy mountain night", "Florian Schindler", "https://unsplash.com/photos/starry-night-sky-over-a-snowy-mountain-landscape-I3VWe-dSHKY", "https://images.unsplash.com/photo-1768590238594-625fe0d913aa?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Dolomites under stars", "Marek Piwnicki", "https://unsplash.com/photos/snowy-mountains-under-a-starry-night-sky-SumjjLhysZM", "https://images.unsplash.com/photo-1765476608471-c30c09564def?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Aurora over a lake", "Niklas Jonasson", "https://unsplash.com/photos/green-aurora-borealis-over-a-calm-lake-at-night-ZPbfvIN4NXs", "https://images.unsplash.com/photo-1768813282031-2aec62eee8b7?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Northern lights reflection", "Scott Goodwill", "https://unsplash.com/photos/aurora-borealis-over-a-calm-lake-at-night-aZ5EiV2-afc", "https://images.unsplash.com/photo-1775663880435-8edb7efe3ecf?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Aurora over dark hills", "Lucas Gallone", "https://unsplash.com/photos/aurora-borealis-glows-over-a-silhouetted-hillside-DzYVUP8cIKw", "https://images.unsplash.com/photo-1769038856791-dab2060b9497?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Aurora over Norwegian fjord", "Angela Compagnone", "https://unsplash.com/photos/aurora-borealis-above-mountain-and-body-of-water-l9cneQNE03Y", "https://images.unsplash.com/photo-1550656722-8099c82ab00c?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Aurora over snowy forest", "Wolfgang Hasselmann", "https://unsplash.com/photos/aurora-borealis-over-snow-covered-trees-at-night-tlBWf1BZLzs", "https://images.unsplash.com/photo-1772136440778-a51aee48088c?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Northern lights", "Mats-Peter Forss", "https://unsplash.com/photos/aurora-borealis-m6hpb2rWP7Q", "https://images.unsplash.com/photo-1426840963626-ffdf2d7ef80b?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Iceland aurora", "Anton Nikolov", "https://unsplash.com/photos/aurora-borealis-on-night-sky-JKeIu3jjJFw", "https://images.unsplash.com/photo-1460751398360-a8d6be9b8208?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
+        WallpaperPhoto("Green and purple aurora", "Troy Olson", "https://unsplash.com/photos/a-night-sky-filled-with-stars-and-a-green-and-purple-aurora-tNNVfyZ_VbQ", "https://images.unsplash.com/photo-1728279320747-e29867b7e455?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080")
+    )
+
+    // Fallback palettes remain available while the first photograph is being cached.
     private val lightWallpapers = listOf(
         intArrayOf(Color.rgb(104,184,215), Color.rgb(60,145,166), Color.rgb(237,204,151)),
         intArrayOf(Color.rgb(110,177,211), Color.rgb(126,190,157), Color.rgb(242,219,165)),
@@ -162,6 +200,7 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        wallpaperExecutor.shutdownNow()
         super.onDestroy()
     }
 
@@ -217,12 +256,69 @@ class MainActivity : Activity() {
     }
 
     private fun applyWallpaper() {
-        if (::wallpaperView.isInitialized) {
-            val colors = currentWallpaper()
-            wallpaperView.background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(colors[0], colors[1], colors[2])
-            )
+        if (!::wallpaperView.isInitialized) return
+        val dark = isDarkTheme()
+        val colors = currentWallpaper()
+        wallpaperView.setBackgroundColor(colors[1])
+        loadPhoto(if (dark) wallpaperDark else wallpaperLight, dark, wallpaperView)
+    }
+
+    private fun loadPhoto(index: Int, dark: Boolean, target: ImageView) {
+        val photos = if (dark) darkPhotos else lightPhotos
+        val safeIndex = index.coerceIn(0, photos.lastIndex)
+        val photo = photos[safeIndex]
+        val tag = "${if (dark) "night" else "day"}-$safeIndex"
+        target.tag = tag
+        val directory = File(filesDir, "wallpapers").apply { mkdirs() }
+        val file = File(directory, "${if (dark) "night" else "day"}-$safeIndex.jpg")
+
+        fun display() {
+            val options = BitmapFactory.Options().apply {
+                inPreferredConfig = Bitmap.Config.RGB_565
+                inSampleSize = 1
+            }
+            val bitmap = BitmapFactory.decodeFile(file.absolutePath, options) ?: return
+            if (target.tag == tag) target.setImageBitmap(bitmap)
+        }
+
+        if (file.exists() && file.length() > 10_000L) {
+            wallpaperExecutor.execute { handler.post { display() } }
+            return
+        }
+
+        wallpaperExecutor.execute {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = (URL(photo.imageUrl).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 15000
+                    readTimeout = 25000
+                    instanceFollowRedirects = true
+                    setRequestProperty("User-Agent", "RFTV-Launcher/0.1")
+                }
+                connection.connect()
+                if (connection.responseCode !in 200..299) throw IllegalStateException("HTTP ${connection.responseCode}")
+                val temp = File(directory, file.name + ".part")
+                connection.inputStream.use { input ->
+                    FileOutputStream(temp).use { output -> input.copyTo(output) }
+                }
+                if (temp.length() > 10_000L) {
+                    if (file.exists()) file.delete()
+                    temp.renameTo(file)
+                    val options = BitmapFactory.Options().apply {
+                        inPreferredConfig = Bitmap.Config.RGB_565
+                    }
+                    val bitmap = BitmapFactory.decodeFile(file.absolutePath, options)
+                    if (bitmap != null) handler.post {
+                        if (target.tag == tag) target.setImageBitmap(bitmap)
+                    }
+                } else {
+                    temp.delete()
+                }
+            } catch (_: Exception) {
+                // Keep the lightweight gradient fallback when the TV is offline.
+            } finally {
+                connection?.disconnect()
+            }
         }
     }
 
@@ -236,7 +332,11 @@ class MainActivity : Activity() {
             isFocusableInTouchMode = true
         }
 
-        wallpaperView = View(this)
+        wallpaperView = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            setBackgroundColor(Color.rgb(18, 28, 44))
+            contentDescription = "Фотографические обои RFTV"
+        }
         root.addView(wallpaperView, FrameLayout.LayoutParams(-1, -1))
         applyWallpaper()
 
@@ -272,8 +372,12 @@ class MainActivity : Activity() {
         }
         timeColumn.addView(clockText)
         timeColumn.addView(dateText)
-        top.addView(timeColumn, LinearLayout.LayoutParams(0, -2, 1f))
+        timeColumn.gravity = Gravity.CENTER
+        clockText.textSize = 82f
+        clockText.setShadowLayer(18f, 0f, 3f, Color.argb(150, 0, 0, 0))
+        root.addView(timeColumn, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
 
+        top.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         val weather = glassButton("☀   18°   ДЕМО") { showWeather() }
         top.addView(weather, LinearLayout.LayoutParams(-2, dp(54)).apply {
             rightMargin = dp(12)
@@ -281,18 +385,6 @@ class MainActivity : Activity() {
         top.addView(glassButton("⚙") { showControlCenter() },
             LinearLayout.LayoutParams(dp(58), dp(54)))
         root.addView(top, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
-
-        val greeting = TextView(this).apply {
-            text = "RFTV     ВАШ ТЕЛЕВИЗОР. ВАШ ВЫБОР."
-            textSize = 13f
-            letterSpacing = 0.08f
-            setTextColor(Color.argb(210, 255, 255, 255))
-        }
-        val greetingParams = FrameLayout.LayoutParams(-2, dp(34), Gravity.TOP or Gravity.START).apply {
-            leftMargin = dp(58)
-            topMargin = dp(158)
-        }
-        root.addView(greeting, greetingParams)
 
         dock = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -625,12 +717,14 @@ class MainActivity : Activity() {
                     showLauncherSettings()
                 }
             }
-            val preview = View(this).apply {
+            val preview = ImageView(this).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
                 background = GradientDrawable(
                     GradientDrawable.Orientation.TL_BR,
                     intArrayOf(colors[0], colors[1], colors[2])
                 ).apply { cornerRadius = dp(10).toFloat() }
             }
+            loadPhoto(index, dark, preview)
             item.addView(preview, LinearLayout.LayoutParams(dp(116), dp(66)))
             item.addView(TextView(this).apply {
                 text = if (index == selected) "✓  " + (index + 1) else (index + 1).toString()
