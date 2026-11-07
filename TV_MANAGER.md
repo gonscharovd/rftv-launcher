@@ -26,8 +26,8 @@ The upstream repository's MIT notice is reproduced in THIRD_PARTY_NOTICES.md.
 
 A profile must match all of the following:
 - Android SDK/API level;
-- at least one exact (case-insensitive) board/hardware token; and
-- at least one exact (case-insensitive) device/product token.
+- at least one exact (case-insensitive) token in `Build.BOARD` or `Build.HARDWARE`; and
+- at least one exact (case-insensitive) token in `Build.DEVICE` or `Build.PRODUCT`.
 
 Partial substring matches and generic platform codenames are not accepted. This deliberately favors false negatives over applying a profile to the wrong television.
 
