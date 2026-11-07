@@ -83,7 +83,7 @@ class MainActivity : Activity() {
                 val now = Date()
                 clockText.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(now)
                 dateText.text = SimpleDateFormat("EEEE, d MMMM", Locale.getDefault())
-                    .format(now).replaceFirstChar { it.uppercase(Locale.getDefault()) }
+                    .format(now).replaceFirstChar { it.uppercase() }
                 applyWallpaper()
             }
             handler.postDelayed(this, 30_000)
@@ -235,7 +235,7 @@ class MainActivity : Activity() {
         timeColumn.addView(dateText)
         top.addView(timeColumn, LinearLayout.LayoutParams(0, -2, 1f))
 
-        val weather = glassButton("☀   18°   Ясно") { showWeather() }
+        val weather = glassButton("☀   18°   ДЕМО") { showWeather() }
         top.addView(weather, LinearLayout.LayoutParams(-2, dp(54)).apply {
             rightMargin = dp(12)
         })
