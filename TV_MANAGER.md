@@ -26,7 +26,7 @@ The upstream repository's MIT notice is reproduced in THIRD_PARTY_NOTICES.md.
 
 A profile must match both:
 - Android SDK/API level; and
-- at least one hardware identity token from Build.BOARD, Build.DEVICE, Build.HARDWARE or Build.PRODUCT.
+- at least one exact (case-insensitive) hardware identity token from Build.BOARD, Build.DEVICE, Build.HARDWARE or Build.PRODUCT. Partial substring matches are not accepted.
 
 A brand name or Android version alone is never sufficient. A profile that does not match is displayed as a reference and must not be treated as a recommendation.
 

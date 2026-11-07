@@ -32,10 +32,10 @@ internal object TvManagerProfiles {
             val identity = listOf(Build.BOARD, Build.DEVICE, Build.HARDWARE, Build.PRODUCT)
                 .map { it.lowercase() }
             val boardMatch = boardTokens.any { token ->
-                identity.any { it == token.lowercase() || it.contains(token.lowercase()) }
+                identity.any { it == token.lowercase() }
             }
             val deviceMatch = deviceTokens.any { token ->
-                identity.any { it == token.lowercase() || it.contains(token.lowercase()) }
+                identity.any { it == token.lowercase() }
             }
             return Build.VERSION.SDK_INT == sdk && (boardMatch || deviceMatch)
         }
