@@ -803,6 +803,7 @@ class MainActivity : Activity() {
         val systemApps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
             .filter { it.flags and ApplicationInfo.FLAG_SYSTEM != 0 && it.packageName != packageName }
             .sortedBy { packageManager.getApplicationLabel(it).toString().lowercase(Locale.getDefault()) }
+        val matchedProfiles = TvManagerProfiles.matchingProfiles()
 
         fun packageState(app: ApplicationInfo): String {
             return try {
@@ -819,8 +820,14 @@ class MainActivity : Activity() {
 
         fun packageReport(): String = buildString {
             appendLine("RFTV TV Manager — инвентаризация системных пакетов")
-            appendLine("Устройство: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+            appendLine("Производитель: ${android.os.Build.MANUFACTURER}")
+            appendLine("Модель: ${android.os.Build.MODEL}")
+            appendLine("Плата: ${android.os.Build.BOARD}")
+            appendLine("Устройство: ${android.os.Build.DEVICE}")
+            appendLine("Hardware: ${android.os.Build.HARDWARE}")
+            appendLine("Product: ${android.os.Build.PRODUCT}")
             appendLine("Android: ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
+            appendLine("Совпавшие профили: ${matchedProfiles.joinToString { it.id }.ifEmpty { "нет" }}")
             appendLine("Пакетов: ${systemApps.size}")
             appendLine()
             systemApps.forEach { app ->
@@ -832,32 +839,59 @@ class MainActivity : Activity() {
             }
         }
 
-        showPanel("TV Manager · аудит системы") { body ->
+        showPanel("RFTV TV Manager") { body ->
             val disabledCount = systemApps.count { packageState(it) == "отключено" }
             body.addView(infoCard(
-                "ИНВЕНТАРИЗАЦИЯ",
-                "Системных пакетов: ${systemApps.size} · отключено: $disabledCount",
-                "RFTV считывает названия, package ID и состояние компонентов. Это безопасный режим просмотра: никаких изменений на телевизоре не выполняется."
+                "ЭТО УСТРОЙСТВО",
+                "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
+                "Android ${android.os.Build.VERSION.RELEASE} · API ${android.os.Build.VERSION.SDK_INT}\nПлата: ${android.os.Build.BOARD}\nDevice: ${android.os.Build.DEVICE}\nHardware: ${android.os.Build.HARDWARE}"
             ))
             body.addView(infoCard(
-                "ПЕРЕД ОТКЛЮЧЕНИЕМ",
-                "Нужен привилегированный мост",
-                "Обычное Android-приложение не может отключать другие системные пакеты. Для этого потребуется подтверждённый ADB или совместимый Shizuku на StarOS. Без него кнопки отключения не появятся."
+                "СОВПАДЕНИЕ ПРОФИЛЯ",
+                if (matchedProfiles.isEmpty()) "Точного профиля пока нет" else "Найдено профилей: ${matchedProfiles.size}",
+                if (matchedProfiles.isEmpty())
+                    "Каталог не нашёл профиль с совпадающей платой/устройством и версией Android. Профили других телевизоров можно изучать, но применять их списки к этому ТВ нельзя. Экспортируй инвентаризацию — по ней можно подготовить отдельный профиль."
+                else
+                    "Найдены точные аппаратные совпадения. Даже совпавший профиль остаётся справочным: перед любыми действиями нужно сверить прошивку и текущие пакеты."
             ))
             body.addView(infoCard(
-                "ПРАВИЛА ВОССТАНОВЛЕНИЯ",
-                "Журнал исходных состояний",
-                "Перед изменением сохраняем состояние каждого пакета. Не удаляем APK. Не трогаем оболочку, настройки, сеть, пульт, звук, системный интерфейс и обновление прошивки. Любое отключение — только после подтверждения."
+                "БЕЗОПАСНОСТЬ",
+                "Сейчас доступен только аудит",
+                "RFTV пока не подключён к привилегированному ADB/Shizuku-мосту. Приложение ничего не отключает и не удаляет. Профили CleanYourTV показывают проверенные на конкретных устройствах примеры, а не универсальный список мусора."
             ))
             body.addView(glassButton("Поделиться отчётом о пакетах") {
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, "RFTV — системные пакеты телевизора")
+                    putExtra(Intent.EXTRA_SUBJECT, "RFTV — инвентаризация Android TV")
                     putExtra(Intent.EXTRA_TEXT, packageReport())
                 }
                 startActivity(Intent.createChooser(send, "Экспорт инвентаризации RFTV"))
             }, LinearLayout.LayoutParams(-2, dp(48)).apply { bottomMargin = dp(10) })
-            body.addView(sectionLabel("СИСТЕМНЫЕ ПАКЕТЫ · ПЕРВЫЕ 100"))
+
+            body.addView(sectionLabel("КАТАЛОГ ПРОФИЛЕЙ · CLEAN YOUR TV"))
+            body.addView(infoCard(
+                "ИСТОЧНИК ДАННЫХ",
+                "CleanYourTV · лицензия MIT",
+                "В RFTV добавлены два справочных профиля Sber StarOS. Каталог расширяемый: новые производители и модели добавляются отдельными профилями после проверки исходных данных. Авторство и ссылка на оригинал сохраняются."
+            ))
+            TvManagerProfiles.all.forEach { profile ->
+                val isMatch = profile in matchedProfiles
+                body.addView(infoCard(
+                    if (isMatch) "ТОЧНОЕ СОВПАДЕНИЕ · ${profile.androidLabel}" else profile.androidLabel,
+                    profile.title,
+                    "${profile.packages.size} записей в справочном списке · ${if (isMatch) "совпадает аппаратный идентификатор и API" else "не применять к этому устройству без точного совпадения"}"
+                ))
+                body.addView(glassButton("Изучить профиль · ${profile.packages.size} пакетов") {
+                    showTvManagerProfile(profile.id)
+                }, LinearLayout.LayoutParams(-2, dp(46)).apply { bottomMargin = dp(12) })
+            }
+
+            body.addView(sectionLabel("ИНВЕНТАРИЗАЦИЯ ЭТОГО ТВ"))
+            body.addView(infoCard(
+                "СИСТЕМНЫЕ ПАКЕТЫ",
+                "${systemApps.size} всего · $disabledCount отключено",
+                "Первые 100 показаны ниже. Полный перечень, включая package ID и исходное состояние, находится в экспортируемом отчёте."
+            ))
             systemApps.take(100).forEach { app ->
                 val label = try {
                     packageManager.getApplicationLabel(app).toString()
@@ -869,44 +903,54 @@ class MainActivity : Activity() {
                 body.addView(infoCard(label, app.packageName,
                     "$type · ${packageState(app)} · только просмотр"))
             }
-            if (systemApps.size > 100) {
-                body.addView(infoCard("ПОЛНЫЙ ОТЧЁТ", "Показаны первые 100 из ${systemApps.size}",
-                    "Кнопка экспорта выше включает полный список пакетов."))
-            }
             body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
                 LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(12) })
         }
     }
 
-
-    private fun showCleaner() {
-        showPanel("TV Cleaner") { body ->
+    private fun showTvManagerProfile(profileId: String) {
+        val profile = TvManagerProfiles.all.firstOrNull { it.id == profileId } ?: run {
+            showTvManager()
+            return
+        }
+        val isMatch = profile in TvManagerProfiles.matchingProfiles()
+        showPanel("Профиль · ${profile.title}") { body ->
             body.addView(infoCard(
-                "БЕЗОПАСНОЕ УДАЛЕНИЕ",
-                "Системные компоненты скрыты",
-                "Выбери пользовательское приложение. Android откроет штатное подтверждение удаления."
+                if (isMatch) "СОВПАДЕНИЕ ПО УСТРОЙСТВУ" else "СПРАВОЧНЫЙ ПРОФИЛЬ · НЕ ПРИМЕНЯТЬ",
+                profile.androidLabel,
+                profile.testedNotes
             ))
-            val scroll = ScrollView(this)
-            val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-            val userApps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-                .filter { it.packageName != packageName && (it.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
-                .sortedBy { packageManager.getApplicationLabel(it).toString().lowercase(Locale.getDefault()) }
-
-            userApps.forEach { info ->
-                val appName = packageManager.getApplicationLabel(info).toString()
-                list.addView(controlTile(appName, info.packageName) {
-                    try {
-                        startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:" + info.packageName)))
-                    } catch (_: Exception) {
-                        openSettings(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)
-                    }
-                }, LinearLayout.LayoutParams(-1, dp(66)).apply { bottomMargin = dp(7) })
+            body.addView(infoCard(
+                "ОГРАНИЧЕНИЕ",
+                "Это не готовая команда очистки",
+                "Пакеты ниже приведены для анализа. RFTV не выполняет отключение. Список тестировался на конкретной модели и прошивке; даже близкий телевизор может зависеть от других системных компонентов."
+            ))
+            var lastGroup = ""
+            profile.packages.forEach { item ->
+                if (item.group != lastGroup) {
+                    lastGroup = item.group
+                    body.addView(sectionLabel(lastGroup.uppercase(Locale.getDefault())))
+                }
+                body.addView(infoCard(
+                    item.label,
+                    item.packageId,
+                    "${item.note}\nУровень внимания: ${item.risk}"
+                ))
             }
-            if (userApps.isEmpty()) {
-                list.addView(infoCard("Ничего не найдено", "Пользовательские приложения отсутствуют", ""))
-            }
-            scroll.addView(list)
-            body.addView(scroll, LinearLayout.LayoutParams(-1, dp(300)))
+            body.addView(glassButton("Открыть оригинальный профиль CleanYourTV") {
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(profile.sourceUrl)))
+                } catch (_: Exception) {
+                    // Keep the local reference available if no browser is installed.
+                }
+            }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
+            body.addView(infoCard(
+                "ЛИЦЕНЗИЯ И АВТОРСТВО",
+                "CleanYourTV · MIT",
+                "Списки адаптированы как справочные данные. Оригинальные файлы, история изменений и инструкции доступны по ссылке выше."
+            ))
+            body.addView(glassButton("Назад к каталогу") { showTvManager() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
         }
     }
 

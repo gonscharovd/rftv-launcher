@@ -13,7 +13,7 @@ A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direc
 - Control panel with Wi-Fi, Bluetooth, display settings, RAM information, launcher settings and Android settings shortcuts.
 - Dock width and height controls saved locally.
 - TV Cleaner lists user-installed apps and delegates uninstall to Android's confirmation screen.
-- TV Manager provides a read-only inventory of system packages, enabled state, and text report export for device-specific analysis.
+- RFTV TV Manager provides a read-only system-package inventory, device fingerprint export, and a reference catalogue with strict hardware/API matching for two CleanYourTV Sber StarOS profiles.
 - Remote-control focus states and large TV-friendly controls.
 
 ## Target device
@@ -58,7 +58,7 @@ GitHub Actions builds pushes to main and feature/** branches and pull requests t
 
 ## Cleaner safety
 
-The cleaner does not silently remove packages or clear another app's private cache. It lists non-system apps and opens Android's native uninstall confirmation. TV Manager inventory and report export are implemented; privileged ADB / Shizuku bridge, disable / restore actions, and rollback are not implemented yet. See [TV_MANAGER.md](TV_MANAGER.md) for the device-specific safety plan.
+The cleaner does not silently remove packages or clear another app's private cache. It lists non-system apps and opens Android's native uninstall confirmation. TV Manager inventory, device fingerprint export, and a reference-only catalogue for two Sber StarOS profiles are implemented. Other manufacturers can be added as individually verified profiles. No package disabling is available yet: privileged ADB / Shizuku bridge, disable / restore actions, action journal, and rollback remain future work. The current Sber SDX-50U4123B target does not match either imported Sber profile because its Android version and hardware platform differ. See [TV_MANAGER.md](TV_MANAGER.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Wallpaper credits
 
