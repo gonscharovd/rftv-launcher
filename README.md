@@ -45,12 +45,14 @@ GitHub Actions builds pushes to main and feature/** branches and pull requests t
 
 ## Important prototype limitations
 
-- The weather tile currently contains demonstration data. A real weather provider and location/source settings are not connected yet.
+- RFTV now includes an Android DreamService screensaver prototype with hourly random landscape downloads, cached images, Open-Meteo weather for Chelyabinsk, official Bank of Russia USD/EUR rates, and RSS headlines from RIA Novosti and BBC World. The initial city and feeds are hard-coded; configuration UI is a follow-up.
 - Wallpaper photos require an internet connection for their first download. The launcher stores each downloaded image privately; previously downloaded wallpapers remain available offline.
 - Glass is approximated with translucent fills and strokes. Real-time background blur is intentionally avoided for the low-memory target device.
 - Brightness, Wi-Fi and Bluetooth entries open Android settings. Direct toggles depend on StarOS permissions and firmware APIs and are not claimed to work universally.
 - RAM is informational. Android controls background process lifecycle; this app does not force-stop arbitrary apps or claim to free RAM by killing protected processes.
 - Theme selection and dock dimensions are persisted. Favourites, per-app ordering, icon sizing and full appearance editor are not implemented yet.
+- The screensaver must be selected by the user in Android/StarOS Settings > Display > Screen saver if the firmware exposes DreamService. Some TV firmware builds remove this system feature; this must be verified on the physical Sber TV.
+- Random screensaver photos are served by LoremFlickr and cached locally. The service retains only a small cache to protect internal storage.
 - Device installation, launcher replacement behaviour, remote navigation and performance still require testing on the physical Sber TV.
 
 ## Cleaner safety

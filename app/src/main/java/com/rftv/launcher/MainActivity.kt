@@ -377,7 +377,7 @@ class MainActivity : Activity() {
         root.addView(timeColumn, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
 
         top.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-        val weather = glassButton("☀   18°   ДЕМО") { showWeather() }
+        val weather = glassButton("☀   ПОГОДА") { showWeather() }
         top.addView(weather, LinearLayout.LayoutParams(-2, dp(54)).apply {
             rightMargin = dp(12)
         })
@@ -538,11 +538,18 @@ class MainActivity : Activity() {
     }
 
     private fun showWeather() {
-        showPanel("Погода") { body ->
-            body.addView(infoCard("СЕЙЧАС", "18°  ·  Ясно", "Демонстрационные данные. Реальный прогноз подключим отдельно."))
-            body.addView(infoCard("ПРОГНОЗ", "Сегодня  ·  Завтра", "После подключения погодного источника здесь появится прогноз по часам и дням."))
+        showPanel("Погода и информация") { body ->
+            body.addView(infoCard("ПОГОДА", "Челябинск · Open-Meteo",
+                "Экран ожидания RFTV загружает текущую температуру, ощущаемую температуру и ветер. Данные обновляются раз в час и сохраняются на время сеанса."))
+            body.addView(infoCard("КУРСЫ ВАЛЮТ", "Банк России",
+                "На заставке показываются курсы доллара и евро к рублю из официального XML-источника ЦБ РФ."))
+            body.addView(infoCard("НОВОСТИ", "Россия и мир",
+                "Заголовки поступают из RSS-лент РИА Новости и BBC World. Источники подписаны на экране."))
+            body.addView(glassButton("Настроить экран ожидания") {
+                openSettings("android.settings.DREAM_SETTINGS")
+            }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(12) })
             body.addView(glassButton("Закрыть") { showHome() }, LinearLayout.LayoutParams(-2, dp(48)).apply {
-                topMargin = dp(12)
+                topMargin = dp(8)
             })
         }
     }
@@ -614,6 +621,10 @@ class MainActivity : Activity() {
             body.addView(controlTile("Приложения", "Обновить список установленных приложений") {
                 loadInstalledApps()
                 showHome()
+            }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
+
+            body.addView(controlTile("Экран ожидания RFTV", "Обои каждый час · погода · курсы · новости") {
+                openSettings("android.settings.DREAM_SETTINGS")
             }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
 
             body.addView(controlTile("TV Cleaner", "Список пользовательских приложений") {
