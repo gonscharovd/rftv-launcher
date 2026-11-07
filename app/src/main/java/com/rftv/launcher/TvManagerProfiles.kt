@@ -37,7 +37,7 @@ internal object TvManagerProfiles {
             val deviceMatch = deviceTokens.any { token ->
                 identity.any { it == token.lowercase() }
             }
-            return Build.VERSION.SDK_INT == sdk && (boardMatch || deviceMatch)
+            return Build.VERSION.SDK_INT == sdk && boardMatch && deviceMatch
         }
     }
 
@@ -45,7 +45,7 @@ internal object TvManagerProfiles {
         Profile(
             id = "sber-at30a6",
             title = "Sber Salute TV 43″ · CVTE / Amlogic T962D4",
-            boardTokens = listOf("TP.T962D4.PC756", "t5w"),
+            boardTokens = listOf("TP.T962D4.PC756"),
             deviceTokens = listOf("at30a6"),
             sdk = 33,
             androidLabel = "StarOS 1.101 · Android 13",
@@ -83,7 +83,7 @@ internal object TvManagerProfiles {
         Profile(
             id = "sber-pb766",
             title = "Sber Salute TV 32″ · CVTE / MediaTek MT9256",
-            boardTokens = listOf("TPD.MT9216.PB766", "mt5867"),
+            boardTokens = listOf("TPD.MT9216.PB766"),
             deviceTokens = listOf("MD_CVTE_OVERSEA_MT9256_11_0_1GB_STARKOS"),
             sdk = 30,
             androidLabel = "StarOS 1.103 · Android 11",
