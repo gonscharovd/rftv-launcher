@@ -538,13 +538,49 @@ class MainActivity : Activity() {
     }
 
     private fun showWeather() {
-        showPanel("Погода и информация") { body ->
-            body.addView(infoCard("ПОГОДА", "Челябинск · Open-Meteo",
-                "Экран ожидания RFTV загружает текущую температуру, ощущаемую температуру и ветер. Данные обновляются раз в час и сохраняются на время сеанса."))
+        showPanel("Погода") { body ->
+            val liveWeather = TextView(this).apply {
+                text = "Загружаем текущую погоду для Челябинска…"
+                textSize = 18f
+                setTextColor(Color.WHITE)
+                setPadding(dp(18), dp(16), dp(18), dp(16))
+                background = glassPanel(42, 20)
+            }
+            body.addView(liveWeather, LinearLayout.LayoutParams(-1, -2))
+            Thread {
+                val result = try {
+                    val address = "https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Asia%2FYekaterinburg"
+                    val current = org.json.JSONObject(URL(address).readText())
+                        .getJSONObject("current")
+                    val temp = current.getDouble("temperature_2m").toInt()
+                    val feels = current.getDouble("apparent_temperature").toInt()
+                    val humidity = current.getInt("relative_humidity_2m")
+                    val wind = current.getDouble("wind_speed_10m").toInt()
+                    val code = current.getInt("weather_code")
+                    val condition = when (code) {
+                        0 -> "Ясно"
+                        1, 2 -> "Переменная облачность"
+                        3 -> "Облачно"
+                        45, 48 -> "Туман"
+                        in 51..67 -> "Морось или дождь"
+                        in 71..77 -> "Снег"
+                        in 80..82 -> "Ливень"
+                        in 85..86 -> "Снегопад"
+                        95, 96, 99 -> "Гроза"
+                        else -> "Погодные условия"
+                    }
+                    "Челябинск · $condition\n\n$temp°C  ·  ощущается как $feels°C\nВлажность $humidity%  ·  ветер $wind км/ч\n\nИсточник: Open-Meteo"
+                } catch (_: Exception) {
+                    "Не удалось загрузить погоду. Проверь подключение к интернету."
+                }
+                handler.post {
+                    if (!isFinishing) liveWeather.text = result
+                }
+            }.start()
             body.addView(infoCard("КУРСЫ ВАЛЮТ", "Банк России",
-                "На заставке показываются курсы доллара и евро к рублю из официального XML-источника ЦБ РФ."))
+                "На экране ожидания показываются курсы доллара и евро к рублю из официального источника ЦБ РФ."))
             body.addView(infoCard("НОВОСТИ", "Россия и мир",
-                "Заголовки поступают из RSS-лент РИА Новости и BBC World. Источники подписаны на экране."))
+                "На экране ожидания выводятся заголовки RSS-лент. Источники указываются внизу экрана."))
             body.addView(glassButton("Настроить экран ожидания") {
                 openSettings("android.settings.DREAM_SETTINGS")
             }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(12) })
