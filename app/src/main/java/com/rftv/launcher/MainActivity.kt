@@ -781,6 +781,8 @@ class MainActivity : Activity() {
     }
 
     private fun showAppActions(app: TvApp) {
+        val returnToPanel = page == "panel"
+        val previouslyFocusedPackage = currentFocus?.tag as? String
         val actions = arrayOf("Переместить левее", "Переместить правее", "Убрать из тулбара", "Скрыть приложение")
         AlertDialog.Builder(this)
             .setTitle(app.label)
@@ -802,7 +804,18 @@ class MainActivity : Activity() {
                     }
                 }
                 persistAppLists()
-                buildDockContent()
+                if (returnToPanel) {
+                    // Refresh the catalog so hidden/favorite state is immediately visible.
+                    showAppCatalog()
+                } else {
+                    buildDockContent()
+                    dockContent.post {
+                        val target = previouslyFocusedPackage?.let {
+                            dockContent.findViewWithTag<View>(it)
+                        } ?: dockContent.findViewWithTag<View>(app.packageName)
+                        if (target?.requestFocus() != true) focusFirstApp()
+                    }
+                }
             }
             .setNegativeButton("Отмена", null)
             .show()
