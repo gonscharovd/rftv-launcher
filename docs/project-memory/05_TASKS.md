@@ -1,6 +1,6 @@
 # Единый список задач
 
-**Состояние на:** 2026-11-09 01:31 (UTC+05:00). Статусы сверены с GitHub main, PR и исходниками.
+**Состояние на:** 2026-11-09 02:05 (UTC+05:00). Статусы сверены с GitHub main, PR, CI и исходниками.
 
 ## Активные и ближайшие задачи
 
@@ -12,7 +12,7 @@
 | RFTV-004 | Проверить и завершить Dock/каталог приложений | P1 | READY после этапа 2/3 | RFTV-001 | Установка/удаление, запуск, DPAD, сохранение порядка/избранного |
 | RFTV-005 | Проработать безопасный TV Manager | P2 | BACKLOG | Аудит точной модели/прошивки и доступных привилегий | Read-only анализ, доказательства/уверенность, предпросмотр, журнал, исходные состояния, rollback; никаких package actions без безопасного механизма |
 | RFTV-006 | Совместимость и OTA hardening | P1 | BACKLOG | RFTV-001, регрессионная база | API/OEM/ABI, integrity, подпись, ошибки сети/установки, сохранение настроек |
-| RFTV-009 | Внедрить переносимую project-memory систему | P1 | REVIEW (PR #15 открыт) | Проверка обновлённого CI и ревью PR | 11 Markdown-документов, сверка с GitHub, CURRENT_STATE/TASKS/SESSION_HANDOFF синхронизированы; [PR #15](https://github.com/gonscharovd/rftv-launcher/pull/15) |
+| RFTV-009 | Внедрить переносимую project-memory систему | P1 | REVIEW (PR #15 открыт; CI success) | Финальное ревью PR | 11 Markdown-документов, сверка с GitHub; CI run [42520736798](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520736798) успешен; [PR #15](https://github.com/gonscharovd/rftv-launcher/pull/15) |
 
 ## Завершённые
 
