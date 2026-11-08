@@ -222,11 +222,55 @@ class MainActivity : Activity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN && page == "home") {
-            if (event.keyCode == KeyEvent.KEYCODE_BACK &&
-                root.findViewWithTag<View>("rftv-control-center") != null) {
-                closeControlCenter()
-                return true
+            val controlCenter = root.findViewWithTag<View>("rftv-control-center")
+
+            if (controlCenter != null) {
+                if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+                    closeControlCenter()
+                    return true
+                }
+
+                // Keep every DPAD direction inside the open panel. The previous
+                // implementation intercepted UP/DOWN for Dock even while this
+                // overlay was visible, so focus never reached its controls.
+                val direction = when (event.keyCode) {
+                    KeyEvent.KEYCODE_DPAD_UP -> View.FOCUS_UP
+                    KeyEvent.KEYCODE_DPAD_DOWN -> View.FOCUS_DOWN
+                    KeyEvent.KEYCODE_DPAD_LEFT -> View.FOCUS_LEFT
+                    KeyEvent.KEYCODE_DPAD_RIGHT -> View.FOCUS_RIGHT
+                    else -> View.NO_ID
+                }
+                if (direction != View.NO_ID) {
+                    val focused = currentFocus
+                    var ancestor: View? = focused
+                    while (ancestor != null && ancestor !== controlCenter) {
+                        ancestor = ancestor.parent as? View
+                    }
+                    if (ancestor !== controlCenter) {
+                        controlCenter.findFocus()?.clearFocus()
+                        controlCenter.post {
+                            controlCenter.findViewWithTag<View>("rftv-control-center-initial-focus")?.requestFocus()
+                                ?: controlCenter.requestFocus()
+                        }
+                        return true
+                    }
+
+                    val next = focused?.focusSearch(direction)
+                    if (next != null) {
+                        var nextAncestor: View? = next
+                        while (nextAncestor != null && nextAncestor !== controlCenter) {
+                            nextAncestor = nextAncestor.parent as? View
+                        }
+                        if (nextAncestor === controlCenter) {
+                            next.requestFocus()
+                        }
+                    }
+                    // Consume edge navigation rather than escaping into the app dock.
+                    return true
+                }
+                return super.dispatchKeyEvent(event)
             }
+
             when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
                     if (!dockExpanded) {
@@ -768,7 +812,7 @@ class MainActivity : Activity() {
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
         }, LinearLayout.LayoutParams(0, dp(42), 1f))
-        header.addView(glassButton("✕") { root.removeView(overlay) }, LinearLayout.LayoutParams(dp(48), dp(42)))
+        header.addView(glassButton("✕") { closeControlCenter() }, LinearLayout.LayoutParams(dp(48), dp(42)))
         card.addView(header)
 
         val themeTitle = TextView(this).apply {
@@ -828,11 +872,16 @@ class MainActivity : Activity() {
         }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
 
         overlay.addView(card, FrameLayout.LayoutParams(
-            (resources.displayMetrics.widthPixels * .36f).toInt(), -2, Gravity.TOP or Gravity.END
+            (resources.displayMetrics.widthPixels * .38f).toInt(), -2, Gravity.TOP or Gravity.RIGHT
         ).apply { rightMargin = dp(24); topMargin = dp(24) })
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
         // Start focus inside the control center; never leave it on the app dock.
-        themes.getChildAt(themeMode.coerceIn(0, 2))?.requestFocus()
+        themes.getChildAt(themeMode.coerceIn(0, 2))?.apply {
+            tag = "rftv-control-center-initial-focus"
+        }
+        overlay.post {
+            themes.getChildAt(themeMode.coerceIn(0, 2))?.requestFocus()
+        }
     }
 
     private fun closeControlCenter() {
