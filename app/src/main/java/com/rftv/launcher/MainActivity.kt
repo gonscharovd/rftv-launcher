@@ -222,6 +222,11 @@ class MainActivity : Activity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN && page == "home") {
+            if (event.keyCode == KeyEvent.KEYCODE_BACK &&
+                root.findViewWithTag<View>("rftv-control-center") != null) {
+                closeControlCenter()
+                return true
+            }
             when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
                     if (!dockExpanded) {
@@ -465,8 +470,9 @@ class MainActivity : Activity() {
         top.addView(weather, LinearLayout.LayoutParams(-2, dp(54)).apply {
             rightMargin = dp(12)
         })
-        top.addView(glassButton("⚙") { showControlCenter() },
-            LinearLayout.LayoutParams(dp(58), dp(54)))
+        top.addView(glassButton("⚙") { showControlCenter() }.apply {
+            tag = "rftv-control-center-trigger"
+        }, LinearLayout.LayoutParams(dp(58), dp(54)))
         root.addView(top, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
 
         dock = LinearLayout(this).apply {
@@ -742,16 +748,18 @@ class MainActivity : Activity() {
         val overlay = FrameLayout(this).apply {
             tag = "rftv-control-center"
             setBackgroundColor(Color.argb(45, 0, 0, 0))
-            isFocusableInTouchMode = true
-            setOnClickListener { root.removeView(this) }
+            isFocusable = false
+            isFocusableInTouchMode = false
+            setOnClickListener { closeControlCenter() }
         }
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = roundedGlass(Color.argb(232, 27, 39, 58), 28)
             setPadding(dp(20), dp(16), dp(20), dp(18))
             elevation = dp(24).toFloat()
-            isFocusableInTouchMode = true
-            setOnClickListener { }
+            isFocusable = false
+            isFocusableInTouchMode = false
+            descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
         }
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         header.addView(TextView(this).apply {
@@ -786,6 +794,13 @@ class MainActivity : Activity() {
                 background = if (selected) roundedGlass(Color.argb(105, 255, 255, 255), 12)
                     else roundedGlass(Color.TRANSPARENT, 12).apply { setStroke(0, Color.TRANSPARENT) }
                 isFocusable = true
+                isFocusableInTouchMode = true
+                setOnFocusChangeListener { view, focused ->
+                    view.background = roundedGlass(
+                        if (focused) Color.argb(120, 255, 255, 255) else if (themeMode == index) Color.argb(105, 255, 255, 255) else Color.TRANSPARENT,
+                        12
+                    )
+                }
                 setOnClickListener {
                     themeMode = index
                     prefs.edit().putInt("theme_mode", themeMode).apply()
@@ -813,10 +828,17 @@ class MainActivity : Activity() {
         }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
 
         overlay.addView(card, FrameLayout.LayoutParams(
-            (resources.displayMetrics.widthPixels * .34f).toInt(), -2, Gravity.TOP or Gravity.START
-        ).apply { leftMargin = dp(24); topMargin = dp(24) })
+            (resources.displayMetrics.widthPixels * .36f).toInt(), -2, Gravity.TOP or Gravity.END
+        ).apply { rightMargin = dp(24); topMargin = dp(24) })
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
-        card.requestFocus()
+        // Start focus inside the control center; never leave it on the app dock.
+        themes.getChildAt(themeMode.coerceIn(0, 2))?.requestFocus()
+    }
+
+    private fun closeControlCenter() {
+        val overlay = root.findViewWithTag<View>("rftv-control-center") ?: return
+        root.removeView(overlay)
+        root.findViewWithTag<View>("rftv-control-center-trigger")?.requestFocus()
     }
 
 
