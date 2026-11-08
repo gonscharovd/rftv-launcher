@@ -113,6 +113,12 @@ jobs:
             exit 1
           fi
 
+          DRAFTS_JSON="$(curl -fsS \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases?per_page=100")"
+          DRAFT_RELEASE_ID="$(jq -r --arg tag "$VERSION_TAG" '[.[] | select(.tag_name == $tag and .draft == true and .prerelease == false)][0].id // empty' <<< "$DRAFTS_JSON")"
+
           LATEST_STABLE_TAG="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,isDraft,isPrerelease \
             --jq '[.[] | select(.isDraft == false and .isPrerelease == false)][0].tagName // empty')"
           if [ -n "$LATEST_STABLE_TAG" ]; then
@@ -130,9 +136,12 @@ jobs:
           echo "APK_SIZE=$APK_SIZE" >> "$GITHUB_ENV"
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "VERSION_TAG=$VERSION_TAG" >> "$GITHUB_ENV"
+          echo "EXISTING_DRAFT_RELEASE_ID=$DRAFT_RELEASE_ID" >> "$GITHUB_ENV"
           echo "Verified $APK ($APK_SIZE bytes), $VERSION_TAG, versionCode $VERSION_CODE."
 
       - name: Publish GitHub Release
+        id: create_release
+        if: env.EXISTING_DRAFT_RELEASE_ID == ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION_TAG }}
@@ -153,14 +162,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION_TAG: ${{ env.VERSION_TAG }}
+          EXISTING_DRAFT_RELEASE_ID: ${{ env.EXISTING_DRAFT_RELEASE_ID }}
+          CREATED_RELEASE_ID: ${{ steps.create_release.outputs.id }}
           EXPECTED_APK_SHA256: ${{ env.APK_SHA256 }}
           EXPECTED_APK_SIZE: ${{ env.APK_SIZE }}
         run: |
           set -euo pipefail
+          RELEASE_ID="${EXISTING_DRAFT_RELEASE_ID:-$CREATED_RELEASE_ID}"
+          test -n "$RELEASE_ID"
           RELEASE_JSON="$(curl -fsS \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$VERSION_TAG")"
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID")"
+          test "$(jq -r '.tag_name' <<< "$RELEASE_JSON")" = "$VERSION_TAG"
           test "$(jq -r '.draft' <<< "$RELEASE_JSON")" = "true"
           test "$(jq -r '.prerelease' <<< "$RELEASE_JSON")" = "false"
           ASSET_SHA="$(jq -r '.assets[] | select(.name == "app-release.apk") | .digest // empty' <<< "$RELEASE_JSON")"
@@ -177,15 +191,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION_TAG: ${{ env.VERSION_TAG }}
+          EXISTING_DRAFT_RELEASE_ID: ${{ env.EXISTING_DRAFT_RELEASE_ID }}
+          CREATED_RELEASE_ID: ${{ steps.create_release.outputs.id }}
           EXPECTED_APK_SHA256: ${{ env.APK_SHA256 }}
           EXPECTED_APK_SIZE: ${{ env.APK_SIZE }}
         run: |
           set -euo pipefail
-          DRAFT_JSON="$(curl -fsS \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$VERSION_TAG")"
-          RELEASE_ID="$(jq -r '.id // empty' <<< "$DRAFT_JSON")"
+          RELEASE_ID="${EXISTING_DRAFT_RELEASE_ID:-$CREATED_RELEASE_ID}"
           test -n "$RELEASE_ID"
           RELEASE_JSON="$(curl -fsS -X PATCH \
             -H "Authorization: Bearer $GH_TOKEN" \
