@@ -992,7 +992,7 @@ class MainActivity : Activity() {
             showControlCenter()
         }
         val ramInfo = readRamUsage()
-        val ram = makeTile("▥", "RAM · ${ram.first}%", "Используется из ${ram.second}") {
+        val ram = makeTile("▥", "RAM · ${ramInfo.first}%", "Используется из ${ramInfo.second}") {
             System.runFinalization()
             Runtime.getRuntime().gc()
             handler.postDelayed({
