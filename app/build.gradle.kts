@@ -16,8 +16,8 @@ android {
         applicationId = "com.rftv.launcher"
         minSdk = 24
         targetSdk = 28
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
 
     compileOptions {
@@ -51,4 +51,8 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
     }
+}
+
+dependencies {
+    testImplementation("junit:junit:4.13.2")
 }
