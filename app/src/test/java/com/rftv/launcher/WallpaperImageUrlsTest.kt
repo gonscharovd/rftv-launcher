@@ -28,7 +28,14 @@ class WallpaperImageUrlsTest {
     }
 
     @Test
+    fun selectionKeysDistinguishThemeAndWallpaperWithoutThumbnailState() {
+        assertEquals("day-2", WallpaperImageUrls.selectionKey(false, 2))
+        assertEquals("night-2", WallpaperImageUrls.selectionKey(true, 2))
+    }
+
+    @Test
     fun negativeIndexesCannotEscapeWallpaperCacheNamespace() {
         assertEquals("night-0.jpg", WallpaperImageUrls.cacheFileName(true, -1, false))
+        assertEquals("night-0", WallpaperImageUrls.selectionKey(true, -1))
     }
 }

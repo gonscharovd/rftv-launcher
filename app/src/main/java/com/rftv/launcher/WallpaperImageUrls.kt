@@ -12,6 +12,9 @@ internal object WallpaperImageUrls {
     fun cacheKey(isDark: Boolean, index: Int, thumbnail: Boolean): String =
         cacheFileName(isDark, index, thumbnail).removeSuffix(".jpg")
 
+    fun selectionKey(isDark: Boolean, index: Int): String =
+        cacheKey(isDark, index, thumbnail = false)
+
     fun cacheFileName(isDark: Boolean, index: Int, thumbnail: Boolean): String {
         val safeIndex = index.coerceAtLeast(0)
         val prefix = if (isDark) "night" else "day"
