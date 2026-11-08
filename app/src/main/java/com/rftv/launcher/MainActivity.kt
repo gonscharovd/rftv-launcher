@@ -783,24 +783,36 @@ class MainActivity : Activity() {
     private fun showAppActions(app: TvApp) {
         val returnToPanel = page == "panel"
         val previouslyFocusedPackage = currentFocus?.tag as? String
-        val actions = arrayOf("Переместить левее", "Переместить правее", "Убрать из тулбара", "Скрыть приложение")
+        val isFavorite = app.packageName in favoritePackages
+        val actions = if (isFavorite) {
+            arrayOf("Переместить левее", "Переместить правее", "Убрать из избранного", "Скрыть приложение")
+        } else {
+            arrayOf("Добавить в избранное", "Скрыть приложение")
+        }
         AlertDialog.Builder(this)
             .setTitle(app.label)
             .setItems(actions) { _, which ->
-                val position = favoritePackages.indexOf(app.packageName)
-                when (which) {
-                    0 -> if (position > 0) {
-                        favoritePackages.removeAt(position)
-                        favoritePackages.add(position - 1, app.packageName)
+                if (isFavorite) {
+                    val position = favoritePackages.indexOf(app.packageName)
+                    when (which) {
+                        0 -> if (position > 0) {
+                            favoritePackages.removeAt(position)
+                            favoritePackages.add(position - 1, app.packageName)
+                        }
+                        1 -> if (position >= 0 && position < favoritePackages.lastIndex) {
+                            favoritePackages.removeAt(position)
+                            favoritePackages.add(position + 1, app.packageName)
+                        }
+                        2 -> favoritePackages.remove(app.packageName)
+                        3 -> {
+                            favoritePackages.remove(app.packageName)
+                            hiddenPackages.add(app.packageName)
+                        }
                     }
-                    1 -> if (position >= 0 && position < favoritePackages.lastIndex) {
-                        favoritePackages.removeAt(position)
-                        favoritePackages.add(position + 1, app.packageName)
-                    }
-                    2 -> favoritePackages.remove(app.packageName)
-                    3 -> {
-                        favoritePackages.remove(app.packageName)
-                        hiddenPackages.add(app.packageName)
+                } else {
+                    when (which) {
+                        0 -> favoritePackages.add(app.packageName)
+                        1 -> hiddenPackages.add(app.packageName)
                     }
                 }
                 persistAppLists()
