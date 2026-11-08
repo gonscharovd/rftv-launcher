@@ -1,10 +1,10 @@
 # Текущее состояние RFTV
 
-**Дата проверки:** 2026-11-09  
+**Дата проверки:** 2026-11-09 01:31 (UTC+05:00)  
 **Репозиторий:** https://github.com/gonscharovd/rftv-launcher  
-**Ветка:** `main`  
-**HEAD:** `187239dd7f7518286fd0ffede03e6d5d54893ed5`  
-**Последний commit:** `docs/ci: mark v0.3.0 complete and skip duplicate releases (#14)`
+**Основная ветка:** `main`  
+**Main HEAD:** `187239dd7f7518286fd0ffede03e6d5d54893ed5`  
+**Последний commit main:** `docs/ci: mark v0.3.0 complete and skip duplicate releases (#14)`
 
 ## Версия и Release
 
@@ -18,46 +18,54 @@
 | APK asset | `app-release.apk` |
 | Размер | 711 225 bytes |
 | SHA-256 | `8c1ebb2d574959badd56f7b88104cea936ff5b48d3b7f6c25cfe754400e0a905` |
-| ABI | ABI-independent по release metadata; native libraries не заявлены |
-| Подпись | CI подтвердил постоянный Release certificate; секреты не хранятся в документации |
+| ABI | В APK нет native libraries; ABI-independent |
+| Подпись | Publisher проверил постоянный сертификат с ожидаемым SHA-256 digest; значения ключа/секретов не раскрываются |
 
-В Release также приложены `apk-metadata.txt`, `app-release.apk.sha256`, `signature.txt`. Источник: GitHub Release API/assets и существующий [ROADMAP](../../ROADMAP.md). Эти параметры — снимок; перед установкой/публикацией сверить актуальный Release.
+Assets релиза: `app-release.apk`, `app-release.apk.sha256`, `apk-metadata.txt`, `signature.txt`. Эти сведения — снимок; перед новой публикацией снова сверять API Releases и CI artifacts.
+
+## GitHub: ветки, PR и commits
+
+- `main` на HEAD `187239d`.
+- PR #7 (Control Center + заставка) — merged в main.
+- PR #9 (анализ Aerial TV) — merged.
+- PR #10 (Android TV banner / MissingTvBanner lint fix) — merged в PR #7, итоговый код в main.
+- PR #11–#14 (Release workflow fixes, idempotent versionCode handling и roadmap update) — merged.
+- **PR #15 — открыт:** [docs: add portable project memory system](https://github.com/gonscharovd/rftv-launcher/pull/15), ветка `docs/project-memory-system`, HEAD `04bda5bf91c9db5c4b1acbdf3c59801754230a57`, base `main` @ `187239d`. В нём 11 новых Markdown-файлов `docs/project-memory/`, без изменений Android-кода и workflows. Merge ещё не выполнен.
+- Найденные старые feature/fix/docs ветки не считать активными без сравнения с main.
 
 ## Реализовано по коду/документации
 
-- Native Kotlin Android Views, launcher HOME/LEANBACK.
-- Часы/дата, Dock и базовый домашний экран; Control Center.
-- Каталог 20 Unsplash wallpaper URLs (10 дневных/10 ночных), выбор/карусель, локальный кэш описаны в README.
-- Сохранение темы и размеров Dock.
-- Read-only TV Manager inventory, fingerprint export, reference profiles.
-- DreamService/screensaver prototype.
-- OTA release lookup/verification/installer flow.
-- Unit tests для дизайн-системы и wallpaper URL.
+- Нативный Kotlin Android Views launcher HOME/LEANBACK.
+- Главный экран с часами, датой, погодным entry point, Dock и темами.
+- 20 фотографических Unsplash wallpaper URLs (10 дневных/10 ночных), выбор/карусель и локальный кэш.
+- Control Center, системные shortcuts и настройка темы/размеров Dock.
+- Read-only TV Manager inventory, fingerprint export и reference profiles.
+- DreamService/screensaver prototype + отдельная ScreensaverActivity.
+- OTA release lookup/verification и запуск штатного Android installer.
+- Unit tests для дизайн-системы и wallpaper URL/cache logic.
 
-## Не реализовано / ограничено
+## Не реализовано / ограничения
 
 - Нет привилегированного package disable/restore, action journal и rollback.
-- Нет избранного, полноценной сортировки/скрытия и расширенного управления каталогом.
-- Прямые Wi-Fi/Bluetooth/brightness toggles не подтверждены; элементы ведут к Android settings.
-- Физическая работа заставки зависит от поддержки DreamService в StarOS.
-- Конфигурация погоды/новостей/города для заставки частично жёстко задана.
+- Нет избранного, пользовательской сортировки/скрытия приложений и полноценного редактора внешнего вида.
+- Wi-Fi/Bluetooth/brightness shortcuts открывают системные настройки; прямые toggles не обещаются.
+- DreamService зависит от поддержки в StarOS и требует проверки на устройстве.
+- Конфигурация города/погодных/новостных источников заставки частично жёстко задана.
 - Нет подтверждения физической установки v0.3.0 через OTA на Sber TV и прохождения пользовательского чек-листа.
 
 ## Автоматические проверки
 
-На HEAD `187239d`:
-- Android CI run [42516761285](https://github.com/gonscharovd/rftv-launcher/actions/runs/42516761285): completed / success.
-- Publisher run [42516905346](https://github.com/gonscharovd/rftv-launcher/actions/runs/42516905346): completed / success. По текущему workflow он может пропускать публикацию, если versionCode уже покрыт stable Release; success не означает новый APK.
-- Release v0.3.0 ранее опубликован после успешного проверочного publisher run [42516320220](https://github.com/gonscharovd/rftv-launcher/actions/runs/42516320220) и CI [42516182919](https://github.com/gonscharovd/rftv-launcher/actions/runs/42516182919).
+- Main Android CI [42516761285](https://github.com/gonscharovd/rftv-launcher/actions/runs/42516761285), SHA `187239d`: completed / success; source tests + Debug verification и signed Release APK verification прошли.
+- Main publisher [42516905346](https://github.com/gonscharovd/rftv-launcher/actions/runs/42516905346), SHA `187239d`: completed / success; относится к публикации v0.3.0.
+- Последний publisher запуск [42520472135](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520472135), SHA `187239d`: skipped. Это безопасное поведение повторного запуска, когда versionCode уже покрыт stable Release; это не новая сборка и не новый Release.
+- PR #15 Android CI [42520315995](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520315995), SHA `04bda5b`: completed / success; Source tests and Debug verification прошли, Signed Release job skipped, как ожидается для pull_request.
+- Предыдущий CI PR #15 на commit `5b107fa`: run `42520304453`, success.
+- После последующего обновления project-memory файлов PR #15 CI должен быть повторно проверен по новому HEAD.
 
 ## Физическое тестирование
 
-**Статус: НЕ ПОДТВЕРЖДЕНО.** Целевое устройство: Sber SDX-50U4123B / Salute TV (StarOS 1.103.91-b32273), Android 9/API 28, MT9632, ARMv7, около 1.36 GB RAM. Требуется пользовательская проверка v0.3.0 по [DEVICE_TESTING](../../DEVICE_TESTING.md) и чек-листу [ROADMAP](../../ROADMAP.md).
-
-## Git / незавершённая работа
-
-Ветки, найденные на момент аудита, включали несколько feature/fix/docs веток. Они не равны активным задачам: сравнивать каждую с main перед использованием. Все просмотренные PR были закрыты/слиты; открытых PR на момент запроса не выявлено по списку PR API. Issues: открытых issues не было в метаданных репозитория.
+**Статус: НЕ ПОДТВЕРЖДЕНО.** Целевое устройство: Sber SDX-50U4123B / Salute TV StarOS 1.103.91-b32273, Android 9/API 28, MT9632, ARMv7, около 1.36 GB RAM. Нужна установка стабильного v0.3.0 через OTA и прохождение [DEVICE_TESTING](../../DEVICE_TESTING.md). CI не заменяет физическую проверку.
 
 ## Ограничения аудита
 
-Аудит основан на доступном GitHub tree, файлах, commits, PR, workflow runs и Releases. Локальный checkout, локальные uncommitted changes, секреты Actions, реальные значения signing key и физическое устройство не доступны для проверки. Не утверждается, что тесты запускались локально в этой сессии.
+Проверены GitHub tree, main/PR branches, commits, PR metadata/files, workflow runs/jobs, Release API/assets и ключевые исходники/документы. Локальный checkout, пользовательские незакоммиченные изменения, значения Actions secrets/keystore и физическое устройство недоступны для проверки. Локальная сборка в этой сессии не запускалась.
