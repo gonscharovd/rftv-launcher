@@ -22,6 +22,12 @@ class WallpaperImageUrlsTest {
     }
 
     @Test
+    fun previewAndFullSizeFailuresHaveIndependentKeys() {
+        assertEquals("day-4", WallpaperImageUrls.cacheKey(false, 4, false))
+        assertEquals("day-4-thumb", WallpaperImageUrls.cacheKey(false, 4, true))
+    }
+
+    @Test
     fun negativeIndexesCannotEscapeWallpaperCacheNamespace() {
         assertEquals("night-0.jpg", WallpaperImageUrls.cacheFileName(true, -1, false))
     }
