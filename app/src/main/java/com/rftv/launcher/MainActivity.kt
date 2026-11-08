@@ -541,14 +541,11 @@ class MainActivity : Activity() {
         }
         clockText = TextView(this).apply {
             text = "09:41"
-            textSize = 66f
             letterSpacing = -0.045f
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            setShadowLayer(10f, 0f, 2f, Color.argb(RftvDesignSystem.GlassAlpha.HOME_TEXT_SHADOW, 0, 0, 0))
         }
         dateText = TextView(this).apply {
-            textSize = 17f
             setTextColor(Color.argb(RftvDesignSystem.GlassAlpha.HOME_DATE_TEXT, 255, 255, 255))
             setPadding(dp(4), 0, 0, 0)
         }
@@ -564,7 +561,7 @@ class MainActivity : Activity() {
         top.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         val weather = glassButton("☀   ПОГОДА") { showWeather() }
         top.addView(weather, LinearLayout.LayoutParams(-2, dp(RftvDesignSystem.Size.TOP_ACTION_HEIGHT)).apply {
-            rightMargin = dp(12)
+            rightMargin = dp(RftvDesignSystem.Spacing.HOME_ACTION_GAP)
         })
         top.addView(glassButton("⚙") { showControlCenter() }.apply {
             tag = "rftv-control-center-trigger"
@@ -575,7 +572,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             background = RftvDesignSystem.dockSurface(this@MainActivity)
-            setPadding(dp(RftvDesignSystem.Spacing.SM), dp(10), dp(RftvDesignSystem.Spacing.SM), dp(10))
+            setPadding(dp(RftvDesignSystem.Spacing.SM), dp(RftvDesignSystem.Spacing.DOCK_CONTENT_PADDING), dp(RftvDesignSystem.Spacing.SM), dp(RftvDesignSystem.Spacing.DOCK_CONTENT_PADDING))
             clipChildren = true
             clipToPadding = true
             elevation = dp(RftvDesignSystem.Elevation.DOCK_DP).toFloat()
@@ -592,8 +589,8 @@ class MainActivity : Activity() {
             dp(dockHeightDp),
             Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         ).apply {
-            leftMargin = dp(54)
-            rightMargin = dp(54)
+            leftMargin = dp(RftvDesignSystem.Spacing.HOME_DOCK_HORIZONTAL_INSET)
+            rightMargin = dp(RftvDesignSystem.Spacing.HOME_DOCK_HORIZONTAL_INSET)
             bottomMargin = dp(RftvDesignSystem.Spacing.DOCK_BOTTOM_INSET)
             width = (resources.displayMetrics.widthPixels * dockWidthPercent / 100f).toInt()
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
@@ -606,9 +603,9 @@ class MainActivity : Activity() {
                 true
             }
         }
-        val wallpaperParams = FrameLayout.LayoutParams(-2, dp(42), Gravity.BOTTOM or Gravity.END).apply {
-            rightMargin = dp(56)
-            bottomMargin = dp(dockHeightDp + 38)
+        val wallpaperParams = FrameLayout.LayoutParams(-2, dp(RftvDesignSystem.Size.HOME_WALLPAPER_BUTTON_HEIGHT), Gravity.BOTTOM or Gravity.END).apply {
+            rightMargin = dp(RftvDesignSystem.Spacing.HOME_WALLPAPER_RIGHT_INSET)
+            bottomMargin = dp(dockHeightDp + RftvDesignSystem.Spacing.HOME_WALLPAPER_DOCK_GAP)
         }
         root.addView(wallpaperButton, wallpaperParams)
 
