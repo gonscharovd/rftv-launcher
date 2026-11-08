@@ -44,9 +44,31 @@ jobs:
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace assembleDebug
 
-      - name: Upload APK
+      - name: Verify APK metadata and architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+
+          BADGING="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK")"
+          echo "$BADGING" | grep -F "sdkVersion:'24'"
+          echo "$BADGING" | grep -F "targetSdkVersion:'28'"
+
+          if grep -q "^native-code:" <<< "$BADGING"; then
+            echo "$BADGING" | grep "^native-code:"
+            grep "^native-code:" <<< "$BADGING" | grep -q "armeabi-v7a"
+          else
+            echo "APK has no bundled native libraries; it is not ABI-restricted."
+          fi
+
+          sha256sum "$APK" | tee "$APK.sha256"
+
+      - name: Upload APK and checksum
         uses: actions/upload-artifact@v4
         with:
           name: rftv-launcher-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/app-debug.apk.sha256
           if-no-files-found: error
