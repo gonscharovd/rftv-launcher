@@ -504,11 +504,11 @@ class MainActivity : Activity() {
             letterSpacing = -0.045f
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            setShadowLayer(10f, 0f, 2f, Color.argb(100, 0, 0, 0))
+            setShadowLayer(10f, 0f, 2f, Color.argb(RftvDesignSystem.GlassAlpha.HOME_TEXT_SHADOW, 0, 0, 0))
         }
         dateText = TextView(this).apply {
             textSize = 17f
-            setTextColor(Color.argb(235, 255, 255, 255))
+            setTextColor(Color.argb(RftvDesignSystem.GlassAlpha.HOME_DATE_TEXT, 255, 255, 255))
             setPadding(dp(4), 0, 0, 0)
         }
         timeColumn.addView(clockText)
@@ -517,7 +517,7 @@ class MainActivity : Activity() {
         clockText.textSize = RftvDesignSystem.Size.CLOCK_TEXT_SP
         clockText.setShadowLayer(22f, 0f, 4f, RftvDesignSystem.ColorTokens.CLOCK_SHADOW)
         dateText.textSize = RftvDesignSystem.Size.DATE_TEXT_SP
-        dateText.setShadowLayer(10f, 0f, 2f, Color.argb(160, 0, 0, 0))
+        dateText.setShadowLayer(10f, 0f, 2f, Color.argb(RftvDesignSystem.GlassAlpha.HOME_DATE_SHADOW, 0, 0, 0))
         root.addView(timeColumn, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
 
         top.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
@@ -820,7 +820,7 @@ class MainActivity : Activity() {
         root.findViewWithTag<View>("rftv-control-center")?.let { root.removeView(it) }
         val overlay = FrameLayout(this).apply {
             tag = "rftv-control-center"
-            setBackgroundColor(Color.argb(45, 0, 0, 0))
+            setBackgroundColor(Color.argb(RftvDesignSystem.GlassAlpha.CONTROL_CENTER_SCRIM, 0, 0, 0))
             isFocusable = false
             isFocusableInTouchMode = false
             setOnClickListener { closeControlCenter() }
@@ -870,7 +870,7 @@ class MainActivity : Activity() {
                 isFocusableInTouchMode = true
                 setOnFocusChangeListener { view, focused ->
                     view.background = roundedGlass(
-                        if (focused) Color.argb(120, 255, 255, 255) else if (themeMode == index) Color.argb(105, 255, 255, 255) else Color.TRANSPARENT,
+                        if (focused) Color.argb(RftvDesignSystem.GlassAlpha.THEME_FOCUSED, 255, 255, 255) else if (themeMode == index) Color.argb(RftvDesignSystem.GlassAlpha.THEME_SELECTED, 255, 255, 255) else Color.TRANSPARENT,
                         12
                     )
                 }
@@ -1495,7 +1495,7 @@ class MainActivity : Activity() {
                 setTextColor(Color.WHITE)
                 setHintTextColor(Color.LTGRAY)
                 setPadding(dp(14), dp(10), dp(14), dp(10))
-                background = roundedGlass(Color.argb(45, 255, 255, 255), 16)
+                background = roundedGlass(Color.argb(RftvDesignSystem.GlassAlpha.SEARCH_FIELD, 255, 255, 255), RftvDesignSystem.Radius.CONTROL)
             }
             body.addView(search, LinearLayout.LayoutParams(-1, dp(52)).apply { bottomMargin = dp(10) })
             val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -1513,7 +1513,7 @@ class MainActivity : Activity() {
                     val (riskLabel, riskColor) = risk(app.packageName)
                     val card = infoCard(label, app.packageName,
                         "$category · $state\nРиск: $riskLabel · только диагностика")
-                    card.background = roundedGlass(Color.argb(36, riskColor.red(), riskColor.green(), riskColor.blue()), 18)
+                    card.background = roundedGlass(Color.argb(RftvDesignSystem.GlassAlpha.RISK_CARD, riskColor.red(), riskColor.green(), riskColor.blue()), RftvDesignSystem.Radius.CONTROL)
                     list.addView(card)
                 }
             }
