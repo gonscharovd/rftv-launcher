@@ -11,6 +11,7 @@
 
     <application
         android:allowBackup="false"
+        android:banner="@drawable/rftv_banner"
         android:label="RFTV Launcher"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar"
