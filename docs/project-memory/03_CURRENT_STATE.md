@@ -57,6 +57,7 @@ Assets: `app-release.apk`, `app-release.apk.sha256`, `apk-metadata.txt`, `signat
 - Publisher [42520472135](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520472135): skipped, поскольку versionCode 3 уже покрыт stable Release; это не новая сборка/публикация.
 - PR #15 CI [42520736798](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520736798), HEAD `1389488`: success.
 - PR #15 CI [42521332412](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521332412) на прежнем HEAD `0068d90`: success.
+- Новый PR #15 CI [42522301318](https://github.com/gonscharovd/rftv-launcher/actions/runs/42522301318) на HEAD `d630cb8`: in progress на момент обновления.
 - PR #16 CI [42521796760](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521796760): success; unit tests, lint, Debug build и metadata verification прошли; signed Release job skipped для pull_request.
 - Push CI [42521760732](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521760732): success, включая signed Release verification.
 - Main CI после merge [42521971740](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521971740): success, включая signed Release verification.
