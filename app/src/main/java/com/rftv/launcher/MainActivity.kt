@@ -1009,17 +1009,43 @@ class MainActivity : Activity() {
             openSettings(Settings.ACTION_SETTINGS)
         }
 
-        val all = listOf(wifi, bluetooth, theme, ram, saver, launcherSettings, tvSettings)
-        all.forEach { tile ->
+        fun addFull(tile: View) {
             content.addView(tile, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
         }
-        val focusables = all
-        focusables.forEach { it.id = View.generateViewId() }
-        focusables.forEachIndexed { index, view ->
-            view.nextFocusUpId = focusables.getOrNull(index - 1)?.id ?: view.id
-            view.nextFocusDownId = focusables.getOrNull(index + 1)?.id ?: view.id
-            view.nextFocusLeftId = view.id
-            view.nextFocusRightId = view.id
+        fun addPair(left: View, right: View) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            row.addView(left, LinearLayout.LayoutParams(0, dp(76), 1f).apply { rightMargin = dp(6) })
+            row.addView(right, LinearLayout.LayoutParams(0, dp(76), 1f).apply { leftMargin = dp(6) })
+            content.addView(row, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
+        }
+
+        addFull(wifi)
+        addFull(bluetooth)
+        addPair(theme, ram)
+        addFull(saver)
+        addPair(launcherSettings, tvSettings)
+
+        val focusRows = listOf(
+            listOf(wifi),
+            listOf(bluetooth),
+            listOf(theme, ram),
+            listOf(saver),
+            listOf(launcherSettings, tvSettings)
+        )
+        focusRows.flatten().forEach { it.id = View.generateViewId() }
+        focusRows.forEachIndexed { rowIndex, row ->
+            row.forEachIndexed { columnIndex, view ->
+                val sameRowNeighbor = row.getOrNull(if (columnIndex == 0) 1 else columnIndex - 1)
+                val upperRow = focusRows.getOrNull(rowIndex - 1)
+                val lowerRow = focusRows.getOrNull(rowIndex + 1)
+                view.nextFocusLeftId = if (columnIndex > 0) row[columnIndex - 1].id else view.id
+                view.nextFocusRightId = if (columnIndex < row.lastIndex) row[columnIndex + 1].id else view.id
+                view.nextFocusUpId = upperRow?.getOrNull(columnIndex.coerceAtMost((upperRow.size - 1).coerceAtLeast(0)))?.id ?: view.id
+                view.nextFocusDownId = lowerRow?.getOrNull(columnIndex.coerceAtMost((lowerRow.size - 1).coerceAtLeast(0)))?.id ?: view.id
+            }
         }
 
         scroll.addView(content)
