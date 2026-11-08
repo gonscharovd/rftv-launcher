@@ -1648,8 +1648,10 @@ class MainActivity : Activity() {
                     val state = if (isPackageDisabled(app.packageName, app.enabled)) "Отключено" else "Включено"
                     val category = if (isSystem) "Системное" else "Пользовательское"
                     val (riskLabel, riskColor) = risk(app.packageName)
-                    val card = controlTile(label, app.packageName,
-                        "$category · $state · $riskLabel · ОК — подробности") {
+                    val card = controlTile(
+                        label,
+                        "${app.packageName} · $category · $state · $riskLabel · ОК — подробности"
+                    ) {
                         showTvPackageDetails(app)
                     }
                     card.background = roundedGlass(
