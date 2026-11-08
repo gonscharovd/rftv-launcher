@@ -183,7 +183,7 @@ class MainActivity : Activity() {
         carouselIntervalMinutes = prefs.getInt("wallpaper_interval", 5).coerceIn(1, 60)
         dockWidthPercent = prefs.getInt("dock_width", 88)
         dockHeightDp = prefs.getInt("dock_height", 154)
-        favoritePackages.addAll(prefs.getStringSet("favorite_packages", emptySet()) ?: emptySet())
+        favoritePackages.addAll(prefs.getString("favorite_packages_order", "")!!.split("|").filter { it.isNotBlank() })
         hiddenPackages.addAll(prefs.getStringSet("hidden_packages", emptySet()) ?: emptySet())
 
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
@@ -614,7 +614,7 @@ class MainActivity : Activity() {
 
     private fun persistAppLists() {
         prefs.edit()
-            .putStringSet("favorite_packages", favoritePackages.toSet())
+            .putString("favorite_packages_order", favoritePackages.joinToString("|"))
             .putStringSet("hidden_packages", hiddenPackages.toSet())
             .apply()
     }
@@ -882,8 +882,9 @@ class MainActivity : Activity() {
                     }
                 }
                 val callback = Intent(this, OtaInstallReceiver::class.java)
-                val pending = PendingIntent.getBroadcast(this, sessionId, callback,
-                    PendingIntent.FLAG_UPDATE_CURRENT or if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_MUTABLE else 0)
+                val pendingFlags = PendingIntent.FLAG_UPDATE_CURRENT or
+                    (if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_MUTABLE else 0)
+                val pending = PendingIntent.getBroadcast(this, sessionId, callback, pendingFlags)
                 session.commit(pending.intentSender)
             }
             otaStatus = "Пакет передан установщику Android"
