@@ -11,12 +11,11 @@ import android.view.View
  */
 internal object RftvDesignSystem {
     object ColorTokens {
-        const val TEXT_PRIMARY = Color.WHITE
-        const val TEXT_SECONDARY = 0xFFE0E8F2.toInt()
+        const val TEXT_PRIMARY = -1
+        const val TEXT_SECONDARY = -2037517
         const val GLASS_STROKE = 0x56FFFFFF
         const val GLASS_FILL = 0x2DFFFFFF
         const val GLASS_FOCUS = 0x78FFFFFF
-        const val PANEL_DARK = 0xE81B273A.toInt()
     }
 
     object Size {
