@@ -363,13 +363,13 @@ class MainActivity : Activity() {
     private fun applyWallpaper() {
         if (!::wallpaperView.isInitialized) return
         val dark = isDarkTheme()
-        val index = if (dark) wallpaperDark else wallpaperLight
-        val selectionKey = WallpaperImageUrls.cacheKey(dark, index, thumbnail = false)
+        val palette = if (dark) darkWallpapers else lightWallpapers
+        val index = (if (dark) wallpaperDark else wallpaperLight).coerceIn(0, palette.lastIndex)
+        val selectionKey = WallpaperImageUrls.selectionKey(dark, index)
         if (selectionKey == lastAppliedWallpaperKey) return
 
         lastAppliedWallpaperKey = selectionKey
-        val colors = if (dark) darkWallpapers[index % darkWallpapers.size]
-            else lightWallpapers[index % lightWallpapers.size]
+        val colors = palette[index]
         wallpaperView.background = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
             intArrayOf(colors[0], colors[1], colors[2])
