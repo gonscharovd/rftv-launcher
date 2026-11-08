@@ -864,8 +864,8 @@ class MainActivity : Activity() {
                 textSize = RftvDesignSystem.Size.CARD_BODY_SP
                 gravity = Gravity.CENTER
                 setTextColor(Color.WHITE)
-                background = if (selected) roundedGlass(Color.argb(105, 255, 255, 255), 12)
-                    else roundedGlass(Color.TRANSPARENT, 12).apply { setStroke(0, Color.TRANSPARENT) }
+                background = if (selected) roundedGlass(Color.argb(RftvDesignSystem.GlassAlpha.PALETTE_SELECTED, 255, 255, 255), RftvDesignSystem.Radius.CONTROL)
+                    else roundedGlass(Color.TRANSPARENT, RftvDesignSystem.Radius.CONTROL).apply { setStroke(0, Color.TRANSPARENT) }
                 isFocusable = true
                 isFocusableInTouchMode = true
                 setOnFocusChangeListener { view, focused ->
@@ -1481,7 +1481,7 @@ class MainActivity : Activity() {
             return when (known?.risk) {
                 "Критический", "Высокий" -> Pair("ВЫСОКИЙ РИСК", RftvDesignSystem.ColorTokens.RISK_CRITICAL)
                 "Низкий" -> Pair("НЕ ПРОВЕРЕН", RftvDesignSystem.ColorTokens.RISK_REVIEW)
-                else -> Pair("НЕ ПРОВЕРЕН", Color.rgb(255, 190, 70))
+                else -> Pair("НЕ ПРОВЕРЕН", RftvDesignSystem.ColorTokens.RISK_REVIEW)
             }
         }
         showPanel("Установленные пакеты · ${apps.size}") { body ->
