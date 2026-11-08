@@ -935,6 +935,9 @@ class MainActivity : Activity() {
         card.addView(controlTile("Память · " + readMemory().first, "Доступно: " + readMemory().second) {
             openSettings(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)
         }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
+        card.addView(controlTile("Обои", "День №${wallpaperLight + 1} · ночь №${wallpaperDark + 1}") {
+            showWallpaperQuickSettings()
+        }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
         card.addView(controlTile("Каталог приложений", "${installedApps.count { it.packageName !in hiddenPackages }} приложений · запуск и управление") {
             showAppCatalog()
         }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
@@ -1299,6 +1302,56 @@ class MainActivity : Activity() {
             body.addView(controlTile("TV Manager", "Информация, пакеты, ADB и обслуживание телевизора") {
                 showTvManager()
             }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
+        }
+    }
+
+    private fun showWallpaperQuickSettings() {
+        showPanel("Обои") { body ->
+            body.addView(infoCard(
+                "ДНЕВНАЯ ТЕМА",
+                "Обои ${wallpaperLight + 1} из ${lightWallpapers.size}",
+                if (lightCarousel) "Карусель включена · интервал ${carouselIntervalMinutes} мин."
+                else "Используется выбранная фотография"
+            ))
+            body.addView(controlTile("Следующие дневные обои", "Переключить дневной фон") {
+                wallpaperLight = (wallpaperLight + 1) % lightWallpapers.size
+                prefs.edit().putInt("wallpaper_light", wallpaperLight).apply()
+                if (!isDarkTheme()) applyWallpaper()
+                showWallpaperQuickSettings()
+            }, LinearLayout.LayoutParams(-1, dp(64)).apply { bottomMargin = dp(8) })
+            body.addView(controlTile(
+                if (lightCarousel) "Отключить дневную карусель" else "Включить дневную карусель",
+                "Автоматическая смена только в светлое время"
+            ) {
+                lightCarousel = !lightCarousel
+                prefs.edit().putBoolean("wallpaper_light_carousel", lightCarousel).apply()
+                showWallpaperQuickSettings()
+            }, LinearLayout.LayoutParams(-1, dp(64)).apply { bottomMargin = dp(14) })
+
+            body.addView(infoCard(
+                "НОЧНАЯ ТЕМА",
+                "Обои ${wallpaperDark + 1} из ${darkWallpapers.size}",
+                if (darkCarousel) "Карусель включена · интервал ${carouselIntervalMinutes} мин."
+                else "Используется выбранная фотография"
+            ))
+            body.addView(controlTile("Следующие ночные обои", "Переключить ночной фон") {
+                wallpaperDark = (wallpaperDark + 1) % darkWallpapers.size
+                prefs.edit().putInt("wallpaper_dark", wallpaperDark).apply()
+                if (isDarkTheme()) applyWallpaper()
+                showWallpaperQuickSettings()
+            }, LinearLayout.LayoutParams(-1, dp(64)).apply { bottomMargin = dp(8) })
+            body.addView(controlTile(
+                if (darkCarousel) "Отключить ночную карусель" else "Включить ночную карусель",
+                "Автоматическая смена только в тёмное время"
+            ) {
+                darkCarousel = !darkCarousel
+                prefs.edit().putBoolean("wallpaper_dark_carousel", darkCarousel).apply()
+                showWallpaperQuickSettings()
+            }, LinearLayout.LayoutParams(-1, dp(64)).apply { bottomMargin = dp(14) })
+
+            body.addView(glassButton("Все настройки обоев и интервала") {
+                showLauncherSettings()
+            }, LinearLayout.LayoutParams(-2, dp(48)))
         }
     }
 
