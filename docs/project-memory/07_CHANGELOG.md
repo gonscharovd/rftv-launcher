@@ -1,0 +1,27 @@
+# Значимые изменения проекта
+
+Краткий журнал собран по Git history, PR, существующему [CHANGELOG.md](../../CHANGELOG.md) и stable Releases. Это не замена официальному changelog.
+
+## 2026-11-08 — v0.3.0
+
+- Control Center: исправления DPAD-навигации, переработанный интерфейс.
+- Добавлен интерактивный прототип заставки / DreamService.
+- Проведён анализ Aerial TV donor; документация о доноре в репозитории.
+- Android TV banner и lint fixes.
+- Release workflow: явный repo context для gh CLI, корректная работа с draft по ID, обновление assets только в unpublished draft, безопасный skip уже выпущенного versionCode.
+- PR #7, #9, #10–#14 включены в историю main (см. PR и commits).
+- Stable Release: [v0.3.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.3.0).
+
+## Ранее — v0.2.0
+
+- Ранее опубликованный stable Release v0.2.0; заменён v0.3.0 как latest stable.
+- Подробности сравнения: https://github.com/gonscharovd/rftv-launcher/compare/v0.2.0...v0.3.0.
+
+## Источники истории
+
+- [GitHub commits](https://github.com/gonscharovd/rftv-launcher/commits/main)
+- [Pull requests](https://github.com/gonscharovd/rftv-launcher/pulls?q=is%3Apr)
+- [Releases](https://github.com/gonscharovd/rftv-launcher/releases)
+- [Root changelog](../../CHANGELOG.md)
+
+При каждом релизе добавлять версию, дату, пользовательские изменения, технические/архитектурные изменения и ссылки на PR/commit. Не дублировать все строки официального changelog.
