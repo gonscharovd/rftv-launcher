@@ -221,72 +221,83 @@ class MainActivity : Activity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.action == KeyEvent.ACTION_DOWN && page == "home") {
-            val controlCenter = root.findViewWithTag<View>("rftv-control-center")
-
-            if (controlCenter != null) {
-                if (event.keyCode == KeyEvent.KEYCODE_BACK) {
-                    closeControlCenter()
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+                if (page == "home") {
+                    val controlCenter = root.findViewWithTag<View>("rftv-control-center")
+                    if (controlCenter != null) closeControlCenter()
+                    // A launcher should remain on its home screen instead of finishing.
                     return true
                 }
-
-                // Keep every DPAD direction inside the open panel. The previous
-                // implementation intercepted UP/DOWN for Dock even while this
-                // overlay was visible, so focus never reached its controls.
-                val direction = when (event.keyCode) {
-                    KeyEvent.KEYCODE_DPAD_UP -> View.FOCUS_UP
-                    KeyEvent.KEYCODE_DPAD_DOWN -> View.FOCUS_DOWN
-                    KeyEvent.KEYCODE_DPAD_LEFT -> View.FOCUS_LEFT
-                    KeyEvent.KEYCODE_DPAD_RIGHT -> View.FOCUS_RIGHT
-                    else -> View.NO_ID
-                }
-                if (direction != View.NO_ID) {
-                    val focused = currentFocus
-                    var ancestor: View? = focused
-                    while (ancestor != null && ancestor !== controlCenter) {
-                        ancestor = ancestor.parent as? View
-                    }
-                    if (ancestor !== controlCenter) {
-                        controlCenter.findFocus()?.clearFocus()
-                        controlCenter.post {
-                            controlCenter.findViewWithTag<View>("rftv-control-center-initial-focus")?.requestFocus()
-                                ?: controlCenter.requestFocus()
-                        }
-                        return true
-                    }
-
-                    val next = focused?.focusSearch(direction)
-                    if (next != null) {
-                        var nextAncestor: View? = next
-                        while (nextAncestor != null && nextAncestor !== controlCenter) {
-                            nextAncestor = nextAncestor.parent as? View
-                        }
-                        if (nextAncestor === controlCenter) {
-                            next.requestFocus()
-                        }
-                    }
-                    // Consume edge navigation rather than escaping into the app dock.
+                if (page == "panel") {
+                    showHome()
                     return true
                 }
-                return super.dispatchKeyEvent(event)
             }
 
-            when (event.keyCode) {
-                KeyEvent.KEYCODE_DPAD_DOWN -> {
-                    if (!dockExpanded) {
-                        setDockExpanded(true)
+            val direction = when (event.keyCode) {
+                KeyEvent.KEYCODE_DPAD_UP -> View.FOCUS_UP
+                KeyEvent.KEYCODE_DPAD_DOWN -> View.FOCUS_DOWN
+                KeyEvent.KEYCODE_DPAD_LEFT -> View.FOCUS_LEFT
+                KeyEvent.KEYCODE_DPAD_RIGHT -> View.FOCUS_RIGHT
+                else -> View.NO_ID
+            }
+
+            if (direction != View.NO_ID) {
+                if (page == "home") {
+                    val controlCenter = root.findViewWithTag<View>("rftv-control-center")
+                    if (controlCenter != null) {
+                        moveFocusWithin(controlCenter, direction)
                         return true
                     }
-                }
-                KeyEvent.KEYCODE_DPAD_UP -> {
-                    if (dockExpanded) {
-                        setDockExpanded(false)
-                        return true
+                    when (event.keyCode) {
+                        KeyEvent.KEYCODE_DPAD_DOWN -> if (!dockExpanded) {
+                            setDockExpanded(true)
+                            return true
+                        }
+                        KeyEvent.KEYCODE_DPAD_UP -> if (dockExpanded) {
+                            setDockExpanded(false)
+                            return true
+                        }
                     }
+                } else if (page == "panel") {
+                    moveFocusWithin(root, direction)
+                    return true
                 }
             }
         }
         return super.dispatchKeyEvent(event)
+    }
+
+    private fun moveFocusWithin(container: View, direction: Int) {
+        val focused = currentFocus
+        if (focused == null || !isDescendantOf(focused, container)) {
+            requestFirstFocusable(container)
+            return
+        }
+        val next = focused.focusSearch(direction)
+        if (next != null && isDescendantOf(next, container)) next.requestFocus()
+        // Consume boundary movement so focus cannot escape the active surface.
+    }
+
+    private fun isDescendantOf(view: View, container: View): Boolean {
+        var current: View? = view
+        while (current != null) {
+            if (current === container) return true
+            current = current.parent as? View
+        }
+        return false
+    }
+
+    private fun requestFirstFocusable(container: View): Boolean {
+        if (container.visibility != View.VISIBLE || !container.isEnabled) return false
+        if (container.isFocusable && container.requestFocus()) return true
+        if (container is ViewGroup) {
+            for (index in 0 until container.childCount) {
+                if (requestFirstFocusable(container.getChildAt(index))) return true
+            }
+        }
+        return false
     }
 
     private fun loadInstalledApps() {
@@ -575,10 +586,10 @@ class MainActivity : Activity() {
     private fun buildDockContent() {
         dockContent.removeAllViews()
         val favorites = installedApps.filter { it.packageName in favoritePackages && it.packageName !in hiddenPackages }
-        dockContent.addView(buildAppRow(favorites), LinearLayout.LayoutParams(-1, dp(122)))
+        dockContent.addView(buildAppRow(favorites), LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)))
         if (dockExpanded) {
             val allApps = installedApps.filter { it.packageName !in favoritePackages && it.packageName !in hiddenPackages }
-            dockContent.addView(buildAppRow(allApps), LinearLayout.LayoutParams(-1, dp(122)))
+            dockContent.addView(buildAppRow(allApps), LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)))
         }
         if (favorites.isEmpty()) {
             val empty = TextView(this).apply {
@@ -607,16 +618,14 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 isFocusable = true
                 isFocusableInTouchMode = true
-                background = roundedGlass(Color.argb(25, 255, 255, 255), 19)
+                background = RftvDesignSystem.focusSurface(this, false, 19, restingAlpha = 25, focusedAlpha = 112)
                 setPadding(dp(7), dp(5), dp(7), dp(4))
                 contentDescription = app.label
                 setOnFocusChangeListener { view, focused ->
-                    view.background = roundedGlass(
-                        if (focused) Color.argb(112, 255, 255, 255)
-                        else Color.argb(25, 255, 255, 255), 19
+                    view.background = RftvDesignSystem.focusSurface(
+                        this@MainActivity, focused, 19, restingAlpha = 25, focusedAlpha = 112
                     )
-                    view.scaleX = if (focused) 1.07f else 1f
-                    view.scaleY = if (focused) 1.07f else 1f
+                    RftvDesignSystem.applyFocusScale(view, focused, 1.07f)
                     view.elevation = if (focused) dp(12).toFloat() else 0f
                 }
                 setOnClickListener { launchApp(app.packageName) }
@@ -626,17 +635,17 @@ class MainActivity : Activity() {
                 setImageDrawable(app.icon)
                 scaleType = ImageView.ScaleType.FIT_CENTER
             }
-            tile.addView(icon, LinearLayout.LayoutParams(dp(56), dp(56)))
+            tile.addView(icon, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.DOCK_ICON), dp(RftvDesignSystem.Size.DOCK_ICON)))
             val label = TextView(this).apply {
                 text = app.label
-                textSize = 11f
+                textSize = RftvDesignSystem.Size.DOCK_LABEL_TEXT_SP
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
                 maxLines = 1
                 setPadding(0, dp(4), 0, 0)
             }
-            tile.addView(label, LinearLayout.LayoutParams(dp(88), dp(22)))
-            row.addView(tile, LinearLayout.LayoutParams(dp(102), dp(112)).apply {
+            tile.addView(label, LinearLayout.LayoutParams(dp(100), dp(28)))
+            row.addView(tile, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.DOCK_TILE_WIDTH), dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)).apply {
                 leftMargin = dp(4)
                 rightMargin = dp(4)
             })
@@ -1672,24 +1681,20 @@ class MainActivity : Activity() {
             setPadding(dp(16), dp(9), dp(16), dp(9))
             setOnClickListener { action() }
             setOnFocusChangeListener { view, focused ->
-                view.background = roundedGlass(
-                    if (focused) Color.argb(112, 255, 255, 255) else Color.argb(38, 255, 255, 255),
-                    18
-                )
-                view.scaleX = if (focused) 1.015f else 1f
-                view.scaleY = if (focused) 1.015f else 1f
+                view.background = RftvDesignSystem.focusSurface(this@MainActivity, focused, 18, 38, 112)
+                RftvDesignSystem.applyFocusScale(view, focused, 1.025f)
             }
         }
         tile.addView(TextView(this).apply {
             text = title
-            textSize = 16f
+            textSize = RftvDesignSystem.Size.CONTROL_TITLE_SP
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
             maxLines = 1
         })
         tile.addView(TextView(this).apply {
             text = subtitle
-            textSize = 12f
+            textSize = RftvDesignSystem.Size.CONTROL_SUBTITLE_SP
             setTextColor(Color.LTGRAY)
             maxLines = 1
         })
@@ -1699,7 +1704,7 @@ class MainActivity : Activity() {
     private fun glassButton(label: String, action: () -> Unit): TextView {
         return TextView(this).apply {
             text = label
-            textSize = 15f
+            textSize = RftvDesignSystem.Size.BUTTON_TEXT_SP
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
             background = glassPanel(45, 28)
@@ -1708,12 +1713,8 @@ class MainActivity : Activity() {
             setPadding(dp(18), 0, dp(18), 0)
             setOnClickListener { action() }
             setOnFocusChangeListener { view, focused ->
-                view.background = roundedGlass(
-                    if (focused) Color.argb(120, 255, 255, 255) else Color.argb(45, 255, 255, 255),
-                    28
-                )
-                view.scaleX = if (focused) 1.04f else 1f
-                view.scaleY = if (focused) 1.04f else 1f
+                view.background = RftvDesignSystem.focusSurface(this@MainActivity, focused, 28, 45, 120)
+                RftvDesignSystem.applyFocusScale(view, focused, 1.04f)
             }
         }
     }
@@ -1756,15 +1757,10 @@ class MainActivity : Activity() {
     }
 
     private fun glassPanel(alpha: Int, radius: Int): GradientDrawable =
-        roundedGlass(Color.argb(alpha, 255, 255, 255), radius)
+        RftvDesignSystem.surface(this, Color.argb(alpha, 255, 255, 255), radius)
 
-    private fun roundedGlass(color: Int, radius: Int): GradientDrawable {
-        return GradientDrawable().apply {
-            setColor(color)
-            cornerRadius = dp(radius).toFloat()
-            setStroke(dp(1), Color.argb(86, 255, 255, 255))
-        }
-    }
+    private fun roundedGlass(color: Int, radius: Int): GradientDrawable =
+        RftvDesignSystem.surface(this, color, radius)
 
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
