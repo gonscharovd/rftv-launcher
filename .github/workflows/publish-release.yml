@@ -78,8 +78,8 @@ jobs:
           "$SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           sha256sum --check app-release.apk.sha256
 
-          VERSION_NAME="$(sed -n "s/.*versionName='\([^']*\)'.*/\\1/p" apk-metadata.txt)"
-          VERSION_CODE="$(sed -n "s/.*versionCode='\([0-9][0-9]*\)'.*/\\1/p" apk-metadata.txt)"
+          VERSION_NAME="$(sed -n "s/.*versionName='\([^']*\)'.*/\1/p" apk-metadata.txt)"
+          VERSION_CODE="$(sed -n "s/.*versionCode='\([0-9][0-9]*\)'.*/\1/p" apk-metadata.txt)"
           [[ "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]
           VERSION_TAG="v$VERSION_NAME"
@@ -112,7 +112,7 @@ jobs:
           if [ -n "$LATEST_STABLE_TAG" ]; then
             mkdir -p ../previous-release
             gh release download "$LATEST_STABLE_TAG" --pattern apk-metadata.txt --dir ../previous-release
-            PREVIOUS_VERSION_CODE="$(sed -n "s/.*versionCode='\([0-9][0-9]*\)'.*/\\1/p" ../previous-release/apk-metadata.txt)"
+            PREVIOUS_VERSION_CODE="$(sed -n "s/.*versionCode='\([0-9][0-9]*\)'.*/\1/p" ../previous-release/apk-metadata.txt)"
             [[ "$PREVIOUS_VERSION_CODE" =~ ^[0-9]+$ ]]
             if [ "$VERSION_CODE" -le "$PREVIOUS_VERSION_CODE" ]; then
               echo "::error::versionCode $VERSION_CODE must be greater than previous stable versionCode $PREVIOUS_VERSION_CODE."
