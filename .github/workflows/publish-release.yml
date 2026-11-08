@@ -76,6 +76,8 @@ jobs:
 
           SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           "$SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+          # Normalize the checksum filename after confirming the downloaded artifact hash.
+          sha256sum "$APK" > app-release.apk.sha256
           sha256sum --check app-release.apk.sha256
 
           VERSION_NAME="$(sed -n "s/.*versionName='\([^']*\)'.*/\1/p" apk-metadata.txt)"
@@ -120,7 +122,8 @@ jobs:
             fi
           fi
 
-          sha256sum "$APK" > app-release.apk.sha256
+          echo "APK_SHA256=$ACTUAL_SHA" >> "$GITHUB_ENV"
+          echo "APK_SIZE=$APK_SIZE" >> "$GITHUB_ENV"
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           echo "VERSION_TAG=$VERSION_TAG" >> "$GITHUB_ENV"
           echo "Verified $APK ($APK_SIZE bytes), $VERSION_TAG, versionCode $VERSION_CODE."
@@ -140,3 +143,25 @@ jobs:
             release-artifact/app-release.apk.sha256
             release-artifact/apk-metadata.txt
             release-artifact/signature.txt
+
+      - name: Verify published assets match the verified APK
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_TAG: ${{ env.VERSION_TAG }}
+          EXPECTED_APK_SHA256: ${{ env.APK_SHA256 }}
+          EXPECTED_APK_SIZE: ${{ env.APK_SIZE }}
+        run: |
+          set -euo pipefail
+          RELEASE_JSON="$(curl -fsS \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$VERSION_TAG")"
+          ASSET_SHA="$(jq -r '.assets[] | select(.name == "app-release.apk") | .digest // empty' <<< "$RELEASE_JSON")"
+          ASSET_SIZE="$(jq -r '.assets[] | select(.name == "app-release.apk") | .size // empty' <<< "$RELEASE_JSON")"
+          test "$ASSET_SHA" = "sha256:$EXPECTED_APK_SHA256"
+          test "$ASSET_SIZE" = "$EXPECTED_APK_SIZE"
+          for asset in app-release.apk app-release.apk.sha256 apk-metadata.txt signature.txt; do
+            jq -e --arg name "$asset" '.assets[] | select(.name == $name)' <<< "$RELEASE_JSON" >/dev/null
+          done
+          echo "Published APK asset matches verified build: $ASSET_SHA ($ASSET_SIZE bytes)."
