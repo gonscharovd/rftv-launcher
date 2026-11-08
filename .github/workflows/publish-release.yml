@@ -113,11 +113,11 @@ jobs:
             exit 1
           fi
 
-          LATEST_STABLE_TAG="$(gh release list --limit 100 --json tagName,isDraft,isPrerelease \
+          LATEST_STABLE_TAG="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,isDraft,isPrerelease \
             --jq '[.[] | select(.isDraft == false and .isPrerelease == false)][0].tagName // empty')"
           if [ -n "$LATEST_STABLE_TAG" ]; then
             mkdir -p ../previous-release
-            gh release download "$LATEST_STABLE_TAG" --pattern apk-metadata.txt --dir ../previous-release
+            gh release download "$LATEST_STABLE_TAG" --repo "$GITHUB_REPOSITORY" --pattern apk-metadata.txt --dir ../previous-release
             PREVIOUS_VERSION_CODE="$(sed -n "s/.*versionCode='\([0-9][0-9]*\)'.*/\1/p" ../previous-release/apk-metadata.txt)"
             [[ "$PREVIOUS_VERSION_CODE" =~ ^[0-9]+$ ]]
             if [ "$VERSION_CODE" -le "$PREVIOUS_VERSION_CODE" ]; then
