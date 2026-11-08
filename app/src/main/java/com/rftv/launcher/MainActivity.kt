@@ -1036,17 +1036,18 @@ class MainActivity : Activity() {
                                 }
                             }
                             val installed = packageManager.getPackageInfo(packageName, 0).versionName ?: "0.0.0"
-                            val remote = tag.removePrefix("v")
-                            val newerByName = compareVersionStrings(remote, installed) > 0
+                            // Release tags/versionName are descriptive and can remain unchanged while
+                            // versionCode increases. Do not hide a candidate based on its tag alone:
+                            // the downloaded APK is checked against the installed versionCode and
+                            // signing certificate before Android's installer can be opened.
                             otaStatus = when {
-                                !newerByName -> "Установлена актуальная версия $installed"
-                                apkUrl == null -> "Доступна версия $tag, но корректный HTTPS APK asset не найден"
+                                apkUrl == null -> "Найдена версия $tag, но корректный HTTPS APK asset не найден"
                                 apkDigest == null -> "Найдена версия $tag, но GitHub не предоставил SHA-256 APK. Установка заблокирована."
-                                else -> "Доступно обновление $tag · установлена $installed"
+                                else -> "Найдена сборка $tag · установлена $installed. Перед установкой проверим versionCode и подпись APK."
                             }
                             prefs.edit()
-                                .putString("ota_url", if (newerByName && apkUrl != null && apkDigest != null) apkUrl else null)
-                                .putString("ota_sha256", if (newerByName) apkDigest else null)
+                                .putString("ota_url", if (apkUrl != null && apkDigest != null) apkUrl else null)
+                                .putString("ota_sha256", if (apkUrl != null && apkDigest != null) apkDigest else null)
                                 .putString("ota_asset_name", apkName)
                                 .putString("ota_release_url", url)
                                 .putString("ota_tag", tag)
