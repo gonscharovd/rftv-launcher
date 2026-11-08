@@ -3,6 +3,9 @@ package com.rftv.launcher
 import android.app.Activity
 import android.app.ActivityManager
 import android.app.AlertDialog
+import android.app.PendingIntent
+import android.content.pm.PackageInstaller
+import android.os.Build
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
@@ -25,6 +28,7 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import java.io.File
 import java.io.FileOutputStream
+import java.io.BufferedInputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
@@ -76,6 +80,8 @@ class MainActivity : Activity() {
     private var carouselIntervalMinutes = 5
     private var dockWidthPercent = 88
     private var dockHeightDp = 154
+    private var otaStatus = "Обновления ещё не проверялись"
+    private var otaProgress = 0
     private val favoritePackages = mutableListOf<String>()
     private val hiddenPackages = mutableSetOf<String>()
 
@@ -739,9 +745,159 @@ class MainActivity : Activity() {
         card.requestFocus()
     }
 
+
+    private fun showAboutSystem() {
+        showPanel("О системе") { body ->
+            body.addView(infoCard("RFTV LAUNCHER", "Версия 0.1.0", "Android TV · package com.rftv.launcher"))
+            val status = TextView(this).apply {
+                text = otaStatus
+                textSize = 14f
+                setTextColor(Color.WHITE)
+                setPadding(dp(4), dp(8), dp(4), dp(8))
+            }
+            body.addView(status)
+            val progress = android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                max = 100
+                this.progress = otaProgress
+            }
+            body.addView(progress, LinearLayout.LayoutParams(-1, dp(12)).apply { bottomMargin = dp(12) })
+            body.addView(glassButton("Проверить обновления GitHub") {
+                status.text = "Проверяем последнюю версию…"
+                Thread {
+                    try {
+                        val connection = (URL("https://api.github.com/repos/gonscharovd/rftv-launcher/releases/latest").openConnection() as java.net.HttpURLConnection).apply {
+                            connectTimeout = 10000
+                            readTimeout = 15000
+                            setRequestProperty("Accept", "application/vnd.github+json")
+                            setRequestProperty("User-Agent", "RFTV-Launcher")
+                        }
+                        val json = try {
+                            if (connection.responseCode !in 200..299) throw IllegalStateException("GitHub HTTP ${connection.responseCode}")
+                            org.json.JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                        } finally { connection.disconnect() }
+                        val tag = json.optString("tag_name", "неизвестно")
+                        val url = json.optString("html_url", "https://github.com/gonscharovd/rftv-launcher/releases")
+                        val assets = json.optJSONArray("assets")
+                        var apkUrl: String? = null
+                        if (assets != null) for (i in 0 until assets.length()) {
+                            val asset = assets.getJSONObject(i)
+                            if (asset.optString("name").endsWith(".apk", true)) {
+                                apkUrl = asset.optString("browser_download_url")
+                                break
+                            }
+                        }
+                        otaStatus = if (tag == "v0.1.0" || tag == "0.1.0") "Установлена последняя версия $tag"
+                            else "Доступна версия $tag" + if (apkUrl == null) " · APK в релизе не найден" else " · APK доступен"
+                        prefs.edit().putString("ota_url", apkUrl).putString("ota_release_url", url).putString("ota_tag", tag).apply()
+                    } catch (e: Exception) {
+                        otaStatus = "Не удалось проверить GitHub: ${e.message ?: "ошибка сети"}"
+                    }
+                    handler.post { if (!isFinishing) showAboutSystem() }
+                }.start()
+            }, LinearLayout.LayoutParams(-1, dp(50)))
+            body.addView(glassButton("Скачать обновление") {
+                val apkUrl = prefs.getString("ota_url", null)
+                if (apkUrl.isNullOrBlank()) {
+                    otaStatus = "Сначала проверь обновления и убедись, что в релизе есть APK"
+                    showAboutSystem()
+                } else {
+                    downloadOta(apkUrl) { value, message ->
+                        otaProgress = value
+                        otaStatus = message
+                        if (!isFinishing) showAboutSystem()
+                    }
+                }
+            }, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
+            body.addView(glassButton("Открыть релизы GitHub") {
+                val url = prefs.getString("ota_release_url", "https://github.com/gonscharovd/rftv-launcher/releases")
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            }, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
+            body.addView(infoCard("УСТАНОВКА OTA", "С подтверждением Android", "После загрузки RFTV передаст пакет системному установщику. Android может запросить разрешение на установку приложений из этого источника и подтверждение обновления."))
+            body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
+                LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(10) })
+        }
+    }
+
+    private fun downloadOta(address: String, update: (Int, String) -> Unit) {
+        otaStatus = "Загрузка обновления…"
+        otaProgress = 0
+        Thread {
+            var connection: java.net.HttpURLConnection? = null
+            try {
+                val directory = getExternalFilesDir(null) ?: filesDir
+                val apk = File(directory, "rftv-update.apk")
+                connection = (URL(address).openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 15000
+                    readTimeout = 30000
+                    instanceFollowRedirects = true
+                    setRequestProperty("User-Agent", "RFTV-Launcher")
+                }
+                connection.connect()
+                if (connection.responseCode !in 200..299) throw IllegalStateException("HTTP ${connection.responseCode}")
+                val total = connection.contentLength
+                BufferedInputStream(connection.inputStream).use { input ->
+                    FileOutputStream(apk).use { output ->
+                        val buffer = ByteArray(32 * 1024)
+                        var count: Int
+                        var received = 0L
+                        while (input.read(buffer).also { count = it } >= 0) {
+                            if (count == 0) continue
+                            output.write(buffer, 0, count)
+                            received += count
+                            val percent = if (total > 0) (received * 100 / total).toInt() else 0
+                            handler.post { update(percent, "Загрузка OTA: ${if (percent > 0) "$percent%" else "получено ${received / 1024} КБ"}") }
+                        }
+                    }
+                }
+                if (apk.length() < 100_000L) throw IllegalStateException("Загруженный файл слишком мал")
+                handler.post {
+                    otaProgress = 100
+                    otaStatus = "Загрузка завершена · запускаем установщик"
+                    update(100, otaStatus)
+                    installOta(apk)
+                }
+            } catch (e: Exception) {
+                handler.post { otaStatus = "Ошибка OTA: ${e.message ?: "загрузка не удалась"}"; update(otaProgress, otaStatus) }
+            } finally { connection?.disconnect() }
+        }.start()
+    }
+
+    private fun installOta(apk: File) {
+        try {
+            if (Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
+                otaStatus = "Разреши установку неизвестных приложений для RFTV"
+                startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:$packageName")))
+                return
+            }
+            val installer = packageManager.packageInstaller
+            val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+            params.setAppPackageName(packageName)
+            val sessionId = installer.createSession(params)
+            installer.openSession(sessionId).use { session ->
+                apk.inputStream().use { input ->
+                    session.openWrite("rftv-update", 0, apk.length()).use { output ->
+                        input.copyTo(output)
+                        session.fsync(output)
+                    }
+                }
+                val callback = Intent(this, OtaInstallReceiver::class.java)
+                val pending = PendingIntent.getBroadcast(this, sessionId, callback,
+                    PendingIntent.FLAG_UPDATE_CURRENT or if (Build.VERSION.SDK_INT >= 23) PendingIntent.FLAG_MUTABLE else 0)
+                session.commit(pending.intentSender)
+            }
+            otaStatus = "Пакет передан установщику Android"
+        } catch (e: Exception) {
+            otaStatus = "Не удалось запустить установку: ${e.message ?: "ошибка"}"
+        }
+    }
+
     private fun showLauncherSettings() {
         showPanel("Настройки RFTV") { body ->
             body.addView(infoCard("ОФОРМЛЕНИЕ", "Liquid Glass", "Лёгкие полупрозрачные поверхности и контуры вместо тяжёлого постоянного размытия."))
+            body.addView(controlTile("О системе", "Версия, обновления и OTA") {
+                showAboutSystem()
+            }, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(8) })
 
             body.addView(sectionLabel("Ширина Dock · " + dockWidthPercent + "%"))
             body.addView(settingSlider(65, 100, dockWidthPercent) { value ->
