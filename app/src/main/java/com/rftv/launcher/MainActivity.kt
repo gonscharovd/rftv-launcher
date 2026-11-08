@@ -618,7 +618,7 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER
                 isFocusable = true
                 isFocusableInTouchMode = true
-                background = RftvDesignSystem.focusSurface(this, false, 19, restingAlpha = 25, focusedAlpha = 112)
+                background = RftvDesignSystem.focusSurface(this@MainActivity, false, 19, restingAlpha = 25, focusedAlpha = 112)
                 setPadding(dp(7), dp(5), dp(7), dp(4))
                 contentDescription = app.label
                 setOnFocusChangeListener { view, focused ->
