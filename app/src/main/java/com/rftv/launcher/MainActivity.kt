@@ -827,7 +827,7 @@ class MainActivity : Activity() {
         }
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = roundedGlass(Color.argb(232, 27, 39, 58), 28)
+            background = RftvDesignSystem.controlCenterSurface(this@MainActivity)
             setPadding(dp(20), dp(16), dp(20), dp(18))
             elevation = dp(RftvDesignSystem.Elevation.PANEL_DP).toFloat()
             isFocusable = false
@@ -854,7 +854,7 @@ class MainActivity : Activity() {
         card.addView(themeTitle)
         val themes = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            background = roundedGlass(Color.argb(38, 255, 255, 255), 15)
+            background = roundedGlass(Color.argb(RftvDesignSystem.GlassAlpha.CONTROL_TILE, 255, 255, 255), RftvDesignSystem.Radius.CARD)
             setPadding(dp(4), dp(4), dp(4), dp(4))
         }
         listOf("Светлая", "Тёмная", "Авто").forEachIndexed { index, label ->
@@ -1326,14 +1326,14 @@ class MainActivity : Activity() {
                 isFocusableInTouchMode = true
                 setPadding(dp(5), dp(5), dp(5), dp(5))
                 background = roundedGlass(
-                    if (index == selected) Color.argb(115, 255, 255, 255)
-                    else Color.argb(32, 255, 255, 255), 15
+                    if (index == selected) Color.argb(RftvDesignSystem.GlassAlpha.PALETTE_SELECTED, 255, 255, 255)
+                    else Color.argb(RftvDesignSystem.GlassAlpha.PALETTE_RESTING, 255, 255, 255), RftvDesignSystem.Radius.CARD
                 )
                 setOnFocusChangeListener { view, focused ->
-                    if (focused) view.background = roundedGlass(Color.argb(145, 255, 255, 255), 15)
+                    if (focused) view.background = roundedGlass(Color.argb(RftvDesignSystem.GlassAlpha.PALETTE_FOCUSED, 255, 255, 255), RftvDesignSystem.Radius.CARD)
                     else view.background = roundedGlass(
-                        if (index == selected) Color.argb(115, 255, 255, 255)
-                        else Color.argb(32, 255, 255, 255), 15
+                        if (index == selected) Color.argb(RftvDesignSystem.GlassAlpha.PALETTE_SELECTED, 255, 255, 255)
+                        else Color.argb(RftvDesignSystem.GlassAlpha.PALETTE_RESTING, 255, 255, 255), RftvDesignSystem.Radius.CARD
                     )
                 }
                 setOnClickListener {
@@ -1476,11 +1476,11 @@ class MainActivity : Activity() {
         fun risk(packageId: String): Pair<String, Int> {
             val criticalTokens = listOf("android", "systemui", "settings", "packageinstaller",
                 "inputmethod", "telephony", "networkstack", "launcher", "sberdevices.services")
-            if (criticalTokens.any { packageId.contains(it, true) }) return Pair("КРИТИЧЕСКИЙ", Color.rgb(255, 95, 86))
+            if (criticalTokens.any { packageId.contains(it, true) }) return Pair("КРИТИЧЕСКИЙ", RftvDesignSystem.ColorTokens.RISK_CRITICAL)
             val known = matched.flatMap { it.packages }.firstOrNull { it.packageId == packageId }
             return when (known?.risk) {
-                "Критический", "Высокий" -> Pair("ВЫСОКИЙ РИСК", Color.rgb(255, 95, 86))
-                "Низкий" -> Pair("НЕ ПРОВЕРЕН", Color.rgb(255, 190, 70))
+                "Критический", "Высокий" -> Pair("ВЫСОКИЙ РИСК", RftvDesignSystem.ColorTokens.RISK_CRITICAL)
+                "Низкий" -> Pair("НЕ ПРОВЕРЕН", RftvDesignSystem.ColorTokens.RISK_REVIEW)
                 else -> Pair("НЕ ПРОВЕРЕН", Color.rgb(255, 190, 70))
             }
         }
