@@ -883,8 +883,27 @@ class MainActivity : Activity() {
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
         }, LinearLayout.LayoutParams(0, dp(42), 1f))
-        header.addView(glassButton("✕") { closeControlCenter() }, LinearLayout.LayoutParams(dp(48), dp(42)))
+        val closeButton = glassButton("✕") { closeControlCenter() }
+        header.addView(closeButton, LinearLayout.LayoutParams(dp(48), dp(42)))
         card.addView(header)
+
+        // Keep the title fixed while the controls scroll inside the panel.
+        // The previous wrap-content card extended below the screen, so DPAD_DOWN
+        // could no longer reach the lower controls reliably on Android TV.
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            isFocusable = false
+            isFocusableInTouchMode = false
+            descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+            clipToPadding = false
+            isVerticalScrollBarEnabled = false
+        }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            isFocusable = false
+            isFocusableInTouchMode = false
+            descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+        }
 
         val themeTitle = TextView(this).apply {
             text = "ВНЕШНИЙ ВИД"
@@ -893,12 +912,13 @@ class MainActivity : Activity() {
             setTextColor(Color.LTGRAY)
             setPadding(0, dp(12), 0, dp(7))
         }
-        card.addView(themeTitle)
+        content.addView(themeTitle)
         val themes = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             background = roundedGlass(Color.argb(RftvDesignSystem.GlassAlpha.CONTROL_TILE, 255, 255, 255), RftvDesignSystem.Radius.CARD)
             setPadding(dp(4), dp(4), dp(4), dp(4))
         }
+        val themeItems = mutableListOf<TextView>()
         listOf("Светлая", "Тёмная", "Авто").forEachIndexed { index, label ->
             val selected = themeMode == index
             val item = TextView(this).apply {
@@ -923,41 +943,74 @@ class MainActivity : Activity() {
                     showControlCenter()
                 }
             }
+            themeItems.add(item)
             themes.addView(item, LinearLayout.LayoutParams(0, dp(42), 1f).apply { leftMargin = dp(2); rightMargin = dp(2) })
         }
-        card.addView(themes)
+        content.addView(themes)
 
         val grid = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        grid.addView(controlTile("Wi-Fi", "Настройки сети") { openSettings(Settings.ACTION_WIFI_SETTINGS) }, weightedParams())
-        grid.addView(controlTile("Bluetooth", "Подключения") { openSettings(Settings.ACTION_BLUETOOTH_SETTINGS) },
-            weightedParams().apply { leftMargin = dp(8) })
-        card.addView(grid, LinearLayout.LayoutParams(-1, dp(78)).apply { topMargin = dp(10) })
-        card.addView(controlTile("Память · " + readMemory().first, "Доступно: " + readMemory().second) {
-            openSettings(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)
-        }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
-        card.addView(controlTile("Обои", "День №${wallpaperLight + 1} · ночь №${wallpaperDark + 1}") {
-            showWallpaperQuickSettings()
-        }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
-        card.addView(controlTile("Каталог приложений", "${installedApps.count { it.packageName !in hiddenPackages }} приложений · запуск и управление") {
-            showAppCatalog()
-        }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
-        card.addView(controlTile("Настройки RFTV", "Персонализация и приложения") {
-            showLauncherSettings()
-        }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
-        card.addView(controlTile("Системные настройки", "Настройки устройства") {
-            openSettings(Settings.ACTION_SETTINGS)
-        }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
+        val wifi = controlTile("Wi-Fi", "Настройки сети") { openSettings(Settings.ACTION_WIFI_SETTINGS) }
+        val bluetooth = controlTile("Bluetooth", "Подключения") { openSettings(Settings.ACTION_BLUETOOTH_SETTINGS) }
+        grid.addView(wifi, weightedParams())
+        grid.addView(bluetooth, weightedParams().apply { leftMargin = dp(8) })
+        content.addView(grid, LinearLayout.LayoutParams(-1, dp(78)).apply { topMargin = dp(10) })
 
+        val memory = controlTile("Память · " + readMemory().first, "Доступно: " + readMemory().second) {
+            openSettings(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)
+        }
+        val wallpapers = controlTile("Обои", "День №\${wallpaperLight + 1} · ночь №\${wallpaperDark + 1}") {
+            showWallpaperQuickSettings()
+        }
+        val catalog = controlTile("Каталог приложений", "\${installedApps.count { it.packageName !in hiddenPackages }} приложений · запуск и управление") {
+            showAppCatalog()
+        }
+        val launcherSettings = controlTile("Настройки RFTV", "Персонализация и приложения") {
+            showLauncherSettings()
+        }
+        val systemSettings = controlTile("Системные настройки", "Настройки устройства") {
+            openSettings(Settings.ACTION_SETTINGS)
+        }
+        listOf(memory, wallpapers, catalog, launcherSettings, systemSettings).forEach { tile ->
+            content.addView(tile, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
+        }
+
+        // Explicit focus graph: horizontal movement stays within each row;
+        // vertical movement follows the visual rows and never escapes to the
+        // home toolbar behind the overlay.
+        val focusables = (themeItems + listOf(wifi, bluetooth, memory, wallpapers, catalog, launcherSettings, systemSettings))
+        focusables.forEach { it.id = View.generateViewId() }
+        fun link(view: View, up: View, down: View, left: View, right: View) {
+            view.nextFocusUpId = up.id
+            view.nextFocusDownId = down.id
+            view.nextFocusLeftId = left.id
+            view.nextFocusRightId = right.id
+        }
+        val themeMiddle = themeItems[1]
+        link(themeItems[0], themeItems[0], wifi, themeItems[0], themeItems[1])
+        link(themeItems[1], themeItems[1], wifi, themeItems[0], themeItems[2])
+        link(themeItems[2], themeItems[2], bluetooth, themeItems[1], themeItems[2])
+        link(wifi, themeMiddle, memory, wifi, bluetooth)
+        link(bluetooth, themeMiddle, memory, wifi, bluetooth)
+        val verticalItems = listOf(memory, wallpapers, catalog, launcherSettings, systemSettings)
+        verticalItems.forEachIndexed { index, view ->
+            val up = if (index == 0) wifi else verticalItems[index - 1]
+            val down = verticalItems.getOrNull(index + 1) ?: view
+            link(view, up, down, view, view)
+        }
+
+        scroll.addView(content)
+        card.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         overlay.addView(card, FrameLayout.LayoutParams(
-            (resources.displayMetrics.widthPixels * .38f).toInt(), -2, Gravity.TOP or Gravity.RIGHT
+            (resources.displayMetrics.widthPixels * .38f).toInt(),
+            (resources.displayMetrics.heightPixels * .88f).toInt(),
+            Gravity.TOP or Gravity.RIGHT
         ).apply { rightMargin = dp(24); topMargin = dp(24) })
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
-        // Start focus inside the control center; never leave it on the app dock.
-        themes.getChildAt(themeMode.coerceIn(0, 2))?.apply {
-            tag = "rftv-control-center-initial-focus"
-        }
+
+        // Start on the selected theme. Focus is restored to the gear button
+        // when the panel closes.
         overlay.post {
-            themes.getChildAt(themeMode.coerceIn(0, 2))?.requestFocus()
+            themeItems[themeMode.coerceIn(0, 2)].requestFocus()
         }
     }
 
