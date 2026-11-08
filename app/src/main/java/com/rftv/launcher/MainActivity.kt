@@ -354,7 +354,7 @@ class MainActivity : Activity() {
         val photos = if (dark) darkPhotos else lightPhotos
         val safeIndex = index.coerceIn(0, photos.lastIndex)
         val photo = photos[safeIndex]
-        val tag = "${if (dark) "night" else "day"}-$safeIndex"
+        val tag = WallpaperImageUrls.cacheKey(dark, safeIndex, thumbnail)
         if (target.tag == tag && target.drawable != null) return
         if (target.tag != tag) target.setImageDrawable(null)
         target.tag = tag
