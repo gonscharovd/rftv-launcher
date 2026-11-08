@@ -935,12 +935,8 @@ class MainActivity : Activity() {
                 openSettings("android.settings.DREAM_SETTINGS")
             }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
 
-            body.addView(controlTile("TV Manager", "Аудит встроенных системных пакетов") {
+            body.addView(controlTile("TV Manager", "Информация, пакеты, ADB и обслуживание телевизора") {
                 showTvManager()
-            }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
-
-            body.addView(controlTile("TV Cleaner", "Список пользовательских приложений") {
-                showCleaner()
             }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
         }
     }
@@ -1072,111 +1068,260 @@ class MainActivity : Activity() {
     }
 
     private fun showTvManager() {
+        val apps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+            .filter { it.packageName != packageName }
+        val disabled = apps.count { isPackageDisabled(it.packageName, it.enabled) }
+        showPanel("TV Manager") { body ->
+            body.addView(infoCard(
+                "ЦЕНТР УПРАВЛЕНИЯ ТВ",
+                "${Build.MANUFACTURER} ${Build.MODEL}",
+                "Android ${Build.VERSION.RELEASE} · API ${Build.VERSION.SDK_INT}\nУстановлено пакетов: ${apps.size} · отключено: $disabled"
+            ))
+            body.addView(controlTile("Данные по ТВ", "Характеристики устройства и установленные пакеты") {
+                showTvDeviceInfo()
+            }, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(8) })
+            body.addView(controlTile("Очистка ТВ", "Подбор профиля и безопасный предварительный анализ") {
+                showTvCleanup()
+            }, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(8) })
+            body.addView(controlTile("Отключённые пакеты", "Состояние и доступность восстановления") {
+                showTvDisabledPackages()
+            }, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(8) })
+            body.addView(controlTile("Журнал операций", "История действий TV Manager") {
+                showTvOperationLog()
+            }, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(8) })
+            body.addView(infoCard(
+                "РЕЖИМ БЕЗОПАСНОСТИ",
+                "Диагностика доступна · изменение пакетов заблокировано",
+                "Встроенное Android-приложение не получает ADB Shell автоматически. Пока не подтверждён отдельный привилегированный мост, TV Manager не отключает системные пакеты."
+            ))
+            body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
+        }
+    }
+
+    private fun isPackageDisabled(packageId: String, manifestEnabled: Boolean): Boolean {
+        return try {
+            when (packageManager.getApplicationEnabledSetting(packageId)) {
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED -> true
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED -> false
+                else -> !manifestEnabled
+            }
+        } catch (_: Exception) { !manifestEnabled }
+    }
+
+    private fun showTvDeviceInfo() {
+        val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        val memory = ActivityManager.MemoryInfo().also { activityManager.getMemoryInfo(it) }
+        val stat = android.os.StatFs(android.os.Environment.getDataDirectory().absolutePath)
+        val totalStorage = stat.blockCountLong * stat.blockSizeLong
+        val freeStorage = stat.availableBlocksLong * stat.blockSizeLong
+        val display = windowManager.defaultDisplay
+        val metrics = android.util.DisplayMetrics().also { display.getRealMetrics(it) }
+        val uptime = android.os.SystemClock.elapsedRealtime() / 1000L
+        val uptimeText = String.format(Locale.getDefault(), "%d дн. %02d:%02d",
+            uptime / 86400, (uptime % 86400) / 3600, (uptime % 3600) / 60)
         val systemApps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-            .filter { it.flags and ApplicationInfo.FLAG_SYSTEM != 0 && it.packageName != packageName }
+            .filter { it.packageName != packageName && it.flags and ApplicationInfo.FLAG_SYSTEM != 0 }
+        val userApps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+            .filter { it.packageName != packageName && it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
+        showPanel("Данные по ТВ") { body ->
+            body.addView(infoCard("УСТРОЙСТВО", "${Build.MANUFACTURER} ${Build.MODEL}",
+                "Brand: ${Build.BRAND}\nDevice: ${Build.DEVICE}\nProduct: ${Build.PRODUCT}\nBoard: ${Build.BOARD}\nHardware: ${Build.HARDWARE}"))
+            body.addView(infoCard("СИСТЕМА", "Android ${Build.VERSION.RELEASE} · API ${Build.VERSION.SDK_INT}",
+                "Прошивка: ${Build.DISPLAY}\nBuild ID: ${Build.ID}\nFingerprint: ${Build.FINGERPRINT}"))
+            body.addView(infoCard("ПРОЦЕССОР", Build.SUPPORTED_ABIS.joinToString(),
+                "Ядра CPU: ${Runtime.getRuntime().availableProcessors()}"))
+            body.addView(infoCard("ОПЕРАТИВНАЯ ПАМЯТЬ",
+                "${formatBytes(memory.totalMem)} всего · ${formatBytes(memory.availMem)} свободно",
+                "Порог низкой памяти: ${formatBytes(memory.threshold)}\nLow memory: ${memory.lowMemory}"))
+            body.addView(infoCard("ВНУТРЕННЕЕ ХРАНИЛИЩЕ",
+                "${formatBytes(totalStorage - freeStorage)} занято · ${formatBytes(freeStorage)} свободно",
+                "Общий объём: ${formatBytes(totalStorage)}"))
+            body.addView(infoCard("ЭКРАН", "${metrics.widthPixels} × ${metrics.heightPixels}",
+                "Плотность: ${metrics.densityDpi} dpi · scale ${metrics.density}"))
+            body.addView(infoCard("ВРЕМЯ РАБОТЫ", uptimeText, "Время с последней загрузки устройства"))
+            body.addView(infoCard("ПРИЛОЖЕНИЯ",
+                "${systemApps.size} системных · ${userApps.size} пользовательских",
+                "Полный перечень пакетов доступен в следующем подразделе."))
+            body.addView(controlTile("Установленные пакеты", "Поиск, фильтр и цветовая классификация") {
+                showTvPackages()
+            }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+            body.addView(controlTile("ADB и разрешения", "Состояние отладки, IP, порт и реальные возможности") {
+                showTvAdb()
+            }, LinearLayout.LayoutParams(-1, dp(68)))
+            body.addView(glassButton("Назад в TV Manager") { showTvManager() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(12) })
+        }
+    }
+
+    private fun showTvPackages() {
+        val apps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+            .filter { it.packageName != packageName }
             .sortedBy { packageManager.getApplicationLabel(it).toString().lowercase(Locale.getDefault()) }
-        val matchedProfiles = TvManagerProfiles.matchingProfiles()
-
-        fun packageState(app: ApplicationInfo): String {
-            return try {
-                when (packageManager.getApplicationEnabledSetting(app.packageName)) {
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER,
-                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED -> "отключено"
-                    else -> if (app.enabled) "включено" else "отключено"
+        val matched = TvManagerProfiles.matchingProfiles()
+        fun risk(packageId: String): Pair<String, Int> {
+            val criticalTokens = listOf("android", "systemui", "settings", "packageinstaller",
+                "inputmethod", "telephony", "networkstack", "launcher", "sberdevices.services")
+            if (criticalTokens.any { packageId.contains(it, true) }) return Pair("КРИТИЧЕСКИЙ", Color.rgb(255, 95, 86))
+            val known = matched.flatMap { it.packages }.firstOrNull { it.packageId == packageId }
+            return when (known?.risk) {
+                "Критический", "Высокий" -> Pair("ВЫСОКИЙ РИСК", Color.rgb(255, 95, 86))
+                "Низкий" -> Pair("НЕ ПРОВЕРЕН", Color.rgb(255, 190, 70))
+                else -> Pair("НЕ ПРОВЕРЕН", Color.rgb(255, 190, 70))
+            }
+        }
+        showPanel("Установленные пакеты · ${apps.size}") { body ->
+            body.addView(infoCard("КЛАССИФИКАЦИЯ",
+                "Красный — критический · жёлтый — не проверен",
+                "Зелёный статус не назначается автоматически. Для него требуется проверенный профиль именно этой модели и прошивки."))
+            val search = android.widget.EditText(this).apply {
+                hint = "Поиск по названию или package name"
+                setSingleLine(true)
+                textSize = 16f
+                setTextColor(Color.WHITE)
+                setHintTextColor(Color.LTGRAY)
+                setPadding(dp(14), dp(10), dp(14), dp(10))
+                background = roundedGlass(Color.argb(45, 255, 255, 255), 16)
+            }
+            body.addView(search, LinearLayout.LayoutParams(-1, dp(52)).apply { bottomMargin = dp(10) })
+            val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            val scroll = ScrollView(this).apply { addView(list) }
+            fun render(query: String) {
+                list.removeAllViews()
+                apps.filter {
+                    val label = packageManager.getApplicationLabel(it).toString()
+                    label.contains(query, true) || it.packageName.contains(query, true)
+                }.take(250).forEach { app ->
+                    val label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
+                    val isSystem = app.flags and ApplicationInfo.FLAG_SYSTEM != 0
+                    val state = if (isPackageDisabled(app.packageName, app.enabled)) "Отключено" else "Включено"
+                    val category = if (isSystem) "Системное" else "Пользовательское"
+                    val (riskLabel, riskColor) = risk(app.packageName)
+                    val card = infoCard(label, app.packageName,
+                        "$category · $state\nРиск: $riskLabel · только диагностика")
+                    card.background = roundedGlass(Color.argb(36, riskColor.red(), riskColor.green(), riskColor.blue()), 18)
+                    list.addView(card)
                 }
-            } catch (_: Exception) {
-                if (app.enabled) "включено" else "отключено"
             }
-        }
-
-        fun packageReport(): String = buildString {
-            appendLine("RFTV TV Manager — инвентаризация системных пакетов")
-            appendLine("Производитель: ${android.os.Build.MANUFACTURER}")
-            appendLine("Модель: ${android.os.Build.MODEL}")
-            appendLine("Плата: ${android.os.Build.BOARD}")
-            appendLine("Устройство: ${android.os.Build.DEVICE}")
-            appendLine("Hardware: ${android.os.Build.HARDWARE}")
-            appendLine("Product: ${android.os.Build.PRODUCT}")
-            appendLine("Android: ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})")
-            appendLine("Совпавшие профили: ${matchedProfiles.joinToString { it.id }.ifEmpty { "нет" }}")
-            appendLine("Пакетов: ${systemApps.size}")
-            appendLine()
-            systemApps.forEach { app ->
-                val label = try { packageManager.getApplicationLabel(app).toString() }
-                    catch (_: Exception) { app.packageName }
-                val type = if (app.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0)
-                    "обновлённое системное" else "системное"
-                appendLine("${app.packageName}\t${packageState(app)}\t$type\t$label")
-            }
-        }
-
-        showPanel("RFTV TV Manager") { body ->
-            val disabledCount = systemApps.count { packageState(it) == "отключено" }
-            body.addView(infoCard(
-                "ЭТО УСТРОЙСТВО",
-                "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
-                "Android ${android.os.Build.VERSION.RELEASE} · API ${android.os.Build.VERSION.SDK_INT}\nПлата: ${android.os.Build.BOARD}\nDevice: ${android.os.Build.DEVICE}\nHardware: ${android.os.Build.HARDWARE}"
-            ))
-            body.addView(infoCard(
-                "СОВПАДЕНИЕ ПРОФИЛЯ",
-                if (matchedProfiles.isEmpty()) "Точного профиля пока нет" else "Найдено профилей: ${matchedProfiles.size}",
-                if (matchedProfiles.isEmpty())
-                    "Каталог не нашёл профиль с совпадающей платой/устройством и версией Android. Профили других телевизоров можно изучать, но применять их списки к этому ТВ нельзя. Экспортируй инвентаризацию — по ней можно подготовить отдельный профиль."
-                else
-                    "Найдены точные аппаратные совпадения. Даже совпавший профиль остаётся справочным: перед любыми действиями нужно сверить прошивку и текущие пакеты."
-            ))
-            body.addView(infoCard(
-                "БЕЗОПАСНОСТЬ",
-                "Сейчас доступен только аудит",
-                "RFTV пока не подключён к привилегированному ADB/Shizuku-мосту. Приложение ничего не отключает и не удаляет. Профили CleanYourTV показывают проверенные на конкретных устройствах примеры, а не универсальный список мусора."
-            ))
-            body.addView(glassButton("Поделиться отчётом о пакетах") {
+            search.addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { render(s?.toString().orEmpty()) }
+                override fun afterTextChanged(s: android.text.Editable?) {}
+            })
+            render("")
+            body.addView(scroll, LinearLayout.LayoutParams(-1, dp(390)))
+            body.addView(glassButton("Экспортировать полный список") {
+                val report = apps.joinToString("\n") { app ->
+                    val label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
+                    "${app.packageName}\t$label\t${if (app.flags and ApplicationInfo.FLAG_SYSTEM != 0) "system" else "user"}\t${if (isPackageDisabled(app.packageName, app.enabled)) "disabled" else "enabled"}"
+                }
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, "RFTV — инвентаризация Android TV")
-                    putExtra(Intent.EXTRA_TEXT, packageReport())
+                    putExtra(Intent.EXTRA_SUBJECT, "RFTV — список пакетов")
+                    putExtra(Intent.EXTRA_TEXT, report)
                 }
-                startActivity(Intent.createChooser(send, "Экспорт инвентаризации RFTV"))
-            }, LinearLayout.LayoutParams(-2, dp(48)).apply { bottomMargin = dp(10) })
+                startActivity(Intent.createChooser(send, "Экспорт пакетов"))
+            }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(10) })
+            body.addView(glassButton("Назад к данным ТВ") { showTvDeviceInfo() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
+        }
+    }
 
-            body.addView(sectionLabel("КАТАЛОГ ПРОФИЛЕЙ · CLEAN YOUR TV"))
-            body.addView(infoCard(
-                "ИСТОЧНИК ДАННЫХ",
-                "CleanYourTV · лицензия MIT",
-                "В RFTV добавлены два справочных профиля Sber StarOS. Каталог расширяемый: новые производители и модели добавляются отдельными профилями после проверки исходных данных. Авторство и ссылка на оригинал сохраняются."
-            ))
-            TvManagerProfiles.all.forEach { profile ->
-                val isMatch = profile in matchedProfiles
-                body.addView(infoCard(
-                    if (isMatch) "ТОЧНОЕ СОВПАДЕНИЕ · ${profile.androidLabel}" else profile.androidLabel,
-                    profile.title,
-                    "${profile.packages.size} записей в справочном списке · ${if (isMatch) "совпадает аппаратный идентификатор и API" else "не применять к этому устройству без точного совпадения"}"
-                ))
-                body.addView(glassButton("Изучить профиль · ${profile.packages.size} пакетов") {
-                    showTvManagerProfile(profile.id)
-                }, LinearLayout.LayoutParams(-2, dp(46)).apply { bottomMargin = dp(12) })
+    private fun Int.red(): Int = android.graphics.Color.red(this)
+    private fun Int.green(): Int = android.graphics.Color.green(this)
+    private fun Int.blue(): Int = android.graphics.Color.blue(this)
+
+    private fun showTvAdb() {
+        val adbEnabled = try {
+            android.provider.Settings.Global.getInt(contentResolver,
+                android.provider.Settings.Global.ADB_ENABLED, 0) == 1
+        } catch (_: Exception) { false }
+        val ip = try {
+            val wifi = applicationContext.getSystemService(WIFI_SERVICE) as android.net.wifi.WifiManager
+            val raw = wifi.connectionInfo.ipAddress
+            if (raw == 0) "Wi-Fi IP не получен" else
+                listOf(raw and 0xff, raw shr 8 and 0xff, raw shr 16 and 0xff, raw shr 24 and 0xff).joinToString(".")
+        } catch (_: Exception) { "Недоступно" }
+        showPanel("ADB и разрешения") { body ->
+            body.addView(infoCard("USB / ADB DEBUGGING",
+                if (adbEnabled) "Включён" else "Выключен",
+                "Системный флаг Android Settings.Global.ADB_ENABLED. Это не доказывает, что RFTV получил ADB Shell."))
+            body.addView(infoCard("СЕТЕВОЙ АДРЕС", ip,
+                "IP локального Wi-Fi интерфейса. Он не подтверждает доступность сетевого ADB."))
+            body.addView(infoCard("TCP-ПОРТ", "Не подтверждён",
+                "Android 9 не предоставляет обычному приложению универсальный API для чтения порта adbd. Не подставляем 5555 без проверки."))
+            body.addView(sectionLabel("ФАКТИЧЕСКИЕ ВОЗМОЖНОСТИ RFTV"))
+            body.addView(infoCard("ADB Shell", "Не предоставлен",
+                "Обычное приложение работает от собственного UID. Наличие включённого ADB Debugging не даёт ему shell-доступ."))
+            body.addView(infoCard("Чтение системной информации", "Доступно в рамках Android API",
+                "Build, память, экран, uptime и список установленных пакетов читаются через публичные API."))
+            body.addView(infoCard("Управление пакетами", "Не подтверждено · заблокировано",
+                "Для управления чужими пакетами требуется привилегированный мост или системные права."))
+            body.addView(infoCard("Root", "Не проверялся",
+                "Проверка root не выполняется через небезопасные shell-команды и не является условием работы диагностики."))
+            body.addView(glassButton("Открыть настройки разработчика") {
+                openSettings(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+            }, LinearLayout.LayoutParams(-2, dp(48)).apply { bottomMargin = dp(8) })
+            body.addView(glassButton("Повторить проверку") { showTvAdb() },
+                LinearLayout.LayoutParams(-2, dp(48)))
+            body.addView(glassButton("Назад к данным ТВ") { showTvDeviceInfo() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
+        }
+    }
+
+    private fun showTvCleanup() {
+        val matched = TvManagerProfiles.matchingProfiles()
+        val profile = matched.firstOrNull()
+        showPanel("Очистка ТВ") { body ->
+            body.addView(infoCard("АВТО-ОПРЕДЕЛЕНИЕ",
+                "${Build.MANUFACTURER} ${Build.MODEL}",
+                "Android ${Build.VERSION.RELEASE} · ${Build.DISPLAY}\nПлата: ${Build.BOARD} · Device: ${Build.DEVICE}"))
+            body.addView(infoCard("ПРОФИЛЬ УСТРОЙСТВА",
+                profile?.title ?: "Точного профиля нет",
+                if (profile == null) "Для этой конфигурации нет проверенного профиля. Автоматическое отключение запрещено. Можно экспортировать список пакетов для подготовки профиля."
+                else "${profile.androidLabel}\nИсточник: ${profile.sourceUrl}\nПрофиль найден по точному совпадению аппаратных идентификаторов и API. Это ещё не разрешение на применение списка."))
+            body.addView(sectionLabel("КАТАЛОГ ПРОФИЛЕЙ"))
+            TvManagerProfiles.all.forEach { item ->
+                body.addView(controlTile(item.title, "${item.androidLabel} · ${item.packages.size} справочных записей") {
+                    showTvManagerProfile(item.id)
+                }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
             }
+            body.addView(infoCard("ПРЕДВАРИТЕЛЬНЫЙ ОТЧЁТ",
+                "Отключение пакетов пока недоступно",
+                "RFTV не имеет подтверждённого ADB Shell-моста. Ни один пакет не будет отключён автоматически. Следующий этап — безопасно проверить ADB transport и механизм обратимого восстановления."))
+            body.addView(glassButton("Сканировать пакеты") { showTvPackages() },
+                LinearLayout.LayoutParams(-2, dp(48)))
+            body.addView(glassButton("Назад в TV Manager") { showTvManager() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
+        }
+    }
 
-            body.addView(sectionLabel("ИНВЕНТАРИЗАЦИЯ ЭТОГО ТВ"))
-            body.addView(infoCard(
-                "СИСТЕМНЫЕ ПАКЕТЫ",
-                "${systemApps.size} всего · $disabledCount отключено",
-                "Первые 100 показаны ниже. Полный перечень, включая package ID и исходное состояние, находится в экспортируемом отчёте."
-            ))
-            systemApps.take(100).forEach { app ->
-                val label = try {
-                    packageManager.getApplicationLabel(app).toString()
-                } catch (_: Exception) {
-                    app.packageName
-                }
-                val type = if (app.flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0)
-                    "обновлённое системное" else "системное"
+    private fun showTvDisabledPackages() {
+        val disabled = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+            .filter { it.packageName != packageName && isPackageDisabled(it.packageName, it.enabled) }
+        showPanel("Отключённые пакеты") { body ->
+            body.addView(infoCard("НАЙДЕНО ОТКЛЮЧЁННЫХ ПАКЕТОВ",
+                disabled.size.toString(),
+                "Список отражает текущее состояние Android. RFTV не считает пакет своим изменением, если нет записи о выполненной операции."))
+            if (disabled.isEmpty()) body.addView(infoCard("Список пуст", "Отключённых пакетов не найдено", ""))
+            disabled.forEach { app ->
+                val label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
                 body.addView(infoCard(label, app.packageName,
-                    "$type · ${packageState(app)} · только просмотр"))
+                    "Состояние: отключено · восстановление через RFTV пока недоступно без ADB Shell."))
             }
-            body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
-                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(12) })
+            body.addView(glassButton("Назад в TV Manager") { showTvManager() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
+        }
+    }
+
+    private fun showTvOperationLog() {
+        showPanel("Журнал операций") { body ->
+            body.addView(infoCard("ИСТОРИЯ", "Пока нет операций TV Manager",
+                "Журнал будет заполняться после подключения проверенного механизма управления пакетами. Диагностические просмотры не записываются как операции отключения."))
+            body.addView(glassButton("Назад в TV Manager") { showTvManager() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
         }
     }
 
