@@ -14,10 +14,10 @@
 
 ## Актуальная точка GitHub
 
-- Main HEAD: `0b1815b092840277b06dc7d7154c77790899d561`.
+- Main HEAD: `3b871fd2916ffe8b05fc8c3ee57e0451bab8c1b2`.
 - PR #15 открыт: [docs: add portable project memory system](https://github.com/gonscharovd/rftv-launcher/pull/15), ветка `docs/project-memory-system`, base main @ `0b1815b`; синхронизирован с main и намеренно не объединён. Текущий HEAD смотреть в live PR, не использовать исторический SHA из handoff.
 - PR #15: 11 новых Markdown-файлов только в `docs/project-memory/`; app source, Gradle/build config и workflows не затронуты.
-- PR #7, #9–#14 и #16 — merged; PR #15 — open.
+- PR #7, #9–#14, #16 и #17 — merged; PR #15 — open.
 - CI [42520736798](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520736798) на прежнем HEAD `1389488`: success.
 - **Последний CI [42521038655](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521038655) на текущем HEAD `53fff59`: completed / success.** Source tests and Debug verification — success; unit tests, Android Lint, Debug build и metadata verification — success. Signed Release APK verification — skipped для pull_request, ожидаемо.
 - Main Android CI [42516761285](https://github.com/gonscharovd/rftv-launcher/actions/runs/42516761285) — success, включая signed Release verification.
@@ -35,10 +35,10 @@
 ## Изменения в этой сессии
 
 Изменения продукта:
-- PR #16 merged в main: `0b1815b092840277b06dc7d7154c77790899d561`.
-- Wallpaper drawable/image pipeline не затрагивается на неизменившемся clock tick; добавлены unit tests.
+- PR #16 merged: wallpaper drawable/image pipeline не затрагивается на неизменившемся clock tick; добавлены unit tests.
+- PR #17 merged: home layout tokens централизованы в `RftvDesignSystem`; дублирующие initial typography assignments удалены.
 - Root `ROADMAP.md` разрешает off-device этап 3 при сохранении физической приёмки этапа 2 как NOT VERIFIED.
-- Project Memory PR #15 обновляется отдельно; PR остаётся открытым.
+- Project Memory PR #15 обновляется отдельно; после PR #17 ветка синхронизируется с новым main; PR остаётся открытым.
 
 ## Проверки и границы
 
@@ -46,6 +46,7 @@
 - PR #16 CI run 42521796760 завершён success: unit tests, Android Lint, Debug build и metadata verification.
 - Push CI run 42521760732 завершён success, включая signed Release verification.
 - Main CI run 42521971740 завершён success, включая signed Release verification.
+- PR #17 CI run 42522491746 завершён success; main CI после merge PR #17 [42522675900](https://github.com/gonscharovd/rftv-launcher/actions/runs/42522675900) был in progress.
 - Signed Release job skipped на pull_request; run не создавал и не проверял подписанный Release APK.
 - Локальная сборка не запускалась.
 - Физическая установка/OTA и приёмка на Sber SDX-50U4123B — NOT VERIFIED. CI не является тестом телевизора.
