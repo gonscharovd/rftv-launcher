@@ -492,7 +492,7 @@ class MainActivity : Activity() {
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.TOP or Gravity.CENTER_VERTICAL
-            setPadding(dp(RftvDesignSystem.Spacing.XXL), dp(34), dp(RftvDesignSystem.Spacing.XXL), 0)
+            setPadding(dp(RftvDesignSystem.Spacing.XXL), dp(RftvDesignSystem.Spacing.HOME_TOP_INSET), dp(RftvDesignSystem.Spacing.XXL), 0)
         }
 
         val timeColumn = LinearLayout(this).apply {
@@ -522,12 +522,12 @@ class MainActivity : Activity() {
 
         top.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         val weather = glassButton("☀   ПОГОДА") { showWeather() }
-        top.addView(weather, LinearLayout.LayoutParams(-2, dp(54)).apply {
+        top.addView(weather, LinearLayout.LayoutParams(-2, dp(RftvDesignSystem.Size.TOP_ACTION_HEIGHT)).apply {
             rightMargin = dp(12)
         })
         top.addView(glassButton("⚙") { showControlCenter() }.apply {
             tag = "rftv-control-center-trigger"
-        }, LinearLayout.LayoutParams(dp(58), dp(54)))
+        }, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.TOP_SETTINGS_WIDTH), dp(RftvDesignSystem.Size.TOP_ACTION_HEIGHT)))
         root.addView(top, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
 
         dock = LinearLayout(this).apply {
@@ -553,7 +553,7 @@ class MainActivity : Activity() {
         ).apply {
             leftMargin = dp(54)
             rightMargin = dp(54)
-            bottomMargin = dp(22)
+            bottomMargin = dp(RftvDesignSystem.Spacing.DOCK_BOTTOM_INSET)
             width = (resources.displayMetrics.widthPixels * dockWidthPercent / 100f).toInt()
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         }
@@ -828,7 +828,7 @@ class MainActivity : Activity() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = RftvDesignSystem.controlCenterSurface(this@MainActivity)
-            setPadding(dp(20), dp(16), dp(20), dp(18))
+            setPadding(dp(RftvDesignSystem.Spacing.MD + 4), dp(RftvDesignSystem.Spacing.CONTROL_PANEL_TOP), dp(RftvDesignSystem.Spacing.MD + 4), dp(RftvDesignSystem.Spacing.CONTROL_PANEL_BOTTOM))
             elevation = dp(RftvDesignSystem.Elevation.PANEL_DP).toFloat()
             isFocusable = false
             isFocusableInTouchMode = false
@@ -837,7 +837,7 @@ class MainActivity : Activity() {
         val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         header.addView(TextView(this).apply {
             text = "Пункт управления"
-            textSize = 21f
+            textSize = RftvDesignSystem.Size.CONTROL_CENTER_TITLE_SP
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
         }, LinearLayout.LayoutParams(0, dp(42), 1f))
@@ -1751,8 +1751,8 @@ class MainActivity : Activity() {
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
         }
-        header.addView(heading, LinearLayout.LayoutParams(0, dp(56), 1f))
-        header.addView(glassButton("Закрыть  ✕") { showHome() }, LinearLayout.LayoutParams(-2, dp(48)))
+        header.addView(heading, LinearLayout.LayoutParams(0, dp(RftvDesignSystem.Size.PANEL_HEADER_HEIGHT), 1f))
+        header.addView(glassButton("Закрыть  ✕") { showHome() }, LinearLayout.LayoutParams(-2, dp(RftvDesignSystem.Size.PANEL_CLOSE_HEIGHT)))
         shell.addView(header)
 
         val scroll = ScrollView(this).apply {
@@ -1761,7 +1761,7 @@ class MainActivity : Activity() {
         }
         val body = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(12), 0, dp(18))
+            setPadding(0, dp(RftvDesignSystem.Spacing.PANEL_BODY_TOP), 0, dp(RftvDesignSystem.Spacing.PANEL_BODY_BOTTOM))
         }
         content(body)
         scroll.addView(body)
@@ -1780,7 +1780,7 @@ class MainActivity : Activity() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = glassPanel(42, 20)
-            setPadding(dp(18), dp(14), dp(18), dp(14))
+            setPadding(dp(RftvDesignSystem.Spacing.CARD_PADDING_HORIZONTAL), dp(RftvDesignSystem.Spacing.CARD_PADDING_VERTICAL), dp(RftvDesignSystem.Spacing.CARD_PADDING_HORIZONTAL), dp(RftvDesignSystem.Spacing.CARD_PADDING_VERTICAL))
         }
         card.addView(TextView(this).apply {
             text = title
