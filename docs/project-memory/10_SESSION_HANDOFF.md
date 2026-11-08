@@ -30,15 +30,14 @@
 
 - Base: `main` @ `187239dd7f7518286fd0ffede03e6d5d54893ed5`.
 - Working branch: `docs/project-memory-system`.
-- На момент подготовки документации commit ещё должен быть создан; после создания заменить этот текст фактическим SHA и PR URL.
+- Commit: `5b107fa29e977ca4bc2392afa269b6d91828773c`.
+- PR #15: https://github.com/gonscharovd/rftv-launcher/pull/15 (open, не объединён).
 
 ## Осталось
 
-- Создать Git commit с 11 файлами на feature-ветке.
-- Проверить PR diff: ровно 11 новых Markdown-файлов под `docs/project-memory/`; исходный код и workflows не изменены.
-- Создать Pull Request в main; не сливать без разрешения.
-- Проверить CI PR, если workflows запускаются на docs-only changes.
-- После PR/CI обновить этот handoff точными ссылками и SHA.
+- Проверить завершение CI для PR #15; если docs-only workflow не запускается, зафиксировать это.
+- После CI обновить CURRENT_STATE и этот handoff результатом проверок.
+- Оставить PR открытым до ревью Product Owner; не объединять без разрешения.
 
 ## Вопросы / неизвестные сведения
 
@@ -48,4 +47,4 @@
 
 ## NEXT ACTION
 
-Завершить публикацию документации: создать commit в `docs/project-memory-system`, проверить diff на отсутствие изменений исходников и открыть PR в `main` без merge.
+Проверить CI и ревью PR #15, подтвердить, что в нём только 11 новых Markdown-файлов `docs/project-memory/`, затем передать PR Product Owner без merge.
