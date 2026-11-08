@@ -40,6 +40,7 @@ class RftvDreamService : DreamService() {
     private var info: TextView? = null
     private var lastHourKey = -1L
     private var dataText = "Загружаем погоду, курсы и новости…"
+    @Volatile private var dreaming = false
 
     private val refreshTask = object : Runnable {
         override fun run() {
@@ -55,6 +56,10 @@ class RftvDreamService : DreamService() {
 
     override fun onDreamingStarted() {
         super.onDreamingStarted()
+        dreaming = true
+        // A DreamService can be started more than once in the same hour.
+        // Force a refresh so a newly created view is never left blank.
+        lastHourKey = -1L
         isFullscreen = true
         isInteractive = false
         window?.decorView?.systemUiVisibility =
@@ -68,6 +73,7 @@ class RftvDreamService : DreamService() {
     }
 
     override fun onDreamingStopped() {
+        dreaming = false
         handler.removeCallbacksAndMessages(null)
         super.onDreamingStopped()
     }
@@ -138,9 +144,10 @@ class RftvDreamService : DreamService() {
 
     private fun refreshOnlineContent(hourKey: Long) {
         executor.execute {
-            val imageFile = downloadWallpaper(hourKey)
+            val imageFile = downloadWallpaper(hourKey) ?: latestCachedWallpaper()
             val dashboard = loadDashboard()
             handler.post {
+                if (!dreaming) return@post
                 if (imageFile != null && imageFile.exists()) {
                     val options = BitmapFactory.Options().apply {
                         inPreferredConfig = Bitmap.Config.RGB_565
@@ -191,6 +198,30 @@ class RftvDreamService : DreamService() {
         }
     }
 
+    private fun latestCachedWallpaper(): File? {
+        val directory = File(cacheDir, "rftv-screensaver")
+        return directory.listFiles()
+            ?.filter { it.name.startsWith("landscape-") && it.extension.equals("jpg", ignoreCase = true) && it.length() > 20_000L }
+            ?.maxByOrNull { it.lastModified() }
+    }
+
+    private fun readHttpText(address: String, charsetName: String = "UTF-8"): String {
+        val connection = (URL(address).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 8_000
+            readTimeout = 10_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "RFTV-Launcher/0.2")
+        }
+        return try {
+            if (connection.responseCode !in 200..299) {
+                throw IllegalStateException("HTTP ${connection.responseCode}")
+            }
+            connection.inputStream.bufferedReader(java.nio.charset.Charset.forName(charsetName)).use { it.readText() }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     private fun loadDashboard(): String {
         val weather = fetchWeather()
         val rates = fetchRates()
@@ -207,8 +238,7 @@ class RftvDreamService : DreamService() {
     private fun fetchWeather(): String {
         return try {
             // Chelyabinsk is the initial default; city selection will be exposed in launcher settings.
-            val json = URL("https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Asia%2FYekaterinburg")
-                .readText()
+            val json = readHttpText("https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Asia%2FYekaterinburg")
             val current = JSONObject(json).getJSONObject("current")
             val temp = current.getDouble("temperature_2m").toInt()
             val feels = current.getDouble("apparent_temperature").toInt()
@@ -222,7 +252,7 @@ class RftvDreamService : DreamService() {
     private fun fetchRates(): String {
         return try {
             val parser = Xml.newPullParser()
-            URL("https://www.cbr.ru/scripts/XML_daily.asp").openStream().use { parser.setInput(it, "windows-1251") }
+            parser.setInput(java.io.StringReader(readHttpText("https://www.cbr.ru/scripts/XML_daily.asp", "windows-1251")))
             var currency = ""
             var value = ""
             var usd = ""
@@ -249,7 +279,7 @@ class RftvDreamService : DreamService() {
     private fun fetchRssTitle(feedUrl: String): String {
         return try {
             val parser = Xml.newPullParser()
-            URL(feedUrl).openStream().use { parser.setInput(it, null) }
+            parser.setInput(java.io.StringReader(readHttpText(feedUrl)))
             var inItem = false
             var title = ""
             var event = parser.eventType
