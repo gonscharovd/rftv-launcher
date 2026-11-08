@@ -23,8 +23,14 @@ jobs:
         with:
           name: rftv-launcher-release
           path: release-artifact
-          run-id: \${{ github.event.workflow_run.id }}
-          github-token: \${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install build tools
+        run: sdkmanager "build-tools;35.0.0"
 
       - name: Verify artifact before publication
         shell: bash
@@ -53,7 +59,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.2.0
-          target_commitish: \${{ github.event.workflow_run.head_sha }}
+          target_commitish: ${{ github.event.workflow_run.head_sha }}
           name: RFTV Launcher 0.2.0
           generate_release_notes: true
           draft: false
