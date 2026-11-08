@@ -26,11 +26,15 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install build tools
-        run: sdkmanager "build-tools;35.0.0"
+      - name: Install Android build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null
+          "$SDKMANAGER" --install "build-tools;35.0.0"
 
       - name: Verify artifact before publication
         shell: bash
@@ -51,7 +55,7 @@ jobs:
           grep -F "targetSdkVersion:'28'" apk-metadata.txt
           grep -F "Signer #1 certificate SHA-256 digest: 22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917" signature.txt
 
-          SDK_ROOT="$ANDROID_HOME"
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           "$SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose app-release.apk
           sha256sum --check app-release.apk.sha256
 
