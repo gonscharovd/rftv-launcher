@@ -620,18 +620,22 @@ class MainActivity : Activity() {
     }
 
     private fun showAppActions(app: TvApp) {
-        val actions = arrayOf("Переместить в начало тулбара", "Убрать из тулбара", "Скрыть приложение")
+        val actions = arrayOf("Переместить левее", "Переместить правее", "Убрать из тулбара", "Скрыть приложение")
         AlertDialog.Builder(this)
             .setTitle(app.label)
             .setItems(actions) { _, which ->
+                val position = favoritePackages.indexOf(app.packageName)
                 when (which) {
-                    0 -> {
-                        favoritePackages.remove(app.packageName)
-                        favoritePackages.add(0, app.packageName)
-                        hiddenPackages.remove(app.packageName)
+                    0 -> if (position > 0) {
+                        favoritePackages.removeAt(position)
+                        favoritePackages.add(position - 1, app.packageName)
                     }
-                    1 -> favoritePackages.remove(app.packageName)
-                    2 -> {
+                    1 -> if (position >= 0 && position < favoritePackages.lastIndex) {
+                        favoritePackages.removeAt(position)
+                        favoritePackages.add(position + 1, app.packageName)
+                    }
+                    2 -> favoritePackages.remove(app.packageName)
+                    3 -> {
                         favoritePackages.remove(app.packageName)
                         hiddenPackages.add(app.packageName)
                     }
