@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build Android APK
+  verify:
+    name: Source tests and Debug verification
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -41,10 +41,64 @@ jobs:
         with:
           gradle-version: 8.9
 
-      - name: Build debug APK
+      - name: Run unit tests
+        run: gradle --no-daemon --stacktrace testDebugUnitTest
+
+      - name: Build Debug for CI diagnostics only
         run: gradle --no-daemon --stacktrace assembleDebug
 
-      - name: Build signed release APK (when signing secrets are configured)
+      - name: Verify Debug metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          BADGING="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK")"
+          grep -F "package: name='com.rftv.launcher'" <<< "$BADGING"
+          grep -F "sdkVersion:'24'" <<< "$BADGING"
+          grep -F "targetSdkVersion:'28'" <<< "$BADGING"
+          if grep -q "^native-code:" <<< "$BADGING"; then
+            grep "^native-code:" <<< "$BADGING" | grep -q "armeabi-v7a"
+          fi
+
+      - name: Upload internal Debug diagnostics
+        if: always() && github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rftv-launcher-ci-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: warn
+          retention-days: 7
+
+  release:
+    name: Signed Release APK verification
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Install Android platform and build tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+
+      - name: Require persistent Release signing secrets
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -52,46 +106,50 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          if [[ -z "${ANDROID_KEYSTORE_BASE64:-}" || -z "${ANDROID_KEYSTORE_PASSWORD:-}" || -z "${ANDROID_KEY_ALIAS:-}" || -z "${ANDROID_KEY_PASSWORD:-}" ]]; then
-            echo "Signing secrets are not configured; skipping release APK."
-            exit 0
-          fi
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::Required Release signing secret $name is missing."
+              exit 1
+            fi
+          done
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/rftv-release.jks"
+          test -s "$RUNNER_TEMP/rftv-release.jks"
           chmod 600 "$RUNNER_TEMP/rftv-release.jks"
-          export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/rftv-release.jks"
-          gradle --no-daemon --stacktrace assembleRelease
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
-          sha256sum app/build/outputs/apk/release/app-release.apk | tee app/build/outputs/apk/release/app-release.apk.sha256
+          echo "ANDROID_KEYSTORE_FILE=$RUNNER_TEMP/rftv-release.jks" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
 
-      - name: Verify APK metadata and architecture
+      - name: Build signed Release
+        run: gradle --no-daemon --stacktrace assembleRelease
+
+      - name: Verify Release APK identity, SDK, ABI, signature and checksum
         shell: bash
         run: |
           set -euo pipefail
-          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APK="app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
-
           BADGING="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK")"
-          echo "$BADGING" | grep -F "sdkVersion:'24'"
-          echo "$BADGING" | grep -F "targetSdkVersion:'28'"
-
+          grep -F "package: name='com.rftv.launcher'" <<< "$BADGING"
+          grep -F "sdkVersion:'24'" <<< "$BADGING"
+          grep -F "targetSdkVersion:'28'" <<< "$BADGING"
           if grep -q "^native-code:" <<< "$BADGING"; then
-            echo "$BADGING" | grep "^native-code:"
             grep "^native-code:" <<< "$BADGING" | grep -q "armeabi-v7a"
-          else
-            echo "APK has no bundled native libraries; it is not ABI-restricted."
           fi
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | tee app/build/outputs/apk/release/signature.txt
+          sha256sum "$APK" | tee app/build/outputs/apk/release/app-release.apk.sha256
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > app/build/outputs/apk/release/apk-metadata.txt
+          test -s app/build/outputs/apk/release/signature.txt
+          test -s app/build/outputs/apk/release/app-release.apk.sha256
 
-          sha256sum "$APK" | tee "$APK.sha256"
-
-      - name: Upload APK and checksum
+      - name: Upload signed Release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rftv-launcher-debug
+          name: rftv-launcher-release
           path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/debug/app-debug.apk.sha256
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/apk/release/app-release.apk.sha256
+            app/build/outputs/apk/release/signature.txt
+            app/build/outputs/apk/release/apk-metadata.txt
           if-no-files-found: error
-
-# Signing configuration validation trigger.
+          retention-days: 30
