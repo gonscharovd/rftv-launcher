@@ -2,6 +2,7 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
+            <size android:width="320dp" android:height="180dp" />
             <gradient
                 android:angle="0"
                 android:startColor="#071426"
@@ -11,24 +12,24 @@
         </shape>
     </item>
     <item
-        android:width="190dp"
-        android:height="190dp"
+        android:width="156dp"
+        android:height="156dp"
         android:gravity="right|center_vertical">
         <shape android:shape="oval">
             <solid android:color="#263F78" />
         </shape>
     </item>
     <item
-        android:width="132dp"
-        android:height="132dp"
+        android:width="112dp"
+        android:height="112dp"
         android:gravity="right|center_vertical">
         <shape android:shape="oval">
             <solid android:color="#315E9B" />
         </shape>
     </item>
     <item
-        android:width="82dp"
-        android:height="82dp"
+        android:width="72dp"
+        android:height="72dp"
         android:gravity="right|center_vertical">
         <shape android:shape="oval">
             <solid android:color="#5B8FC5" />
