@@ -157,6 +157,54 @@ jobs:
             release-artifact/apk-metadata.txt
             release-artifact/signature.txt
 
+      - name: Refresh assets in an existing unpublished draft
+        if: env.EXISTING_DRAFT_RELEASE_ID != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_TAG: ${{ env.VERSION_TAG }}
+          RELEASE_ID: ${{ env.EXISTING_DRAFT_RELEASE_ID }}
+          EXPECTED_APK_SHA256: ${{ env.APK_SHA256 }}
+          EXPECTED_APK_SIZE: ${{ env.APK_SIZE }}
+        run: |
+          set -euo pipefail
+          RELEASE_JSON="$(curl -fsS \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID")"
+          test "$(jq -r '.tag_name' <<< "$RELEASE_JSON")" = "$VERSION_TAG"
+          test "$(jq -r '.draft' <<< "$RELEASE_JSON")" = "true"
+          test "$(jq -r '.prerelease' <<< "$RELEASE_JSON")" = "false"
+          CURRENT_SHA="$(jq -r '.assets[] | select(.name == "app-release.apk") | .digest // empty' <<< "$RELEASE_JSON")"
+          CURRENT_SIZE="$(jq -r '.assets[] | select(.name == "app-release.apk") | .size // empty' <<< "$RELEASE_JSON")"
+          if [ "$CURRENT_SHA" = "sha256:$EXPECTED_APK_SHA256" ] && [ "$CURRENT_SIZE" = "$EXPECTED_APK_SIZE" ]; then
+            echo "Existing draft already contains this exact verified APK; reusing assets."
+            exit 0
+          fi
+
+          UPLOAD_URL="$(jq -r '.upload_url // empty' <<< "$RELEASE_JSON")"
+          UPLOAD_BASE="${UPLOAD_URL%%\{*}"
+          test -n "$UPLOAD_BASE"
+          while IFS= read -r asset_id; do
+            [ -z "$asset_id" ] && continue
+            curl -fsS -X DELETE \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" >/dev/null
+          done <<< "$(jq -r '.assets[].id' <<< "$RELEASE_JSON")"
+
+          for asset_name in app-release.apk app-release.apk.sha256 apk-metadata.txt signature.txt; do
+            asset_path="release-artifact/$asset_name"
+            test -s "$asset_path"
+            curl -fsS -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary "@$asset_path" \
+              "$UPLOAD_BASE?name=$asset_name" >/dev/null
+          done
+          echo "Existing draft assets replaced with the current verified CI artifact."
+
       - name: Verify draft assets match the verified APK
         shell: bash
         env:
