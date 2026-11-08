@@ -15,8 +15,8 @@
 ## Актуальная точка GitHub
 
 - Main HEAD: `3b871fd2916ffe8b05fc8c3ee57e0451bab8c1b2`.
-- PR #15 открыт: [docs: add portable project memory system](https://github.com/gonscharovd/rftv-launcher/pull/15), ветка `docs/project-memory-system`, base main @ `0b1815b`; синхронизирован с main и намеренно не объединён. Текущий HEAD смотреть в live PR, не использовать исторический SHA из handoff.
-- PR #15: 11 новых Markdown-файлов только в `docs/project-memory/`; app source, Gradle/build config и workflows не затронуты.
+- PR #15 открыт: [docs: add portable project memory system](https://github.com/gonscharovd/rftv-launcher/pull/15), ветка `docs/project-memory-system`; ветка синхронизирована с main через merge commit `597c9ddd2e9d3f4adfb3e83ed85cb57f513501de`. Текущий HEAD смотреть в live PR.
+- PR #15: 11 новых Markdown-файлов в `docs/project-memory/` плюс синхронизация README и ROADMAP; app source, Gradle/build config и workflows не затронуты.
 - PR #7, #9–#14, #16 и #17 — merged; PR #15 — open.
 - CI [42520736798](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520736798) на прежнем HEAD `1389488`: success.
 - **Последний CI [42521038655](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521038655) на текущем HEAD `53fff59`: completed / success.** Source tests and Debug verification — success; unit tests, Android Lint, Debug build и metadata verification — success. Signed Release APK verification — skipped для pull_request, ожидаемо.
@@ -33,6 +33,9 @@
 - Release workflow: draft → asset checks → stable publish, versionCode и постоянный сертификат; повторный versionCode безопасно пропускается.
 
 ## Изменения в этой сессии
+
+- Дополнительно синхронизирована ветка project-memory с новым main commit `3b871fd` (централизация layout tokens); исходники из main сохранены.
+- PR содержит 13 файлов: 11 файлов project-memory, README и ROADMAP. Изменений app source/build/workflows в PR нет.
 
 - По уточнению Product Owner зафиксирована полная техническая и операционная автономность ИИ; единственный продуктовый gate — предварительное согласование новой пользовательской функциональности/разделов/сценариев или изменения концепции.
 - Донорские проекты определены как исследовательские источники, не являющиеся backlog/specification; функции не переносятся автоматически.
