@@ -85,6 +85,12 @@ class MainActivity : Activity() {
     private var carouselIntervalMinutes = 5
     private var dockWidthPercent = 88
     private var dockHeightDp = 154
+    private var screensaverTimeoutMinutes = 15
+    private val idleScreensaverTask = object : Runnable {
+        override fun run() {
+            if (page == "home" && screensaverTimeoutMinutes > 0 && root.findViewWithTag<View>("rftv-control-center") == null) showScreensaver()
+        }
+    }
     private var otaStatus = "Обновления ещё не проверялись"
     private var otaProgress = 0
     private val favoritePackages = mutableListOf<String>()
@@ -188,6 +194,7 @@ class MainActivity : Activity() {
         carouselIntervalMinutes = prefs.getInt("wallpaper_interval", 5).coerceIn(1, 60)
         dockWidthPercent = prefs.getInt("dock_width", 88)
         dockHeightDp = prefs.getInt("dock_height", 154)
+        screensaverTimeoutMinutes = prefs.getInt("screensaver_timeout_minutes", 15).coerceIn(0, 60)
         favoritePackages.addAll(prefs.getString("favorite_packages_order", "")!!.split("|").filter { it.isNotBlank() })
         hiddenPackages.addAll(prefs.getStringSet("hidden_packages", emptySet()) ?: emptySet())
 
@@ -205,19 +212,30 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (page == "home") startClock()
+        if (page == "home") { startClock(); resetIdleScreensaverTimer() }
     }
 
     override fun onPause() {
         super.onPause()
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
+        handler.removeCallbacks(idleScreensaverTask)
     }
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         wallpaperExecutor.shutdownNow()
         super.onDestroy()
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        resetIdleScreensaverTimer()
+    }
+
+    private fun resetIdleScreensaverTimer() {
+        handler.removeCallbacks(idleScreensaverTask)
+        if (screensaverTimeoutMinutes > 0 && page == "home" && !isFinishing) handler.postDelayed(idleScreensaverTask, screensaverTimeoutMinutes * 60_000L)
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
@@ -1348,6 +1366,16 @@ class MainActivity : Activity() {
             body.addView(controlTile("О системе", "Версия, обновления и OTA") {
                 showAboutSystem()
             }, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(8) })
+
+            body.addView(sectionLabel("ЗАСТАВКА · запуск после бездействия"))
+            listOf(0, 5, 15, 30, 60).forEach { minutes ->
+                val label = if (minutes == 0) "Отключено" else "$minutes минут"
+                body.addView(controlTile(if (screensaverTimeoutMinutes == minutes) "✓  $label" else label, "Автоматический запуск экрана ожидания") {
+                    screensaverTimeoutMinutes = minutes
+                    prefs.edit().putInt("screensaver_timeout_minutes", minutes).apply()
+                    showLauncherSettings()
+                }, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(6) })
+            }
 
             body.addView(sectionLabel("Ширина Dock · " + dockWidthPercent + "%"))
             body.addView(settingSlider(65, 100, dockWidthPercent) { value ->
