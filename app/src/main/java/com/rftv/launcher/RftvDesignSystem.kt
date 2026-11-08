@@ -42,6 +42,14 @@ internal object RftvDesignSystem {
         const val LG = 22
         const val XL = 32
         const val XXL = 54
+        const val HOME_TOP_INSET = 34
+        const val DOCK_BOTTOM_INSET = 22
+        const val CONTROL_PANEL_TOP = 16
+        const val CONTROL_PANEL_BOTTOM = 18
+        const val CARD_PADDING_HORIZONTAL = 18
+        const val CARD_PADDING_VERTICAL = 14
+        const val PANEL_BODY_TOP = 12
+        const val PANEL_BODY_BOTTOM = 18
     }
 
     object GlassAlpha {
@@ -74,6 +82,7 @@ internal object RftvDesignSystem {
         const val CLOCK_TEXT_SP = 88f
         const val DATE_TEXT_SP = 18f
         const val PAGE_TITLE_SP = 29f
+        const val CONTROL_CENTER_TITLE_SP = 21f
         const val CARD_TITLE_SP = 19f
         const val CARD_LABEL_SP = 11f
         const val CARD_BODY_SP = 13f
@@ -82,11 +91,16 @@ internal object RftvDesignSystem {
         const val CONTROL_SUBTITLE_SP = 14f
         const val BUTTON_TEXT_SP = 16f
         const val FOCUS_SCALE = 1.035f
+        const val TOP_ACTION_HEIGHT = 54
+        const val TOP_SETTINGS_WIDTH = 58
+        const val PANEL_HEADER_HEIGHT = 56
+        const val PANEL_CLOSE_HEIGHT = 48
     }
 
     object Motion {
         const val FOCUS_DURATION_MS = 140L
         const val HOME_FADE_DURATION_MS = 220L
+        const val SURFACE_FADE_DURATION_MS = 180L
     }
 
     fun surface(
