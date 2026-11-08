@@ -119,25 +119,42 @@ class ScreensaverActivity : Activity() {
         return true
     }
 
-    private fun loadDashboard() {
+    private fun loadDashboard(force: Boolean = false) {
+        val cache = getSharedPreferences("screensaver_cache", MODE_PRIVATE)
+        val cachedText = cache.getString("dashboard", null)
+        val cachedAt = cache.getLong("dashboard_at", 0L)
+        if (!cachedText.isNullOrBlank()) details.text = cachedText
+        if (!force && !cachedText.isNullOrBlank() && System.currentTimeMillis() - cachedAt < 15 * 60_000L) return
         io.execute {
             val text = buildString {
-                append("ПОГОДА\n").append(fetchWeather()).append("\n\n")
-                append("КУРСЫ ЦБ РФ\n").append(fetchRates()).append("\n\n")
-                append("НОВОСТИ\n").append(fetchNews())
+                append("ПОГОДА\\n").append(fetchWeather()).append("\\n\\n")
+                append("КУРСЫ ЦБ РФ\\n").append(fetchRates()).append("\\n\\n")
+                append("НОВОСТИ\\n").append(fetchNews())
             }
+            cache.edit().putString("dashboard", text).putLong("dashboard_at", System.currentTimeMillis()).apply()
             handler.post { if (alive && !isFinishing) details.text = text }
         }
     }
-
-    private fun fetchWeather(): String = try {
-        val json = read("https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=Asia%2FYekaterinburg")
-        val obj = JSONObject(json)
-        val now = obj.getJSONObject("current")
-        val daily = obj.getJSONObject("daily")
-        "Челябинск · ${now.getDouble("temperature_2m").toInt()}°C, ощущается ${now.getDouble("apparent_temperature").toInt()}°C\nВлажность ${now.getInt("relative_humidity_2m")}% · ветер ${now.getDouble("wind_speed_10m").toInt()} км/ч\nСегодня ${daily.getJSONArray("temperature_2m_min").getDouble(0).toInt()}…${daily.getJSONArray("temperature_2m_max").getDouble(0).toInt()}°C"
-    } catch (_: Exception) { "Погодные данные временно недоступны" }
-
+    private fun fetchWeather(): String {
+        try {
+            val json = read("https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&forecast_days=3&timezone=Asia%2FYekaterinburg")
+            val obj = JSONObject(json)
+            val now = obj.getJSONObject("current")
+            val daily = obj.getJSONObject("daily")
+            val forecast = (0 until minOf(3, daily.getJSONArray("temperature_2m_min").length())).joinToString(" · ") { index ->
+                daily.getJSONArray("temperature_2m_min").getDouble(index).toInt().toString() + "…" + daily.getJSONArray("temperature_2m_max").getDouble(index).toInt() + "°"
+            }
+            return "Челябинск · " + now.getDouble("temperature_2m").toInt() + "°C, ощущается " + now.getDouble("apparent_temperature").toInt() + "°C\\n" +
+                "Влажность " + now.getInt("relative_humidity_2m") + "% · ветер " + now.getDouble("wind_speed_10m").toInt() + " км/ч\\nПрогноз на 3 дня: " + forecast
+        } catch (_: Exception) {
+            return try {
+                val current = JSONObject(read("https://wttr.in/Chelyabinsk?format=j1")).getJSONArray("current_condition").getJSONObject(0)
+                val description = current.getJSONArray("weatherDesc").getJSONObject(0).getString("value")
+                current.getString("temp_C") + "°C · " + description + ", ощущается " + current.getString("FeelsLikeC") + "°C\\n" +
+                    "Влажность " + current.getString("humidity") + "% · ветер " + current.getString("windspeedKmph") + " км/ч"
+            } catch (_: Exception) { "Погодные данные временно недоступны" }
+        }
+    }
     private fun fetchRates(): String = try {
         val xml = read("https://www.cbr.ru/scripts/XML_daily.asp", "windows-1251")
         val parser = XmlPullParserFactory.newInstance().newPullParser()
