@@ -7,6 +7,11 @@ android {
     namespace = "com.rftv.launcher"
     compileSdk = 35
 
+    lint {
+        // This launcher targets Android 9 TV firmware; Google Play target policy is not applicable.
+        disable += "ExpiredTargetSdkVersion"
+    }
+
     defaultConfig {
         applicationId = "com.rftv.launcher"
         minSdk = 24
