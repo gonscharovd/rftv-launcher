@@ -46,7 +46,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -d app/src/test ]] && find app/src/test -type f \\( -name "*Test.kt" -o -name "*Tests.kt" -o -name "*Test.java" \\) -print -quit | grep -q .; then
+          if [[ -d app/src/test ]] && find app/src/test -type f \( -name "*Test.kt" -o -name "*Tests.kt" -o -name "*Test.java" \) -print -quit | grep -q .; then
             gradle --no-daemon --stacktrace testDebugUnitTest
           else
             echo "::warning::No unit test source files are present yet; build and APK metadata checks will run."
