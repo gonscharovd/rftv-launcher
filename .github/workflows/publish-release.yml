@@ -170,7 +170,7 @@ jobs:
           for asset in app-release.apk app-release.apk.sha256 apk-metadata.txt signature.txt; do
             jq -e --arg name "$asset" '.assets[] | select(.name == $name)' <<< "$RELEASE_JSON" >/dev/null
           done
-          echo "Published APK asset matches verified build: $ASSET_SHA ($ASSET_SIZE bytes)."
+          echo "Draft assets verified against the signed build: $ASSET_SHA ($ASSET_SIZE bytes)."
 
       - name: Publish verified stable Release
         shell: bash
@@ -181,11 +181,18 @@ jobs:
           EXPECTED_APK_SIZE: ${{ env.APK_SIZE }}
         run: |
           set -euo pipefail
-          gh release edit "$VERSION_TAG" --draft=false --latest
-          RELEASE_JSON="$(curl -fsS \
+          DRAFT_JSON="$(curl -fsS \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$VERSION_TAG")"
+          RELEASE_ID="$(jq -r '.id // empty' <<< "$DRAFT_JSON")"
+          test -n "$RELEASE_ID"
+          RELEASE_JSON="$(curl -fsS -X PATCH \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            -d '{"draft":false,"prerelease":false,"make_latest":"true"}' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID")"
           test "$(jq -r '.draft' <<< "$RELEASE_JSON")" = "false"
           test "$(jq -r '.prerelease' <<< "$RELEASE_JSON")" = "false"
           ASSET_SHA="$(jq -r '.assets[] | select(.name == "app-release.apk") | .digest // empty' <<< "$RELEASE_JSON")"
