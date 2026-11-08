@@ -1316,7 +1316,6 @@ class MainActivity : Activity() {
             body.addView(controlTile("Следующие дневные обои", "Переключить дневной фон") {
                 wallpaperLight = (wallpaperLight + 1) % lightWallpapers.size
                 prefs.edit().putInt("wallpaper_light", wallpaperLight).apply()
-                if (!isDarkTheme()) applyWallpaper()
                 showWallpaperQuickSettings()
             }, LinearLayout.LayoutParams(-1, dp(64)).apply { bottomMargin = dp(8) })
             body.addView(controlTile(
@@ -1337,7 +1336,6 @@ class MainActivity : Activity() {
             body.addView(controlTile("Следующие ночные обои", "Переключить ночной фон") {
                 wallpaperDark = (wallpaperDark + 1) % darkWallpapers.size
                 prefs.edit().putInt("wallpaper_dark", wallpaperDark).apply()
-                if (isDarkTheme()) applyWallpaper()
                 showWallpaperQuickSettings()
             }, LinearLayout.LayoutParams(-1, dp(64)).apply { bottomMargin = dp(8) })
             body.addView(controlTile(
