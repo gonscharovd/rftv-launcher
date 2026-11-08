@@ -59,6 +59,14 @@ internal object RftvDesignSystem {
         const val PALETTE_SELECTED = 115
         const val PALETTE_RESTING = 32
         const val PALETTE_FOCUSED = 145
+        const val HOME_TEXT_SHADOW = 100
+        const val HOME_DATE_TEXT = 235
+        const val HOME_DATE_SHADOW = 160
+        const val CONTROL_CENTER_SCRIM = 45
+        const val THEME_FOCUSED = 120
+        const val THEME_SELECTED = 105
+        const val SEARCH_FIELD = 45
+        const val RISK_CARD = 36
     }
 
     object Radius {
