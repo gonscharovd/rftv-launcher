@@ -1,0 +1,66 @@
+name: Publish verified Android Release
+
+on:
+  workflow_run:
+    workflows:
+      - Android CI
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    name: Publish signed APK from successful main CI
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download signed Release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rftv-launcher-release
+          path: release-artifact
+          run-id: \${{ github.event.workflow_run.id }}
+          github-token: \${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify artifact before publication
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-artifact
+          test -s app-release.apk
+          test -s app-release.apk.sha256
+          test -s signature.txt
+          test -s apk-metadata.txt
+
+          EXPECTED_SHA="$(awk '{print $1}' app-release.apk.sha256)"
+          ACTUAL_SHA="$(sha256sum app-release.apk | awk '{print $1}')"
+          test "$EXPECTED_SHA" = "$ACTUAL_SHA"
+          sha256sum app-release.apk > app-release.apk.sha256
+
+          grep -F "package: name='com.rftv.launcher' versionCode='2' versionName='0.2.0'" apk-metadata.txt
+          grep -F "targetSdkVersion:'28'" apk-metadata.txt
+          grep -F "Signer #1 certificate SHA-256 digest: 22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917" signature.txt
+
+          SDK_ROOT="$ANDROID_HOME"
+          "$SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose app-release.apk
+          sha256sum --check app-release.apk.sha256
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.2.0
+          target_commitish: \${{ github.event.workflow_run.head_sha }}
+          name: RFTV Launcher 0.2.0
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          make_latest: true
+          files: |
+            release-artifact/app-release.apk
+            release-artifact/app-release.apk.sha256
+            release-artifact/apk-metadata.txt
+            release-artifact/signature.txt
