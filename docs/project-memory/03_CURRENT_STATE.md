@@ -3,8 +3,8 @@
 **Дата проверки:** 2026-11-09  
 **Репозиторий:** https://github.com/gonscharovd/rftv-launcher  
 **Основная ветка:** `main`  
-**Main HEAD:** `0b1815b092840277b06dc7d7154c77790899d561`  
-**Последний commit main:** `perf(home): avoid wallpaper redraw on clock updates`
+**Main HEAD:** `3b871fd2916ffe8b05fc8c3ee57e0451bab8c1b2`  
+**Последний commit main:** `refactor(home): centralize home layout tokens`
 
 ## Версия и Release
 
@@ -33,7 +33,9 @@ Assets: `app-release.apk`, `app-release.apk.sha256`, `apk-metadata.txt`, `signat
 ## Реализовано по коду/документации
 
 - Нативный Kotlin Android Views launcher HOME/LEANBACK.
-- Главный экран с часами, датой, погодным entry point, Dock и темами; PR #16 предотвращает повторное создание wallpaper drawable/image pipeline на неизменившемся тике часов.
+- Главный экран с часами, датой, погодным entry point, Dock и темами.
+- PR #16 устранил повторное создание wallpaper drawable/image pipeline на неизменившемся тике часов.
+- PR #17 вынес основные home layout spacing/dimensions в общую дизайн-систему и удалил дублирующую начальную настройку typography.
 - 20 фотографических Unsplash wallpaper URLs (10 дневных/10 ночных), выбор/карусель и локальный кэш.
 - Control Center, системные shortcuts и настройка темы/размеров Dock.
 - Read-only TV Manager inventory, fingerprint export и reference profiles.
@@ -60,7 +62,9 @@ Assets: `app-release.apk`, `app-release.apk.sha256`, `apk-metadata.txt`, `signat
 - CI текущей версии Project Memory отслеживается через вкладку Checks в [PR #15](https://github.com/gonscharovd/rftv-launcher/pull/15); статусы прошлых SHA — только исторические.
 - PR #16 CI [42521796760](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521796760): success; unit tests, lint, Debug build и metadata verification прошли; signed Release job skipped для pull_request.
 - Push CI [42521760732](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521760732): success, включая signed Release verification.
-- Main CI после merge [42521971740](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521971740): success, включая signed Release verification.
+- Main CI после PR #16 [42521971740](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521971740): success, включая signed Release verification.
+- PR #17 CI [42522491746](https://github.com/gonscharovd/rftv-launcher/actions/runs/42522491746): success; unit tests, lint, Debug build и metadata verification прошли.
+- Main CI после PR #17 [42522675900](https://github.com/gonscharovd/rftv-launcher/actions/runs/42522675900) выполняется/проверить live status.
 - CI не является физической проверкой телевизора.
 
 ## Физическое тестирование
