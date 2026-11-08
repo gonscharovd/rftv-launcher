@@ -16,12 +16,18 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Size.DOCK_ICON < RftvDesignSystem.Size.DOCK_TILE_WIDTH)
         assertTrue(RftvDesignSystem.Spacing.HOME_DOCK_HORIZONTAL_INSET > RftvDesignSystem.Spacing.HOME_ACTION_GAP)
         assertTrue(RftvDesignSystem.Size.HOME_WALLPAPER_BUTTON_HEIGHT in 40..56)
+        assertTrue(RftvDesignSystem.Size.DOCK_LABEL_WIDTH < RftvDesignSystem.Size.DOCK_TILE_WIDTH)
+        assertTrue(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT in 24..36)
+        assertTrue(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN in 0..8)
     }
 
     @Test
     fun focusAndSurfaceMotionAreBounded() {
         assertTrue(RftvDesignSystem.Size.FOCUS_SCALE > 1f)
         assertTrue(RftvDesignSystem.Size.FOCUS_SCALE <= 1.1f)
+        assertTrue(RftvDesignSystem.Size.DOCK_FOCUS_SCALE > 1f)
+        assertTrue(RftvDesignSystem.Size.DOCK_FOCUS_SCALE <= 1.1f)
+        assertTrue(RftvDesignSystem.Radius.DOCK_TILE > 0)
         assertTrue(RftvDesignSystem.Motion.FOCUS_DURATION_MS in 80L..250L)
         assertTrue(RftvDesignSystem.Motion.HOME_FADE_DURATION_MS > 0L)
     }
