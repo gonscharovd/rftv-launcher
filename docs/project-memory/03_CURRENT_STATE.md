@@ -1,10 +1,10 @@
 # Текущее состояние RFTV
 
-**Дата проверки:** 2026-11-09 02:15 (UTC+05:00)  
+**Дата проверки:** 2026-11-09  
 **Репозиторий:** https://github.com/gonscharovd/rftv-launcher  
 **Основная ветка:** `main`  
-**Main HEAD:** `187239dd7f7518286fd0ffede03e6d5d54893ed5`  
-**Последний commit main:** `docs/ci: mark v0.3.0 complete and skip duplicate releases (#14)`
+**Main HEAD:** `0b1815b092840277b06dc7d7154c77790899d561`  
+**Последний commit main:** `perf(home): avoid wallpaper redraw on clock updates`
 
 ## Версия и Release
 
@@ -33,7 +33,7 @@ Assets: `app-release.apk`, `app-release.apk.sha256`, `apk-metadata.txt`, `signat
 ## Реализовано по коду/документации
 
 - Нативный Kotlin Android Views launcher HOME/LEANBACK.
-- Главный экран с часами, датой, погодным entry point, Dock и темами.
+- Главный экран с часами, датой, погодным entry point, Dock и темами; PR #16 предотвращает повторное создание wallpaper drawable/image pipeline на неизменившемся тике часов.
 - 20 фотографических Unsplash wallpaper URLs (10 дневных/10 ночных), выбор/карусель и локальный кэш.
 - Control Center, системные shortcuts и настройка темы/размеров Dock.
 - Read-only TV Manager inventory, fingerprint export и reference profiles.
@@ -44,7 +44,7 @@ Assets: `app-release.apk`, `app-release.apk.sha256`, `apk-metadata.txt`, `signat
 ## Не реализовано / ограничения
 
 - Нет привилегированного package disable/restore, action journal и rollback.
-- Нет избранного, пользовательской сортировки/скрытия приложений и полноценного редактора внешнего вида.
+- Избранное, перемещение избранных влево/вправо, скрытие и восстановление скрытых приложений реализованы в `MainActivity.kt`; произвольная сортировка всего каталога/drag-and-drop и полноценный редактор внешнего вида не реализованы.
 - Wi-Fi/Bluetooth/brightness shortcuts открывают системные настройки; прямые toggles не обещаются.
 - DreamService зависит от поддержки в StarOS и требует физической проверки.
 - Конфигурация города/погодных/новостных источников заставки частично жёстко задана.
@@ -56,8 +56,11 @@ Assets: `app-release.apk`, `app-release.apk.sha256`, `apk-metadata.txt`, `signat
 - Main publisher [42516905346](https://github.com/gonscharovd/rftv-launcher/actions/runs/42516905346): success, связан с публикацией v0.3.0.
 - Publisher [42520472135](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520472135): skipped, поскольку versionCode 3 уже покрыт stable Release; это не новая сборка/публикация.
 - PR #15 CI [42520736798](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520736798), HEAD `1389488`: success.
-- **Последний PR #15 CI [42521038655](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521038655), HEAD `53fff59`: completed / success.** Unit tests, Android Lint, Debug build и Debug metadata verification прошли. Signed Release APK verification job skipped, ожидаемо для pull_request.
-- CI подтверждает автоматические проверки исходников/Debug, но не подписанный APK для этого PR и не физическое поведение на ТВ.
+- PR #15 CI [42521332412](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521332412) на прежнем HEAD `0068d90`: success.
+- PR #16 CI [42521796760](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521796760): success; unit tests, lint, Debug build и metadata verification прошли; signed Release job skipped для pull_request.
+- Push CI [42521760732](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521760732): success, включая signed Release verification.
+- Main CI после merge [42521971740](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521971740): success, включая signed Release verification.
+- CI не является физической проверкой телевизора.
 
 ## Физическое тестирование
 
