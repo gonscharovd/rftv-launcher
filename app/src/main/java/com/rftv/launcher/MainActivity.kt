@@ -1256,19 +1256,19 @@ class MainActivity : Activity() {
         handler.removeCallbacks(carouselTask)
 
         root = FrameLayout(this).apply {
-            setBackgroundColor(Color.rgb(7, 12, 23))
+            setBackgroundColor(Color.argb(205, 5, 9, 17))
         }
         val panelBackground = View(this).apply {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(31, 48, 73), Color.rgb(8, 14, 27))
+                intArrayOf(Color.rgb(43, 57, 78), Color.rgb(17, 25, 40))
             )
         }
-        root.addView(panelBackground, FrameLayout.LayoutParams(-1, -1))
-
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(48), dp(28), dp(48), dp(24))
+            background = roundedGlass(Color.argb(238, 25, 36, 53), 30)
+            setPadding(dp(32), dp(22), dp(32), dp(22))
+            elevation = dp(24).toFloat()
         }
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -1295,7 +1295,12 @@ class MainActivity : Activity() {
         content(body)
         scroll.addView(body)
         shell.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        root.addView(shell, FrameLayout.LayoutParams(-1, -1))
+        root.addView(panelBackground, FrameLayout.LayoutParams(-1, -1))
+        root.addView(shell, FrameLayout.LayoutParams(
+            (resources.displayMetrics.widthPixels * .82f).toInt(),
+            (resources.displayMetrics.heightPixels * .88f).toInt(),
+            Gravity.CENTER
+        ))
         setContentView(root)
         header.getChildAt(1)?.requestFocus()
     }
