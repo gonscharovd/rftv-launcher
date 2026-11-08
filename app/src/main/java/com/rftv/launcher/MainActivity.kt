@@ -963,7 +963,12 @@ class MainActivity : Activity() {
                                 .putString("ota_release_url", url).putString("ota_tag", tag).apply()
                         }
                     } catch (e: Exception) {
-                        otaStatus = "Не удалось проверить GitHub: ${e.message ?: "ошибка сети"}"
+                        val error = e.message ?: "ошибка сети"
+                        otaStatus = if (error.contains("GitHub HTTP 404")) {
+                            "GitHub вернул 404. Репозиторий приватный или недоступен без авторизации. Для OTA нужен публичный источник обновлений."
+                        } else {
+                            "Не удалось проверить GitHub: $error"
+                        }
                     }
                     handler.post { if (!isFinishing) showAboutSystem() }
                 }.start()
