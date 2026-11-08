@@ -25,9 +25,9 @@ Assets: `app-release.apk`, `app-release.apk.sha256`, `apk-metadata.txt`, `signat
 
 ## GitHub: ветки, PR и commits
 
-- `main` HEAD: `187239dd7f7518286fd0ffede03e6d5d54893ed5`.
+- main HEAD на 2026-11-09: `0b1815b092840277b06dc7d7154c77790899d561` (`perf(home): avoid wallpaper redraw on clock updates`).
 - PR #7 (Control Center + заставка), #9 (Aerial TV analysis), #10 (banner/Lint fix) и #11–#14 (Release workflow/roadmap) — merged.
-- **PR #15 открыт:** [docs: add portable project memory system](https://github.com/gonscharovd/rftv-launcher/pull/15), ветка `docs/project-memory-system`, HEAD `53fff592d22f00b24f5a1f5a34f0d466ac39af28`, base `main` @ `187239d`. 11 новых Markdown-файлов только в `docs/project-memory/`; Android-код, build files и workflows не менялись. PR намеренно не объединён.
+- **PR #15 открыт:** [docs: add portable project memory system](https://github.com/gonscharovd/rftv-launcher/pull/15), ветка `docs/project-memory-system`, текущий HEAD и base SHA необходимо сверять через live PR; base main на дату обновления — `0b1815b`. 11 новых Markdown-файлов только в `docs/project-memory/`; Android-код, build files и workflows не менялись. PR намеренно не объединён.
 - Старые ветки не считать активными без свежей проверки GitHub.
 
 ## Реализовано по коду/документации
@@ -57,9 +57,9 @@ Assets: `app-release.apk`, `app-release.apk.sha256`, `apk-metadata.txt`, `signat
 - Main Android CI [42516761285](https://github.com/gonscharovd/rftv-launcher/actions/runs/42516761285), SHA `187239d`: success; source tests/Debug verification и signed Release APK verification прошли.
 - Main publisher [42516905346](https://github.com/gonscharovd/rftv-launcher/actions/runs/42516905346): success, связан с публикацией v0.3.0.
 - Publisher [42520472135](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520472135): skipped, поскольку versionCode 3 уже покрыт stable Release; это не новая сборка/публикация.
-- PR #15 CI [42520736798](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520736798), HEAD `1389488`: success.
+- PR #15 CI [42520736798](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520736798), HEAD `1389488`: success (исторический SHA).
 - PR #15 CI [42521332412](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521332412) на прежнем HEAD `0068d90`: success.
-- CI текущей версии Project Memory отслеживается через вкладку Checks в [PR #15](https://github.com/gonscharovd/rftv-launcher/pull/15); статусы прошлых SHA — только исторические.
+- CI актуального Project Memory отслеживается через live Checks в [PR #15](https://github.com/gonscharovd/rftv-launcher/pull/15); перечисленные старые run IDs относятся к предыдущим HEAD и являются историческими.
 - PR #16 CI [42521796760](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521796760): success; unit tests, lint, Debug build и metadata verification прошли; signed Release job skipped для pull_request.
 - Push CI [42521760732](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521760732): success, включая signed Release verification.
 - Main CI после PR #16 [42521971740](https://github.com/gonscharovd/rftv-launcher/actions/runs/42521971740): success, включая signed Release verification.
