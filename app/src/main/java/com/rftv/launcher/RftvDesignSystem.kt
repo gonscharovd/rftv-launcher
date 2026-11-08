@@ -18,17 +18,17 @@ internal object RftvDesignSystem {
         const val TEXT_MUTED = -4473925
         const val HOME_BACKDROP = -16777216
         const val WALLPAPER_FALLBACK = -15657932
-        const val PANEL_SCRIM = 0xCD050911.toInt()
-        const val PANEL_GRADIENT_START = 0xFF2B394E.toInt()
-        const val PANEL_GRADIENT_END = 0xFF111928.toInt()
-        const val PANEL_SURFACE = 0xF01A2639.toInt()
+        const val PANEL_SCRIM = -855308015
+        const val PANEL_GRADIENT_START = -13944498
+        const val PANEL_GRADIENT_END = -15656664
+        const val PANEL_SURFACE = -266721735
         const val GLASS_STROKE = 0x56FFFFFF
         const val GLASS_FILL = 0x2DFFFFFF
         const val GLASS_FOCUS = 0x78FFFFFF
-        const val CLOCK_SHADOW = 0xAF000000.toInt()
+        const val CLOCK_SHADOW = -1358954496
         const val OVERLAY_TOP = 0x0C000000
         const val OVERLAY_BOTTOM = 0x76000000
-        const val LABEL_ON_GLASS = 0xBEDCE8FF.toInt()
+        const val LABEL_ON_GLASS = -1092818689
     }
 
     object Spacing {
