@@ -27,7 +27,7 @@ Assets: `app-release.apk`, `app-release.apk.sha256`, `apk-metadata.txt`, `signat
 
 - main HEAD на 2026-11-09: `3b871fd2916ffe8b05fc8c3ee57e0451bab8c1b2` (`refactor(home): centralize home layout tokens`).
 - PR #7 (Control Center + заставка), #9 (Aerial TV analysis), #10 (banner/Lint fix) и #11–#14 (Release workflow/roadmap) — merged.
-- **PR #15 открыт:** [docs: add portable project memory system](https://github.com/gonscharovd/rftv-launcher/pull/15), ветка `docs/project-memory-system`, текущий HEAD и base SHA необходимо сверять через live PR; base main на дату обновления — `0b1815b`. 11 новых Markdown-файлов только в `docs/project-memory/`; Android-код, build files и workflows не менялись. PR намеренно не объединён.
+- **PR #15 открыт:** [docs: add portable project memory system](https://github.com/gonscharovd/rftv-launcher/pull/15), ветка `docs/project-memory-system`, текущий HEAD и base SHA необходимо сверять через live PR; base main на дату обновления — `3b871fd`. PR включает 11 новых Markdown-файлов в `docs/project-memory/` и согласованные правки README/ROADMAP; Android-код, build files и workflows не менялись. Ветка синхронизирована с main; merge ожидает CI.
 - Старые ветки не считать активными без свежей проверки GitHub.
 
 ## Реализовано по коду/документации
