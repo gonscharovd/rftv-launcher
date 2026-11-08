@@ -905,6 +905,9 @@ class MainActivity : Activity() {
         card.addView(controlTile("Память · " + readMemory().first, "Доступно: " + readMemory().second) {
             openSettings(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)
         }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
+        card.addView(controlTile("Каталог приложений", "${installedApps.count { it.packageName !in hiddenPackages }} приложений · запуск и управление") {
+            showAppCatalog()
+        }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
         card.addView(controlTile("Настройки RFTV", "Персонализация и приложения") {
             showLauncherSettings()
         }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
@@ -1255,6 +1258,10 @@ class MainActivity : Activity() {
                 showHome()
             }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
 
+            body.addView(controlTile("Каталог приложений", "Полный список · запуск и управление") {
+                showAppCatalog()
+            }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
+
             body.addView(controlTile("Экран ожидания RFTV", "Обои каждый час · погода · курсы · новости") {
                 openSettings("android.settings.DREAM_SETTINGS")
             }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
@@ -1262,6 +1269,42 @@ class MainActivity : Activity() {
             body.addView(controlTile("TV Manager", "Информация, пакеты, ADB и обслуживание телевизора") {
                 showTvManager()
             }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
+        }
+    }
+
+    private fun showAppCatalog() {
+        val visibleApps = installedApps
+            .filter { it.packageName !in hiddenPackages }
+            .sortedBy { it.label.lowercase(Locale.getDefault()) }
+
+        showPanel("Каталог приложений") { body ->
+            body.addView(infoCard(
+                "УСТАНОВЛЕННЫЕ ПРИЛОЖЕНИЯ",
+                "${visibleApps.size} доступно",
+                "Нажми OK для запуска. Удерживай OK, чтобы изменить избранное или скрыть приложение."
+            ))
+
+            if (visibleApps.isEmpty()) {
+                body.addView(infoCard("Каталог пуст", "Нет доступных приложений", "Обнови список приложений или проверь их установку в настройках Android."))
+            } else {
+                visibleApps.forEach { app ->
+                    val subtitle = if (app.packageName in favoritePackages) {
+                        "В избранном · ${app.packageName}"
+                    } else {
+                        app.packageName
+                    }
+                    val tile = controlTile(app.label, subtitle) {
+                        launchApp(app.packageName)
+                    }
+                    tile.setOnLongClickListener {
+                        showAppActions(app)
+                        true
+                    }
+                    body.addView(tile, LinearLayout.LayoutParams(-1, dp(68)).apply {
+                        bottomMargin = dp(8)
+                    })
+                }
+            }
         }
     }
 
