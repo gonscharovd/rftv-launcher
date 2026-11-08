@@ -12,6 +12,12 @@
 - PR #7, #9, #10–#14 включены в историю main (см. PR и commits).
 - Stable Release: [v0.3.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.3.0).
 
+## 2026-11-09 — P1 home performance
+
+- PR #16 merged: clock tick больше не пересоздаёт wallpaper drawable и не запускает image pipeline, если выбранная day/night wallpaper не изменилась.
+- Добавлены unit tests для selection key и отрицательного сохранённого индекса.
+- Физическая производительность и поведение на Sber TV остаются NOT VERIFIED.
+
 ## Ранее — v0.2.0
 
 - Ранее опубликованный stable Release v0.2.0; заменён v0.3.0 как latest stable.
