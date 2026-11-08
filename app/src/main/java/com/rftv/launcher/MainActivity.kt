@@ -68,6 +68,7 @@ class MainActivity : Activity() {
     private lateinit var clockText: TextView
     private lateinit var dateText: TextView
     private lateinit var wallpaperView: ImageView
+    private var lastAppliedWallpaperKey: String? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private val wallpaperExecutor = Executors.newSingleThreadExecutor()
@@ -177,6 +178,8 @@ class MainActivity : Activity() {
                 clockText.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(now)
                 dateText.text = SimpleDateFormat("EEEE, d MMMM", Locale.getDefault())
                     .format(now).replaceFirstChar { it.uppercase() }
+                // Automatic day/night mode is checked here, but unchanged wallpaper
+                // selections do not recreate drawables or touch the image pipeline.
                 applyWallpaper()
             }
             handler.postDelayed(this, 30_000)
@@ -360,12 +363,18 @@ class MainActivity : Activity() {
     private fun applyWallpaper() {
         if (!::wallpaperView.isInitialized) return
         val dark = isDarkTheme()
-        val colors = currentWallpaper()
+        val palette = if (dark) darkWallpapers else lightWallpapers
+        val index = (if (dark) wallpaperDark else wallpaperLight).coerceIn(0, palette.lastIndex)
+        val selectionKey = WallpaperImageUrls.selectionKey(dark, index)
+        if (selectionKey == lastAppliedWallpaperKey) return
+
+        lastAppliedWallpaperKey = selectionKey
+        val colors = palette[index]
         wallpaperView.background = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
             intArrayOf(colors[0], colors[1], colors[2])
         )
-        loadPhoto(if (dark) wallpaperDark else wallpaperLight, dark, wallpaperView)
+        loadPhoto(index, dark, wallpaperView)
     }
 
     private fun loadPhoto(index: Int, dark: Boolean, target: ImageView, thumbnail: Boolean = false) {
@@ -489,6 +498,7 @@ class MainActivity : Activity() {
         wallpaperFailedKeys.remove(key)
         wallpaperView.tag = null
         wallpaperView.setImageDrawable(null)
+        lastAppliedWallpaperKey = null
         Toast.makeText(this, "Повторная загрузка обоев…", Toast.LENGTH_SHORT).show()
         applyWallpaper()
     }
@@ -508,6 +518,7 @@ class MainActivity : Activity() {
             setBackgroundColor(RftvDesignSystem.ColorTokens.WALLPAPER_FALLBACK)
             contentDescription = "Фотографические обои RFTV"
         }
+        lastAppliedWallpaperKey = null
         root.addView(wallpaperView, FrameLayout.LayoutParams(-1, -1))
         applyWallpaper()
 
