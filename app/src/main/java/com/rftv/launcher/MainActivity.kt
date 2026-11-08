@@ -32,12 +32,14 @@ import java.io.BufferedInputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
+import java.util.concurrent.ConcurrentHashMap
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -69,6 +71,9 @@ class MainActivity : Activity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val wallpaperExecutor = Executors.newSingleThreadExecutor()
+    // One failed URL is not retried on every clock tick; retry is user-initiated.
+    private val wallpaperLoadingKeys = ConcurrentHashMap.newKeySet<String>()
+    private val wallpaperFailedKeys = ConcurrentHashMap.newKeySet<String>()
     private val installedApps = mutableListOf<TvApp>()
     private var dockExpanded = false
     private var page = "home"
@@ -293,26 +298,56 @@ class MainActivity : Activity() {
         if (target.tag == tag && target.drawable != null) return
         if (target.tag != tag) target.setImageDrawable(null)
         target.tag = tag
+
+        // Do not enqueue the same failed request every 30 seconds from clockTask.
+        if (tag in wallpaperFailedKeys || !wallpaperLoadingKeys.add(tag)) return
+
         val directory = File(filesDir, "wallpapers").apply { mkdirs() }
         val file = File(directory, "${if (dark) "night" else "day"}-$safeIndex.jpg")
 
-        fun decodeAndPost() {
+        fun decode(): Bitmap? {
             val options = BitmapFactory.Options().apply {
                 inPreferredConfig = Bitmap.Config.RGB_565
                 inSampleSize = if (thumbnail) 4 else 1
             }
-            val bitmap = BitmapFactory.decodeFile(file.absolutePath, options) ?: return
-            handler.post { if (target.tag == tag) target.setImageBitmap(bitmap) }
+            return BitmapFactory.decodeFile(file.absolutePath, options)
         }
 
-        if (file.exists() && file.length() > 10_000L) {
-            wallpaperExecutor.execute { decodeAndPost() }
-            return
+        fun finish(bitmap: Bitmap?) {
+            handler.post {
+                wallpaperLoadingKeys.remove(tag)
+                if (target.tag != tag) {
+                    bitmap?.recycle()
+                    return@post
+                }
+                if (bitmap != null) {
+                    wallpaperFailedKeys.remove(tag)
+                    target.setImageBitmap(bitmap)
+                    target.contentDescription = "${photo.title} — ${photo.author}"
+                } else {
+                    wallpaperFailedKeys.add(tag)
+                    target.contentDescription = "Не удалось загрузить обои: ${photo.title}"
+                    if (target === wallpaperView && page == "home") {
+                        Toast.makeText(this, "Не удалось загрузить фотографию. Удерживай кнопку «Обои» для повтора.", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
         }
 
         wallpaperExecutor.execute {
             var connection: HttpURLConnection? = null
+            var temp: File? = null
             try {
+                if (file.exists() && file.length() > 10_000L) {
+                    val cached = decode()
+                    if (cached != null) {
+                        finish(cached)
+                        return@execute
+                    }
+                    // A truncated/corrupt cache must not permanently block this wallpaper.
+                    file.delete()
+                }
+
                 connection = (URL(photo.imageUrl).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 15000
                     readTimeout = 25000
@@ -320,24 +355,49 @@ class MainActivity : Activity() {
                     setRequestProperty("User-Agent", "RFTV-Launcher/0.1")
                 }
                 connection.connect()
-                if (connection.responseCode !in 200..299) throw IllegalStateException("HTTP ${connection.responseCode}")
-                val temp = File(directory, file.name + ".part")
+                if (connection.responseCode !in 200..299) {
+                    throw IllegalStateException("HTTP ${connection.responseCode}")
+                }
+                temp = File(directory, file.name + ".part")
                 connection.inputStream.use { input ->
-                    FileOutputStream(temp).use { output -> input.copyTo(output) }
+                    FileOutputStream(temp).use { output ->
+                        val buffer = ByteArray(16 * 1024)
+                        var total = 0L
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            total += count
+                            if (total > 24L * 1024L * 1024L) {
+                                throw IllegalStateException("Изображение превышает 24 МБ")
+                            }
+                            output.write(buffer, 0, count)
+                        }
+                    }
                 }
-                if (temp.length() > 10_000L) {
-                    if (file.exists()) file.delete()
-                    temp.renameTo(file)
-                    decodeAndPost()
-                } else {
-                    temp.delete()
-                }
+                if (temp.length() <= 10_000L) throw IllegalStateException("Пустой или неполный файл")
+                if (file.exists()) file.delete()
+                if (!temp.renameTo(file)) throw IllegalStateException("Не удалось сохранить обои в кеш")
+                val downloaded = decode() ?: throw IllegalStateException("Файл не является читаемым изображением")
+                finish(downloaded)
             } catch (_: Exception) {
-                // Keep the lightweight gradient fallback when the TV is offline.
+                temp?.delete()
+                finish(null)
             } finally {
                 connection?.disconnect()
             }
         }
+    }
+
+    private fun retryCurrentWallpaper() {
+        if (!::wallpaperView.isInitialized || page != "home") return
+        val dark = isDarkTheme()
+        val index = if (dark) wallpaperDark else wallpaperLight
+        val key = "${if (dark) "night" else "day"}-${index.coerceIn(0, 9)}"
+        wallpaperFailedKeys.remove(key)
+        wallpaperView.tag = null
+        wallpaperView.setImageDrawable(null)
+        Toast.makeText(this, "Повторная загрузка обоев…", Toast.LENGTH_SHORT).show()
+        applyWallpaper()
     }
 
     private fun showHome() {
@@ -378,7 +438,7 @@ class MainActivity : Activity() {
         clockText = TextView(this).apply {
             text = "09:41"
             textSize = 66f
-            letterSpacing = -0.035f
+            letterSpacing = -0.045f
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
             setShadowLayer(10f, 0f, 2f, Color.argb(100, 0, 0, 0))
@@ -391,8 +451,10 @@ class MainActivity : Activity() {
         timeColumn.addView(clockText)
         timeColumn.addView(dateText)
         timeColumn.gravity = Gravity.CENTER
-        clockText.textSize = 82f
-        clockText.setShadowLayer(18f, 0f, 3f, Color.argb(150, 0, 0, 0))
+        clockText.textSize = 88f
+        clockText.setShadowLayer(22f, 0f, 4f, Color.argb(175, 0, 0, 0))
+        dateText.textSize = 18f
+        dateText.setShadowLayer(10f, 0f, 2f, Color.argb(160, 0, 0, 0))
         root.addView(timeColumn, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
 
         top.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
@@ -433,7 +495,12 @@ class MainActivity : Activity() {
         }
         root.addView(dock, dockParams)
 
-        val wallpaperButton = glassButton("Обои  ◀   ▶") { nextWallpaper() }
+        val wallpaperButton = glassButton("Обои  ◀   ▶") { nextWallpaper() }.apply {
+            setOnLongClickListener {
+                retryCurrentWallpaper()
+                true
+            }
+        }
         val wallpaperParams = FrameLayout.LayoutParams(-2, dp(42), Gravity.BOTTOM or Gravity.END).apply {
             rightMargin = dp(56)
             bottomMargin = dp(dockHeightDp + 38)
