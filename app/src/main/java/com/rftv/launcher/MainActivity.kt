@@ -1234,36 +1234,43 @@ class MainActivity : Activity() {
     private fun Int.blue(): Int = android.graphics.Color.blue(this)
 
     private fun showTvAdb() {
-        val adbEnabled = try {
+        val adbDebuggingEnabled = try {
             android.provider.Settings.Global.getInt(contentResolver,
                 android.provider.Settings.Global.ADB_ENABLED, 0) == 1
         } catch (_: Exception) { false }
+
+        val access = AdbAccessDiagnostics.inspect()
         val ip = try {
             val wifi = applicationContext.getSystemService(WIFI_SERVICE) as android.net.wifi.WifiManager
             val raw = wifi.connectionInfo.ipAddress
-            if (raw == 0) "Wi-Fi IP не получен" else
+            if (raw == 0) "Не определён" else
                 listOf(raw and 0xff, raw shr 8 and 0xff, raw shr 16 and 0xff, raw shr 24 and 0xff).joinToString(".")
-        } catch (_: Exception) { "Недоступно" }
+        } catch (_: Exception) { "Недоступен" }
+
         showPanel("ADB и разрешения") { body ->
-            body.addView(infoCard("USB / ADB DEBUGGING",
-                if (adbEnabled) "Включён" else "Выключен",
-                "Системный флаг Android Settings.Global.ADB_ENABLED. Это не доказывает, что RFTV получил ADB Shell."))
-            body.addView(infoCard("СЕТЕВОЙ АДРЕС", ip,
-                "IP локального Wi-Fi интерфейса. Он не подтверждает доступность сетевого ADB."))
-            body.addView(infoCard("TCP-ПОРТ", "Не подтверждён",
-                "Android 9 не предоставляет обычному приложению универсальный API для чтения порта adbd. Не подставляем 5555 без проверки."))
-            body.addView(sectionLabel("ФАКТИЧЕСКИЕ ВОЗМОЖНОСТИ RFTV"))
-            body.addView(infoCard("ADB Shell", "Не предоставлен",
-                "Обычное приложение работает от собственного UID. Наличие включённого ADB Debugging не даёт ему shell-доступ."))
-            body.addView(infoCard("Чтение системной информации", "Доступно в рамках Android API",
-                "Build, память, экран, uptime и список установленных пакетов читаются через публичные API."))
-            body.addView(infoCard("Управление пакетами", "Не подтверждено · заблокировано",
-                "Для управления чужими пакетами требуется привилегированный мост или системные права."))
-            body.addView(infoCard("Root", "Не проверялся",
-                "Проверка root не выполняется через небезопасные shell-команды и не является условием работы диагностики."))
-            body.addView(glassButton("Открыть настройки разработчика") {
-                openSettings(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-            }, LinearLayout.LayoutParams(-2, dp(48)).apply { bottomMargin = dp(8) })
+            body.addView(infoCard("СИСТЕМНЫЙ СТАТУС ADB",
+                if (adbDebuggingEnabled) "ADB Debugging включён" else "ADB Debugging выключен",
+                "Это только системный индикатор отладки. RFTV не изменяет этот параметр."))
+            body.addView(infoCard("ДОСТУП RFTV К ADB",
+                if (access.shellAvailable) "ADB Shell доступен" else "ADB Shell не получен",
+                access.details))
+            body.addView(infoCard("ЛОКАЛЬНЫЙ IP", ip,
+                "Сетевой адрес интерфейса устройства. Не является подтверждением подключения ADB."))
+            body.addView(infoCard("ADB-ПОРТ", access.portLabel,
+                "Порт отображается только если его удалось достоверно определить."))
+            body.addView(sectionLabel("ПРОВЕРЕННЫЕ ВОЗМОЖНОСТИ"))
+            body.addView(infoCard("Чтение системной информации",
+                if (access.systemInfoAvailable) "Доступно" else "Не подтверждено",
+                "Диагностика через публичные Android API."))
+            body.addView(infoCard("ADB Shell",
+                if (access.shellAvailable) "Доступен" else "Нет доступа",
+                "Проверяется фактическое выполнение без изменения состояния устройства."))
+            body.addView(infoCard("Управление пакетами",
+                if (access.packageManagementAvailable) "Подтверждено" else "Недоступно / не подтверждено",
+                "До успешной проверки операция отключения и восстановления заблокирована."))
+            body.addView(infoCard("Root",
+                if (access.rootAvailable) "Обнаружен" else "Не обнаружен",
+                "Root не требуется для обычной диагностики и не предполагается автоматически."))
             body.addView(glassButton("Повторить проверку") { showTvAdb() },
                 LinearLayout.LayoutParams(-2, dp(48)))
             body.addView(glassButton("Назад к данным ТВ") { showTvDeviceInfo() },
