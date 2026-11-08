@@ -49,6 +49,7 @@ internal object RftvDesignSystem {
         const val HOME_WALLPAPER_DOCK_GAP = 38
         const val DOCK_CONTENT_PADDING = 10
         const val DOCK_BOTTOM_INSET = 22
+        const val DOCK_TILE_HORIZONTAL_MARGIN = 4
         const val CONTROL_PANEL_TOP = 16
         const val CONTROL_PANEL_BOTTOM = 18
         const val CARD_PADDING_HORIZONTAL = 18
@@ -79,6 +80,7 @@ internal object RftvDesignSystem {
         const val CARD = 20
         const val BUTTON = 28
         const val DOCK = 30
+        const val DOCK_TILE = 19
     }
 
     object Elevation {
@@ -92,6 +94,9 @@ internal object RftvDesignSystem {
         const val DOCK_TILE_WIDTH = 112
         const val DOCK_TILE_HEIGHT = 122
         const val DOCK_LABEL_TEXT_SP = 14f
+        const val DOCK_LABEL_WIDTH = 100
+        const val DOCK_LABEL_HEIGHT = 28
+        const val DOCK_FOCUS_SCALE = 1.07f
         const val CLOCK_TEXT_SP = 88f
         const val DATE_TEXT_SP = 18f
         const val PAGE_TITLE_SP = 29f
