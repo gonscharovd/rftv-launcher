@@ -1828,7 +1828,12 @@ class MainActivity : Activity() {
             Gravity.CENTER
         ))
         setContentView(root)
-        header.getChildAt(1)?.requestFocus()
+        // Start on the first actionable item, not the close button. This keeps
+        // the panel usable immediately with a TV remote; fall back to Close
+        // only for informational panels without focusable controls.
+        body.post {
+            if (!requestFirstFocusable(body)) header.getChildAt(1)?.requestFocus()
+        }
     }
 
     private fun infoCard(title: String, subtitle: String, detail: String): View {
