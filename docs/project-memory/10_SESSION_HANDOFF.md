@@ -15,7 +15,7 @@
 ## Актуальная точка GitHub
 
 - Main HEAD: `0b1815b092840277b06dc7d7154c77790899d561`.
-- PR #15 открыт: [docs: add portable project memory system](https://github.com/gonscharovd/rftv-launcher/pull/15), ветка `docs/project-memory-system`; PR намеренно не объединён. На момент handoff ветка отставала от main на один commit (PR #16); синхронизировать и проверить новый head.
+- PR #15 открыт: [docs: add portable project memory system](https://github.com/gonscharovd/rftv-launcher/pull/15), ветка `docs/project-memory-system`, HEAD `d630cb8c6322b9a1400ed2f2047a20a3c680952d`, base main @ `0b1815b`; синхронизирован с main и намеренно не объединён.
 - PR #15: 11 новых Markdown-файлов только в `docs/project-memory/`; app source, Gradle/build config и workflows не затронуты.
 - PR #7, #9–#14 и #16 — merged; PR #15 — open.
 - CI [42520736798](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520736798) на прежнем HEAD `1389488`: success.
