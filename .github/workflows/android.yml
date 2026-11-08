@@ -93,3 +93,5 @@ jobs:
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/apk/release/app-release.apk.sha256
           if-no-files-found: error
+
+# Signing configuration validation trigger.
