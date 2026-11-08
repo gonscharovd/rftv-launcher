@@ -616,6 +616,7 @@ class MainActivity : Activity() {
             val tile = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
+                tag = app.packageName
                 isFocusable = true
                 isFocusableInTouchMode = true
                 background = RftvDesignSystem.focusSurface(this@MainActivity, false, 19, restingAlpha = 25, focusedAlpha = 112)
@@ -663,6 +664,7 @@ class MainActivity : Activity() {
 
     private fun setDockExpanded(expanded: Boolean) {
         if (!::dock.isInitialized || dockExpanded == expanded) return
+        val previouslyFocusedPackage = currentFocus?.tag as? String
         dockExpanded = expanded
         val params = dock.layoutParams as FrameLayout.LayoutParams
         params.height = dp(if (expanded) max(270, dockHeightDp + 112) else dockHeightDp)
@@ -673,6 +675,24 @@ class MainActivity : Activity() {
             val second = dockContent.getChildAt(1)
             second?.alpha = 0f
             second?.animate()?.alpha(1f)?.setDuration(220)?.start()
+        }
+        // Rebuilding rows removes the previously focused View. Restore focus
+        // explicitly so DPAD navigation never leaves the remote without a target.
+        dockContent.post {
+            val target = if (expanded) {
+                val secondRow = dockContent.getChildAt(1) as? HorizontalScrollView
+                val secondItems = secondRow?.getChildAt(0) as? LinearLayout
+                secondItems?.getChildAt(0)
+                    ?: (dockContent.getChildAt(0) as? HorizontalScrollView)
+                        ?.let { it.getChildAt(0) as? LinearLayout }
+                        ?.getChildAt(0)
+            } else {
+                val firstRow = (dockContent.getChildAt(0) as? HorizontalScrollView)
+                    ?.getChildAt(0) as? LinearLayout
+                previouslyFocusedPackage?.let { dockContent.findViewWithTag<View>(it) }
+                    ?: firstRow?.getChildAt(0)
+            }
+            if (target?.requestFocus() != true) focusFirstApp()
         }
     }
 
