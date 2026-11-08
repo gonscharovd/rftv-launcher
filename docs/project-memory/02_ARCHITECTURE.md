@@ -1,6 +1,6 @@
 # Архитектура RFTV Launcher
 
-**Срез кода:** `main` @ `0b1815b092840277b06dc7d7154c77790899d561` (2026-11-09).
+**Срез кода:** `main` @ `3b871fd2916ffe8b05fc8c3ee57e0451bab8c1b2` (2026-11-09).
 
 ## Технологии и сборка
 
@@ -45,7 +45,7 @@ app/
 | Компонент | Роль, подтверждённая исходниками |
 |---|---|
 | `MainActivity.kt` | Основная HOME/LEANBACK activity и основная часть интерфейса; крупный файл (~126 KB), в нём сосредоточено много UI/поведения |
-| `RftvDesignSystem.kt` | Общие цветовые/размерные/радиусные/анимационные токены и drawable/focus helpers |
+| `RftvDesignSystem.kt` | Общие цветовые/размерные/радиусные/анимационные токены и drawable/focus helpers; в main вынесены дополнительные размеры/отступы главного экрана |
 | `WallpaperImageUrls.kt` | Каталог/URL-логика фотографических обоев |
 | `TvManagerProfiles.kt` | Справочные профили пакетов с проверкой SDK + board/hardware + device/product; reference-only |
 | `AdbAccessDiagnostics.kt` | Диагностические сведения ADB-доступа; не означает наличие привилегированного bridge |
