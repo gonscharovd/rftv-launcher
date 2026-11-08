@@ -365,7 +365,10 @@ class MainActivity : Activity() {
         if (!wallpaperLoadingKeys.add(requestKey)) return
 
         val directory = File(filesDir, "wallpapers").apply { mkdirs() }
-        val file = File(directory, "${if (dark) "night" else "day"}-$safeIndex.jpg")
+        // Picker previews use their own small cache and never downgrade the
+        // full-resolution wallpaper kept for the home screen.
+        val file = File(directory, WallpaperImageUrls.cacheFileName(dark, safeIndex, thumbnail))
+        val imageUrl = if (thumbnail) WallpaperImageUrls.thumbnailUrl(photo.imageUrl) else photo.imageUrl
 
         fun decode(): Bitmap? {
             val options = BitmapFactory.Options().apply {
@@ -410,7 +413,7 @@ class MainActivity : Activity() {
                     file.delete()
                 }
 
-                connection = (URL(photo.imageUrl).openConnection() as HttpURLConnection).apply {
+                connection = (URL(imageUrl).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 15000
                     readTimeout = 25000
                     instanceFollowRedirects = true
