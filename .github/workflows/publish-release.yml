@@ -90,6 +90,20 @@ jobs:
           [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]
           VERSION_TAG="v$VERSION_NAME"
 
+          LATEST_STABLE_TAG="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,isDraft,isPrerelease \
+            --jq '[.[] | select(.isDraft == false and .isPrerelease == false)][0].tagName // empty')"
+          if [ -n "$LATEST_STABLE_TAG" ]; then
+            mkdir -p ../previous-release
+            gh release download "$LATEST_STABLE_TAG" --repo "$GITHUB_REPOSITORY" --pattern apk-metadata.txt --dir ../previous-release
+            PREVIOUS_VERSION_CODE="$(sed -n "s/.*versionCode='\\([0-9][0-9]*\\)'.*/\\1/p" ../previous-release/apk-metadata.txt)"
+            [[ "$PREVIOUS_VERSION_CODE" =~ ^[0-9]+$ ]]
+            if [ "$VERSION_CODE" -le "$PREVIOUS_VERSION_CODE" ]; then
+              echo "SKIP_RELEASE=true" >> "$GITHUB_ENV"
+              echo "::notice::versionCode $VERSION_CODE is already covered by stable $LATEST_STABLE_TAG (versionCode $PREVIOUS_VERSION_CODE); no new release is needed."
+              exit 0
+            fi
+          fi
+
           TAG_HTTP="$(curl -sS -o /dev/null -w '%{http_code}' \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
@@ -119,19 +133,7 @@ jobs:
             "https://api.github.com/repos/$GITHUB_REPOSITORY/releases?per_page=100")"
           DRAFT_RELEASE_ID="$(jq -r --arg tag "$VERSION_TAG" '[.[] | select(.tag_name == $tag and .draft == true and .prerelease == false)][0].id // empty' <<< "$DRAFTS_JSON")"
 
-          LATEST_STABLE_TAG="$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName,isDraft,isPrerelease \
-            --jq '[.[] | select(.isDraft == false and .isPrerelease == false)][0].tagName // empty')"
-          if [ -n "$LATEST_STABLE_TAG" ]; then
-            mkdir -p ../previous-release
-            gh release download "$LATEST_STABLE_TAG" --repo "$GITHUB_REPOSITORY" --pattern apk-metadata.txt --dir ../previous-release
-            PREVIOUS_VERSION_CODE="$(sed -n "s/.*versionCode='\([0-9][0-9]*\)'.*/\1/p" ../previous-release/apk-metadata.txt)"
-            [[ "$PREVIOUS_VERSION_CODE" =~ ^[0-9]+$ ]]
-            if [ "$VERSION_CODE" -le "$PREVIOUS_VERSION_CODE" ]; then
-              echo "::error::versionCode $VERSION_CODE must be greater than previous stable versionCode $PREVIOUS_VERSION_CODE."
-              exit 1
-            fi
-          fi
-
+          echo "SKIP_RELEASE=false" >> "$GITHUB_ENV"
           echo "APK_SHA256=$ACTUAL_SHA" >> "$GITHUB_ENV"
           echo "APK_SIZE=$APK_SIZE" >> "$GITHUB_ENV"
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
@@ -141,7 +143,7 @@ jobs:
 
       - name: Publish GitHub Release
         id: create_release
-        if: env.EXISTING_DRAFT_RELEASE_ID == ''
+        if: env.SKIP_RELEASE != 'true' && env.EXISTING_DRAFT_RELEASE_ID == ''
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION_TAG }}
@@ -158,7 +160,7 @@ jobs:
             release-artifact/signature.txt
 
       - name: Refresh assets in an existing unpublished draft
-        if: env.EXISTING_DRAFT_RELEASE_ID != ''
+        if: env.SKIP_RELEASE != 'true' && env.EXISTING_DRAFT_RELEASE_ID != ''
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -212,6 +214,7 @@ jobs:
           echo "Existing draft assets replaced with the current verified CI artifact."
 
       - name: Verify draft assets match the verified APK
+        if: env.SKIP_RELEASE != 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -241,6 +244,7 @@ jobs:
           echo "Draft assets verified against the signed build: $ASSET_SHA ($ASSET_SIZE bytes)."
 
       - name: Publish verified stable Release
+        if: env.SKIP_RELEASE != 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
