@@ -300,7 +300,9 @@ class MainActivity : Activity() {
         target.tag = tag
 
         // Do not enqueue the same failed request every 30 seconds from clockTask.
-        if (tag in wallpaperFailedKeys || !wallpaperLoadingKeys.add(tag)) return
+        if (tag in wallpaperFailedKeys) return
+        val requestKey = "$tag@${System.identityHashCode(target)}"
+        if (!wallpaperLoadingKeys.add(requestKey)) return
 
         val directory = File(filesDir, "wallpapers").apply { mkdirs() }
         val file = File(directory, "${if (dark) "night" else "day"}-$safeIndex.jpg")
@@ -315,7 +317,7 @@ class MainActivity : Activity() {
 
         fun finish(bitmap: Bitmap?) {
             handler.post {
-                wallpaperLoadingKeys.remove(tag)
+                wallpaperLoadingKeys.remove(requestKey)
                 if (target.tag != tag) {
                     bitmap?.recycle()
                     return@post
@@ -358,9 +360,10 @@ class MainActivity : Activity() {
                 if (connection.responseCode !in 200..299) {
                     throw IllegalStateException("HTTP ${connection.responseCode}")
                 }
-                temp = File(directory, file.name + ".part")
+                val tempFile = File(directory, file.name + ".part")
+                temp = tempFile
                 connection.inputStream.use { input ->
-                    FileOutputStream(temp).use { output ->
+                    FileOutputStream(tempFile).use { output ->
                         val buffer = ByteArray(16 * 1024)
                         var total = 0L
                         while (true) {
@@ -374,9 +377,9 @@ class MainActivity : Activity() {
                         }
                     }
                 }
-                if (temp.length() <= 10_000L) throw IllegalStateException("Пустой или неполный файл")
+                if (tempFile.length() <= 10_000L) throw IllegalStateException("Пустой или неполный файл")
                 if (file.exists()) file.delete()
-                if (!temp.renameTo(file)) throw IllegalStateException("Не удалось сохранить обои в кеш")
+                if (!tempFile.renameTo(file)) throw IllegalStateException("Не удалось сохранить обои в кеш")
                 val downloaded = decode() ?: throw IllegalStateException("Файл не является читаемым изображением")
                 finish(downloaded)
             } catch (_: Exception) {
