@@ -42,8 +42,15 @@ jobs:
         with:
           gradle-version: 8.9
 
-      - name: Run unit tests
-        run: gradle --no-daemon --stacktrace testDebugUnitTest
+      - name: Run unit tests when test sources exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -d app/src/test ]] && find app/src/test -type f \\( -name "*Test.kt" -o -name "*Tests.kt" -o -name "*Test.java" \\) -print -quit | grep -q .; then
+            gradle --no-daemon --stacktrace testDebugUnitTest
+          else
+            echo "::warning::No unit test source files are present yet; build and APK metadata checks will run."
+          fi
 
       - name: Build Debug for CI diagnostics only
         run: gradle --no-daemon --stacktrace assembleDebug
