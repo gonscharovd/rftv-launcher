@@ -43,6 +43,11 @@ internal object RftvDesignSystem {
         const val XL = 32
         const val XXL = 54
         const val HOME_TOP_INSET = 34
+        const val HOME_DOCK_HORIZONTAL_INSET = 54
+        const val HOME_ACTION_GAP = 12
+        const val HOME_WALLPAPER_RIGHT_INSET = 56
+        const val HOME_WALLPAPER_DOCK_GAP = 38
+        const val DOCK_CONTENT_PADDING = 10
         const val DOCK_BOTTOM_INSET = 22
         const val CONTROL_PANEL_TOP = 16
         const val CONTROL_PANEL_BOTTOM = 18
@@ -101,6 +106,7 @@ internal object RftvDesignSystem {
         const val FOCUS_SCALE = 1.035f
         const val TOP_ACTION_HEIGHT = 54
         const val TOP_SETTINGS_WIDTH = 58
+        const val HOME_WALLPAPER_BUTTON_HEIGHT = 42
         const val PANEL_HEADER_HEIGHT = 56
         const val PANEL_CLOSE_HEIGHT = 48
     }
