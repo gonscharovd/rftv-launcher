@@ -1,6 +1,6 @@
 # Текущее состояние RFTV
 
-**Дата проверки:** 2026-11-09 01:31 (UTC+05:00)  
+**Дата проверки:** 2026-11-09 02:05 (UTC+05:00)  
 **Репозиторий:** https://github.com/gonscharovd/rftv-launcher  
 **Основная ветка:** `main`  
 **Main HEAD:** `187239dd7f7518286fd0ffede03e6d5d54893ed5`  
@@ -30,7 +30,7 @@ Assets релиза: `app-release.apk`, `app-release.apk.sha256`, `apk-metadata.
 - PR #9 (анализ Aerial TV) — merged.
 - PR #10 (Android TV banner / MissingTvBanner lint fix) — merged в PR #7, итоговый код в main.
 - PR #11–#14 (Release workflow fixes, idempotent versionCode handling и roadmap update) — merged.
-- **PR #15 — открыт:** [docs: add portable project memory system](https://github.com/gonscharovd/rftv-launcher/pull/15), ветка `docs/project-memory-system`, HEAD `04bda5bf91c9db5c4b1acbdf3c59801754230a57`, base `main` @ `187239d`. В нём 11 новых Markdown-файлов `docs/project-memory/`, без изменений Android-кода и workflows. Merge ещё не выполнен.
+- **PR #15 — открыт:** [docs: add portable project memory system](https://github.com/gonscharovd/rftv-launcher/pull/15), ветка `docs/project-memory-system`, HEAD `138948825ea50235f2c54b211c2f96ba51f1761f`, base `main` @ `187239d`. В нём 11 новых Markdown-файлов `docs/project-memory/`, без изменений Android-кода и workflows. Merge ещё не выполнен.
 - Найденные старые feature/fix/docs ветки не считать активными без сравнения с main.
 
 ## Реализовано по коду/документации
@@ -58,9 +58,9 @@ Assets релиза: `app-release.apk`, `app-release.apk.sha256`, `apk-metadata.
 - Main Android CI [42516761285](https://github.com/gonscharovd/rftv-launcher/actions/runs/42516761285), SHA `187239d`: completed / success; source tests + Debug verification и signed Release APK verification прошли.
 - Main publisher [42516905346](https://github.com/gonscharovd/rftv-launcher/actions/runs/42516905346), SHA `187239d`: completed / success; относится к публикации v0.3.0.
 - Последний publisher запуск [42520472135](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520472135), SHA `187239d`: skipped. Это безопасное поведение повторного запуска, когда versionCode уже покрыт stable Release; это не новая сборка и не новый Release.
-- PR #15 Android CI [42520315995](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520315995), SHA `04bda5b`: completed / success; Source tests and Debug verification прошли, Signed Release job skipped, как ожидается для pull_request.
-- Предыдущий CI PR #15 на commit `5b107fa`: run `42520304453`, success.
-- После последующего обновления project-memory файлов PR #15 CI должен быть повторно проверен по новому HEAD.
+- PR #15 CI [42520736798](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520736798), HEAD `1389488`: completed / success; Source tests and Debug verification прошли, включая unit tests, Android Lint, Debug build и metadata verification. Signed Release job skipped, как ожидается для pull_request.
+- Предыдущий CI PR #15 [42520315995](https://github.com/gonscharovd/rftv-launcher/actions/runs/42520315995) на HEAD `04bda5b` — success; ещё более ранний run `42520304453` на `5b107fa` — success.
+- CI PR #15 проверяет исходники/Debug и не является проверкой подписанного Release APK или физическим тестом ТВ.
 
 ## Физическое тестирование
 
