@@ -387,7 +387,16 @@ class MainActivity : Activity() {
                 }
                 if (bitmap != null) {
                     wallpaperFailedKeys.remove(tag)
-                    target.setImageBitmap(bitmap)
+                    if (!thumbnail && target === wallpaperView) {
+                        target.animate().cancel()
+                        target.alpha = 0f
+                        target.setImageBitmap(bitmap)
+                        target.animate().alpha(1f)
+                            .setDuration(RftvDesignSystem.Motion.HOME_FADE_DURATION_MS)
+                            .start()
+                    } else {
+                        target.setImageBitmap(bitmap)
+                    }
                     target.contentDescription = "${photo.title} — ${photo.author}"
                 } else {
                     wallpaperFailedKeys.add(tag)
