@@ -2,6 +2,7 @@ package com.rftv.launcher
 
 import android.app.Activity
 import android.app.ActivityManager
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
@@ -75,6 +76,8 @@ class MainActivity : Activity() {
     private var carouselIntervalMinutes = 5
     private var dockWidthPercent = 88
     private var dockHeightDp = 154
+    private val favoritePackages = mutableListOf<String>()
+    private val hiddenPackages = mutableSetOf<String>()
 
 
     private data class WallpaperPhoto(val title: String, val author: String, val pageUrl: String, val imageUrl: String)
@@ -174,6 +177,8 @@ class MainActivity : Activity() {
         carouselIntervalMinutes = prefs.getInt("wallpaper_interval", 5).coerceIn(1, 60)
         dockWidthPercent = prefs.getInt("dock_width", 88)
         dockHeightDp = prefs.getInt("dock_height", 154)
+        favoritePackages.addAll(prefs.getStringSet("favorite_packages", emptySet()) ?: emptySet())
+        hiddenPackages.addAll(prefs.getStringSet("hidden_packages", emptySet()) ?: emptySet())
 
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
         window.statusBarColor = Color.TRANSPARENT
@@ -240,6 +245,14 @@ class MainActivity : Activity() {
             }
             .sortedBy { it.label.lowercase(Locale.getDefault()) }
             .forEach { installedApps.add(it) }
+        val available = installedApps.map { it.packageName }.toSet()
+        favoritePackages.removeAll { it !in available || it in hiddenPackages }
+        hiddenPackages.retainAll(available)
+        if (favoritePackages.isEmpty()) {
+            installedApps.filter { it.packageName !in hiddenPackages }.take(7)
+                .forEach { favoritePackages.add(it.packageName) }
+        }
+        persistAppLists()
     }
 
     private fun isDarkTheme(): Boolean {
@@ -435,13 +448,13 @@ class MainActivity : Activity() {
 
     private fun buildDockContent() {
         dockContent.removeAllViews()
-        val firstRow = installedApps.take(7)
-        val secondRow = installedApps.drop(7)
-
-        dockContent.addView(buildAppRow(firstRow), LinearLayout.LayoutParams(-1, dp(122)))
-        if (secondRow.isNotEmpty()) {
-            dockContent.addView(buildAppRow(secondRow), LinearLayout.LayoutParams(-1, dp(122)))
-        } else {
+        val favorites = installedApps.filter { it.packageName in favoritePackages && it.packageName !in hiddenPackages }
+        dockContent.addView(buildAppRow(favorites), LinearLayout.LayoutParams(-1, dp(122)))
+        if (dockExpanded) {
+            val allApps = installedApps.filter { it.packageName !in favoritePackages && it.packageName !in hiddenPackages }
+            dockContent.addView(buildAppRow(allApps), LinearLayout.LayoutParams(-1, dp(122)))
+        }
+        if (favorites.isEmpty()) {
             val empty = TextView(this).apply {
                 text = "Приложения появятся здесь после установки"
                 textSize = 14f
@@ -481,6 +494,7 @@ class MainActivity : Activity() {
                     view.elevation = if (focused) dp(12).toFloat() else 0f
                 }
                 setOnClickListener { launchApp(app.packageName) }
+                setOnLongClickListener { showAppActions(app); true }
             }
             val icon = ImageView(this).apply {
                 setImageDrawable(app.icon)
@@ -518,6 +532,7 @@ class MainActivity : Activity() {
         val params = dock.layoutParams as FrameLayout.LayoutParams
         params.height = dp(if (expanded) max(270, dockHeightDp + 112) else dockHeightDp)
         dock.layoutParams = params
+        buildDockContent()
         dock.animate().alpha(1f).setDuration(180).start()
         if (expanded) {
             val second = dockContent.getChildAt(1)
@@ -590,6 +605,57 @@ class MainActivity : Activity() {
         }
     }
 
+
+    private fun persistAppLists() {
+        prefs.edit()
+            .putStringSet("favorite_packages", favoritePackages.toSet())
+            .putStringSet("hidden_packages", hiddenPackages.toSet())
+            .apply()
+    }
+
+    private fun showAppActions(app: TvApp) {
+        val actions = arrayOf("Переместить в начало тулбара", "Убрать из тулбара", "Скрыть приложение")
+        AlertDialog.Builder(this)
+            .setTitle(app.label)
+            .setItems(actions) { _, which ->
+                when (which) {
+                    0 -> {
+                        favoritePackages.remove(app.packageName)
+                        favoritePackages.add(0, app.packageName)
+                        hiddenPackages.remove(app.packageName)
+                    }
+                    1 -> favoritePackages.remove(app.packageName)
+                    2 -> {
+                        favoritePackages.remove(app.packageName)
+                        hiddenPackages.add(app.packageName)
+                    }
+                }
+                persistAppLists()
+                buildDockContent()
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun showHiddenApps(body: LinearLayout) {
+        val hidden = installedApps.filter { it.packageName in hiddenPackages }
+        if (hidden.isEmpty()) {
+            body.addView(infoCard("Скрытых приложений нет", "Список пуст", "Скрытые приложения можно будет восстановить здесь."))
+            return
+        }
+        hidden.forEach { app ->
+            body.addView(controlTile(app.label, "Нажми, чтобы вернуть приложение") {
+                hiddenPackages.remove(app.packageName)
+                persistAppLists()
+                showHiddenAppsPage()
+            }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+        }
+    }
+
+    private fun showHiddenAppsPage() {
+        showPanel("Скрытые приложения") { body -> showHiddenApps(body) }
+    }
+
     private fun showControlCenter() {
         showPanel("Панель управления") { body ->
             val rowOne = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -628,7 +694,7 @@ class MainActivity : Activity() {
             body.addView(controlTile("Настройки RFTV", "Dock, приложения, обои и внешний вид") {
                 showLauncherSettings()
             }, LinearLayout.LayoutParams(-1, dp(76)).apply { topMargin = dp(12) })
-            body.addView(controlTile("Системные настройки", "Открыть настройки Android / StarOS") {
+            body.addView(controlTile("Системные настройки", "Открыть системные настройки") {
                 openSettings(Settings.ACTION_SETTINGS)
             }, LinearLayout.LayoutParams(-1, dp(76)).apply { topMargin = dp(10) })
         }
@@ -653,6 +719,10 @@ class MainActivity : Activity() {
             })
 
             addWallpaperSettings(body)
+
+            body.addView(controlTile("Скрытые приложения", "Восстановить приложения, скрытые из обоих списков") {
+                showHiddenAppsPage()
+            }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
 
             body.addView(controlTile("Приложения", "Обновить список установленных приложений") {
                 loadInstalledApps()
