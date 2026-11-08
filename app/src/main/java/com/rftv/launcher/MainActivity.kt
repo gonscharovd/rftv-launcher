@@ -657,47 +657,86 @@ class MainActivity : Activity() {
     }
 
     private fun showControlCenter() {
-        showPanel("Панель управления") { body ->
-            val rowOne = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-            rowOne.addView(controlTile("Wi-Fi", "Системное управление") {
-                openSettings(Settings.ACTION_WIFI_SETTINGS)
-            }, weightedParams())
-            rowOne.addView(controlTile("Bluetooth", "Системное управление") {
-                openSettings(Settings.ACTION_BLUETOOTH_SETTINGS)
-            }, weightedParams().apply { leftMargin = dp(10) })
-            body.addView(rowOne)
-
-            body.addView(infoCard("ЯРКОСТЬ", "Управление дисплеем", "На этой прошивке откроем системную регулировку яркости, если прямой API недоступен."))
-            body.addView(glassButton("Открыть настройки дисплея") {
-                openSettings(Settings.ACTION_DISPLAY_SETTINGS)
-            }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
-
-            val themeLabel = when (themeMode) {
-                0 -> "Светлая"
-                1 -> "Тёмная"
-                else -> "По времени"
-            }
-            body.addView(controlTile("Тема: " + themeLabel, "Нажми, чтобы переключить режим") {
-                themeMode = (themeMode + 1) % 3
-                prefs.edit().putInt("theme_mode", themeMode).apply()
-                showControlCenter()
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { topMargin = dp(12) })
-
-            val memory = readMemory()
-            body.addView(controlTile("RAM · " + memory.first, "Доступно сейчас: " + memory.second) {
-                openSettings(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { topMargin = dp(10) })
-            body.addView(glassButton("Управление приложениями") {
-                openSettings(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)
-            }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
-
-            body.addView(controlTile("Настройки RFTV", "Dock, приложения, обои и внешний вид") {
-                showLauncherSettings()
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { topMargin = dp(12) })
-            body.addView(controlTile("Системные настройки", "Открыть системные настройки") {
-                openSettings(Settings.ACTION_SETTINGS)
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { topMargin = dp(10) })
+        if (page != "home") return
+        root.findViewWithTag<View>("rftv-control-center")?.let { root.removeView(it) }
+        val overlay = FrameLayout(this).apply {
+            tag = "rftv-control-center"
+            setBackgroundColor(Color.argb(45, 0, 0, 0))
+            isFocusableInTouchMode = true
+            setOnClickListener { root.removeView(this) }
         }
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = roundedGlass(Color.argb(232, 27, 39, 58), 28)
+            setPadding(dp(20), dp(16), dp(20), dp(18))
+            elevation = dp(24).toFloat()
+            isFocusableInTouchMode = true
+            setOnClickListener { }
+        }
+        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        header.addView(TextView(this).apply {
+            text = "Пункт управления"
+            textSize = 21f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+        }, LinearLayout.LayoutParams(0, dp(42), 1f))
+        header.addView(glassButton("✕") { root.removeView(overlay) }, LinearLayout.LayoutParams(dp(48), dp(42)))
+        card.addView(header)
+
+        val themeTitle = TextView(this).apply {
+            text = "ВНЕШНИЙ ВИД"
+            textSize = 11f
+            letterSpacing = .08f
+            setTextColor(Color.LTGRAY)
+            setPadding(0, dp(12), 0, dp(7))
+        }
+        card.addView(themeTitle)
+        val themes = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = roundedGlass(Color.argb(38, 255, 255, 255), 15)
+            setPadding(dp(4), dp(4), dp(4), dp(4))
+        }
+        listOf("Светлая", "Тёмная", "Авто").forEachIndexed { index, label ->
+            val selected = themeMode == index
+            val item = TextView(this).apply {
+                text = label
+                textSize = 13f
+                gravity = Gravity.CENTER
+                setTextColor(Color.WHITE)
+                background = if (selected) roundedGlass(Color.argb(105, 255, 255, 255), 12)
+                    else roundedGlass(Color.TRANSPARENT, 12).apply { setStroke(0, Color.TRANSPARENT) }
+                isFocusable = true
+                setOnClickListener {
+                    themeMode = index
+                    prefs.edit().putInt("theme_mode", themeMode).apply()
+                    applyWallpaper()
+                    showControlCenter()
+                }
+            }
+            themes.addView(item, LinearLayout.LayoutParams(0, dp(42), 1f).apply { leftMargin = dp(2); rightMargin = dp(2) })
+        }
+        card.addView(themes)
+
+        val grid = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        grid.addView(controlTile("Wi-Fi", "Настройки сети") { openSettings(Settings.ACTION_WIFI_SETTINGS) }, weightedParams())
+        grid.addView(controlTile("Bluetooth", "Подключения") { openSettings(Settings.ACTION_BLUETOOTH_SETTINGS) },
+            weightedParams().apply { leftMargin = dp(8) })
+        card.addView(grid, LinearLayout.LayoutParams(-1, dp(78)).apply { topMargin = dp(10) })
+        card.addView(controlTile("Память · " + readMemory().first, "Доступно: " + readMemory().second) {
+            openSettings(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)
+        }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
+        card.addView(controlTile("Настройки RFTV", "Персонализация и приложения") {
+            showLauncherSettings()
+        }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
+        card.addView(controlTile("Системные настройки", "Настройки устройства") {
+            openSettings(Settings.ACTION_SETTINGS)
+        }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
+
+        overlay.addView(card, FrameLayout.LayoutParams(
+            (resources.displayMetrics.widthPixels * .34f).toInt(), -2, Gravity.TOP or Gravity.START
+        ).apply { leftMargin = dp(24); topMargin = dp(24) })
+        root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
+        card.requestFocus()
     }
 
     private fun showLauncherSettings() {
