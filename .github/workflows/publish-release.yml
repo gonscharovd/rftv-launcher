@@ -11,12 +11,16 @@ permissions:
   actions: read
   contents: write
 
+concurrency:
+  group: rftv-stable-release
+  cancel-in-progress: false
+
 jobs:
   publish:
     name: Publish signed APK from successful main CI
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Download signed Release artifact
         uses: actions/download-artifact@v4
@@ -43,41 +47,156 @@ jobs:
           fi
           "$SDKMANAGER" --install "build-tools;35.0.0"
 
-      - name: Verify artifact before publication
+      - name: Verify artifact and derive release version
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           cd release-artifact
-          test -s app-release.apk
+          APK="app-release.apk"
+          test -s "$APK"
           test -s app-release.apk.sha256
           test -s signature.txt
           test -s apk-metadata.txt
 
-          EXPECTED_SHA="$(awk '{print $1}' app-release.apk.sha256)"
-          ACTUAL_SHA="$(sha256sum app-release.apk | awk '{print $1}')"
-          test "$EXPECTED_SHA" = "$ACTUAL_SHA"
-          sha256sum app-release.apk > app-release.apk.sha256
+          APK_SIZE="$(stat -c '%s' "$APK")"
+          test "$APK_SIZE" -gt 100000
 
-          grep -F "package: name='com.rftv.launcher' versionCode='2' versionName='0.2.0'" apk-metadata.txt
+          EXPECTED_SHA="$(awk '{print $1}' app-release.apk.sha256)"
+          ACTUAL_SHA="$(sha256sum "$APK" | awk '{print $1}')"
+          test "$EXPECTED_SHA" = "$ACTUAL_SHA"
+
+          grep -F "package: name='com.rftv.launcher'" apk-metadata.txt
+          grep -F "sdkVersion:'24'" apk-metadata.txt
           grep -F "targetSdkVersion:'28'" apk-metadata.txt
           grep -F "Signer #1 certificate SHA-256 digest: 22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917" signature.txt
 
+          if grep -q "^native-code:" apk-metadata.txt; then
+            grep "^native-code:" apk-metadata.txt | grep -q "armeabi-v7a"
+          else
+            echo "APK contains no native libraries; it is ABI-independent."
+          fi
+
           SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
-          "$SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose app-release.apk
+          "$SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+          # Normalize the checksum filename after confirming the downloaded artifact hash.
+          sha256sum "$APK" > app-release.apk.sha256
           sha256sum --check app-release.apk.sha256
+
+          VERSION_NAME="$(sed -n "s/.*versionName='\([^']*\)'.*/\1/p" apk-metadata.txt)"
+          VERSION_CODE="$(sed -n "s/.*versionCode='\([0-9][0-9]*\)'.*/\1/p" apk-metadata.txt)"
+          [[ "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$VERSION_CODE" =~ ^[0-9]+$ ]]
+          VERSION_TAG="v$VERSION_NAME"
+
+          TAG_HTTP="$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$VERSION_TAG")"
+          REF_HTTP="$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/git/ref/tags/$VERSION_TAG")"
+          if [ "$REF_HTTP" = "200" ]; then
+            echo "::error::Git tag $VERSION_TAG already exists; refusing to reuse it."
+            exit 1
+          elif [ "$REF_HTTP" != "404" ]; then
+            echo "::error::Unable to verify whether tag $VERSION_TAG exists (HTTP $REF_HTTP)."
+            exit 1
+          fi
+          if [ "$TAG_HTTP" = "200" ]; then
+            echo "::error::Release $VERSION_TAG already exists; refusing to overwrite it."
+            exit 1
+          elif [ "$TAG_HTTP" != "404" ]; then
+            echo "::error::Unable to verify whether release tag $VERSION_TAG exists (HTTP $TAG_HTTP)."
+            exit 1
+          fi
+
+          LATEST_STABLE_TAG="$(gh release list --limit 100 --json tagName,isDraft,isPrerelease \
+            --jq '[.[] | select(.isDraft == false and .isPrerelease == false)][0].tagName // empty')"
+          if [ -n "$LATEST_STABLE_TAG" ]; then
+            mkdir -p ../previous-release
+            gh release download "$LATEST_STABLE_TAG" --pattern apk-metadata.txt --dir ../previous-release
+            PREVIOUS_VERSION_CODE="$(sed -n "s/.*versionCode='\([0-9][0-9]*\)'.*/\1/p" ../previous-release/apk-metadata.txt)"
+            [[ "$PREVIOUS_VERSION_CODE" =~ ^[0-9]+$ ]]
+            if [ "$VERSION_CODE" -le "$PREVIOUS_VERSION_CODE" ]; then
+              echo "::error::versionCode $VERSION_CODE must be greater than previous stable versionCode $PREVIOUS_VERSION_CODE."
+              exit 1
+            fi
+          fi
+
+          echo "APK_SHA256=$ACTUAL_SHA" >> "$GITHUB_ENV"
+          echo "APK_SIZE=$APK_SIZE" >> "$GITHUB_ENV"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          echo "VERSION_TAG=$VERSION_TAG" >> "$GITHUB_ENV"
+          echo "Verified $APK ($APK_SIZE bytes), $VERSION_TAG, versionCode $VERSION_CODE."
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.2.0
+          tag_name: ${{ env.VERSION_TAG }}
           target_commitish: ${{ github.event.workflow_run.head_sha }}
-          name: RFTV Launcher 0.2.0
+          name: RFTV Launcher ${{ env.VERSION_NAME }}
           generate_release_notes: true
-          draft: false
+          draft: true
           prerelease: false
-          make_latest: true
+          make_latest: false
           files: |
             release-artifact/app-release.apk
             release-artifact/app-release.apk.sha256
             release-artifact/apk-metadata.txt
             release-artifact/signature.txt
+
+      - name: Verify draft assets match the verified APK
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_TAG: ${{ env.VERSION_TAG }}
+          EXPECTED_APK_SHA256: ${{ env.APK_SHA256 }}
+          EXPECTED_APK_SIZE: ${{ env.APK_SIZE }}
+        run: |
+          set -euo pipefail
+          RELEASE_JSON="$(curl -fsS \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$VERSION_TAG")"
+          test "$(jq -r '.draft' <<< "$RELEASE_JSON")" = "true"
+          test "$(jq -r '.prerelease' <<< "$RELEASE_JSON")" = "false"
+          ASSET_SHA="$(jq -r '.assets[] | select(.name == "app-release.apk") | .digest // empty' <<< "$RELEASE_JSON")"
+          ASSET_SIZE="$(jq -r '.assets[] | select(.name == "app-release.apk") | .size // empty' <<< "$RELEASE_JSON")"
+          test "$ASSET_SHA" = "sha256:$EXPECTED_APK_SHA256"
+          test "$ASSET_SIZE" = "$EXPECTED_APK_SIZE"
+          for asset in app-release.apk app-release.apk.sha256 apk-metadata.txt signature.txt; do
+            jq -e --arg name "$asset" '.assets[] | select(.name == $name)' <<< "$RELEASE_JSON" >/dev/null
+          done
+          echo "Draft assets verified against the signed build: $ASSET_SHA ($ASSET_SIZE bytes)."
+
+      - name: Publish verified stable Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_TAG: ${{ env.VERSION_TAG }}
+          EXPECTED_APK_SHA256: ${{ env.APK_SHA256 }}
+          EXPECTED_APK_SIZE: ${{ env.APK_SIZE }}
+        run: |
+          set -euo pipefail
+          DRAFT_JSON="$(curl -fsS \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/tags/$VERSION_TAG")"
+          RELEASE_ID="$(jq -r '.id // empty' <<< "$DRAFT_JSON")"
+          test -n "$RELEASE_ID"
+          RELEASE_JSON="$(curl -fsS -X PATCH \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            -d '{"draft":false,"prerelease":false,"make_latest":"true"}' \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID")"
+          test "$(jq -r '.draft' <<< "$RELEASE_JSON")" = "false"
+          test "$(jq -r '.prerelease' <<< "$RELEASE_JSON")" = "false"
+          ASSET_SHA="$(jq -r '.assets[] | select(.name == "app-release.apk") | .digest // empty' <<< "$RELEASE_JSON")"
+          ASSET_SIZE="$(jq -r '.assets[] | select(.name == "app-release.apk") | .size // empty' <<< "$RELEASE_JSON")"
+          test "$ASSET_SHA" = "sha256:$EXPECTED_APK_SHA256"
+          test "$ASSET_SIZE" = "$EXPECTED_APK_SIZE"
+          echo "Stable Release $VERSION_TAG published and verified: $ASSET_SHA ($ASSET_SIZE bytes)."

@@ -4,6 +4,7 @@ import android.service.dreams.DreamService
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
@@ -105,7 +106,7 @@ class RftvDreamService : DreamService() {
             textSize = 94f
             letterSpacing = -0.04f
             setTextColor(Color.WHITE)
-            typeface = android.graphics.Typeface.create("sans-serif-light", 0)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
             setShadowLayer(20f, 0f, 3f, Color.argb(170, 0, 0, 0))
             gravity = Gravity.CENTER
         }

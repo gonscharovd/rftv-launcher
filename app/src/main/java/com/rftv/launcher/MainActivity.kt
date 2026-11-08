@@ -85,6 +85,12 @@ class MainActivity : Activity() {
     private var carouselIntervalMinutes = 5
     private var dockWidthPercent = 88
     private var dockHeightDp = 154
+    private var screensaverTimeoutMinutes = 15
+    private val idleScreensaverTask = object : Runnable {
+        override fun run() {
+            if (page == "home" && screensaverTimeoutMinutes > 0 && root.findViewWithTag<View>("rftv-control-center") == null) showScreensaver()
+        }
+    }
     private var otaStatus = "Обновления ещё не проверялись"
     private var otaProgress = 0
     private val favoritePackages = mutableListOf<String>()
@@ -188,6 +194,7 @@ class MainActivity : Activity() {
         carouselIntervalMinutes = prefs.getInt("wallpaper_interval", 5).coerceIn(1, 60)
         dockWidthPercent = prefs.getInt("dock_width", 88)
         dockHeightDp = prefs.getInt("dock_height", 154)
+        screensaverTimeoutMinutes = prefs.getInt("screensaver_timeout_minutes", 15).coerceIn(0, 60)
         favoritePackages.addAll(prefs.getString("favorite_packages_order", "")!!.split("|").filter { it.isNotBlank() })
         hiddenPackages.addAll(prefs.getStringSet("hidden_packages", emptySet()) ?: emptySet())
 
@@ -205,19 +212,30 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (page == "home") startClock()
+        if (page == "home") { startClock(); resetIdleScreensaverTimer() }
     }
 
     override fun onPause() {
         super.onPause()
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
+        handler.removeCallbacks(idleScreensaverTask)
     }
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         wallpaperExecutor.shutdownNow()
         super.onDestroy()
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        resetIdleScreensaverTimer()
+    }
+
+    private fun resetIdleScreensaverTimer() {
+        handler.removeCallbacks(idleScreensaverTask)
+        if (screensaverTimeoutMinutes > 0 && page == "home" && !isFinishing) handler.postDelayed(idleScreensaverTask, screensaverTimeoutMinutes * 60_000L)
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
@@ -860,158 +878,213 @@ class MainActivity : Activity() {
     private fun showControlCenter() {
         if (page != "home") return
         root.findViewWithTag<View>("rftv-control-center")?.let { root.removeView(it) }
+
         val overlay = FrameLayout(this).apply {
             tag = "rftv-control-center"
-            setBackgroundColor(Color.argb(RftvDesignSystem.GlassAlpha.CONTROL_CENTER_SCRIM, 0, 0, 0))
+            setBackgroundColor(Color.argb(112, 3, 8, 24))
             isFocusable = false
             isFocusableInTouchMode = false
-            setOnClickListener { closeControlCenter() }
         }
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = RftvDesignSystem.controlCenterSurface(this@MainActivity)
-            setPadding(dp(RftvDesignSystem.Spacing.MD + 4), dp(RftvDesignSystem.Spacing.CONTROL_PANEL_TOP), dp(RftvDesignSystem.Spacing.MD + 4), dp(RftvDesignSystem.Spacing.CONTROL_PANEL_BOTTOM))
-            elevation = dp(RftvDesignSystem.Elevation.PANEL_DP).toFloat()
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(Color.argb(224, 35, 75, 132), Color.argb(238, 7, 19, 39), Color.argb(232, 10, 28, 43))
+            ).apply {
+                cornerRadius = dp(34).toFloat()
+                setStroke(dp(1), Color.argb(125, 190, 226, 255))
+            }
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+            elevation = dp(28).toFloat()
             isFocusable = false
-            isFocusableInTouchMode = false
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
         }
-        val header = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        header.addView(TextView(this).apply {
+        val header = TextView(this).apply {
             text = "Пункт управления"
-            textSize = RftvDesignSystem.Size.CONTROL_CENTER_TITLE_SP
-            typeface = Typeface.DEFAULT_BOLD
+            textSize = 23f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(Color.WHITE)
-        }, LinearLayout.LayoutParams(0, dp(42), 1f))
-        val closeButton = glassButton("✕") { closeControlCenter() }
-        header.addView(closeButton, LinearLayout.LayoutParams(dp(48), dp(42)))
-        card.addView(header)
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(6), 0, 0, dp(12))
+        }
+        card.addView(header, LinearLayout.LayoutParams(-1, dp(48)))
 
-        // Keep the title fixed while the controls scroll inside the panel.
-        // The previous wrap-content card extended below the screen, so DPAD_DOWN
-        // could no longer reach the lower controls reliably on Android TV.
         val scroll = ScrollView(this).apply {
             isFillViewport = true
             isFocusable = false
-            isFocusableInTouchMode = false
+            isVerticalScrollBarEnabled = false
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
             clipToPadding = false
-            isVerticalScrollBarEnabled = false
         }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             isFocusable = false
-            isFocusableInTouchMode = false
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
         }
 
-        val themeTitle = TextView(this).apply {
-            text = "ВНЕШНИЙ ВИД"
-            textSize = RftvDesignSystem.Size.CARD_LABEL_SP
-            letterSpacing = .08f
-            setTextColor(Color.LTGRAY)
-            setPadding(0, dp(12), 0, dp(7))
-        }
-        content.addView(themeTitle)
-        val themes = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            background = roundedGlass(Color.argb(RftvDesignSystem.GlassAlpha.CONTROL_TILE, 255, 255, 255), RftvDesignSystem.Radius.CARD)
-            setPadding(dp(4), dp(4), dp(4), dp(4))
-        }
-        val themeItems = mutableListOf<TextView>()
-        listOf("Светлая", "Тёмная", "Авто").forEachIndexed { index, label ->
-            val selected = themeMode == index
-            val item = TextView(this).apply {
-                text = label
-                textSize = RftvDesignSystem.Size.CARD_BODY_SP
-                gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
-                background = if (selected) roundedGlass(Color.argb(RftvDesignSystem.GlassAlpha.PALETTE_SELECTED, 255, 255, 255), RftvDesignSystem.Radius.CONTROL)
-                    else roundedGlass(Color.TRANSPARENT, RftvDesignSystem.Radius.CONTROL).apply { setStroke(0, Color.TRANSPARENT) }
+        fun makeTile(icon: String, title: String, subtitle: String, action: () -> Unit): LinearLayout {
+            val tile = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(18), dp(10), dp(18), dp(10))
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(Color.argb(92, 83, 157, 224), Color.argb(72, 8, 25, 43))
+                ).apply {
+                    cornerRadius = dp(32).toFloat()
+                    setStroke(dp(1), Color.argb(115, 190, 226, 255))
+                }
                 isFocusable = true
                 isFocusableInTouchMode = true
+                isClickable = true
                 setOnFocusChangeListener { view, focused ->
-                    view.background = roundedGlass(
-                        if (focused) Color.argb(RftvDesignSystem.GlassAlpha.THEME_FOCUSED, 255, 255, 255) else if (themeMode == index) Color.argb(RftvDesignSystem.GlassAlpha.THEME_SELECTED, 255, 255, 255) else Color.TRANSPARENT,
-                        12
-                    )
+                    view.background = GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        if (focused) intArrayOf(Color.rgb(91, 185, 247), Color.rgb(73, 145, 225))
+                        else intArrayOf(Color.argb(92, 83, 157, 224), Color.argb(72, 8, 25, 43))
+                    ).apply {
+                        cornerRadius = dp(32).toFloat()
+                        setStroke(dp(2), if (focused) Color.WHITE else Color.argb(115, 190, 226, 255))
+                    }
+                    val label = (view as LinearLayout).getChildAt(1) as LinearLayout
+                    for (i in 0 until label.childCount) {
+                        (label.getChildAt(i) as? TextView)?.setTextColor(if (focused) Color.rgb(8, 34, 63) else Color.WHITE)
+                    }
+                    RftvDesignSystem.applyFocusScale(view, focused, 1.025f)
                 }
-                setOnClickListener {
-                    themeMode = index
-                    prefs.edit().putInt("theme_mode", themeMode).apply()
-                    applyWallpaper()
-                    showControlCenter()
-                }
+                setOnClickListener { action() }
             }
-            themeItems.add(item)
-            themes.addView(item, LinearLayout.LayoutParams(0, dp(42), 1f).apply { leftMargin = dp(2); rightMargin = dp(2) })
+            tile.addView(TextView(this).apply {
+                text = icon
+                textSize = 29f
+                gravity = Gravity.CENTER
+                setTextColor(Color.rgb(95, 190, 255))
+            }, LinearLayout.LayoutParams(dp(56), dp(54)))
+            val labels = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL }
+            labels.addView(TextView(this).apply {
+                text = title
+                textSize = 18f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                setTextColor(Color.WHITE)
+                maxLines = 1
+            })
+            labels.addView(TextView(this).apply {
+                text = subtitle
+                textSize = 14f
+                setTextColor(Color.rgb(195, 219, 243))
+                maxLines = 1
+            })
+            tile.addView(labels, LinearLayout.LayoutParams(0, -2, 1f))
+            return tile
         }
-        content.addView(themes)
 
-        val grid = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        val wifi = controlTile("Wi-Fi", "Настройки сети") { openSettings(Settings.ACTION_WIFI_SETTINGS) }
-        val bluetooth = controlTile("Bluetooth", "Подключения") { openSettings(Settings.ACTION_BLUETOOTH_SETTINGS) }
-        grid.addView(wifi, weightedParams())
-        grid.addView(bluetooth, weightedParams().apply { leftMargin = dp(8) })
-        content.addView(grid, LinearLayout.LayoutParams(-1, dp(78)).apply { topMargin = dp(10) })
-
-        val memory = controlTile("Память · " + readMemory().first, "Доступно: " + readMemory().second) {
-            openSettings(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)
+        val wifi = makeTile("◉", "Wi‑Fi", "Открыть настройки сети") {
+            openSettings(Settings.ACTION_WIFI_SETTINGS)
         }
-        val wallpapers = controlTile("Обои", "День №\${wallpaperLight + 1} · ночь №\${wallpaperDark + 1}") {
-            showWallpaperQuickSettings()
+        val bluetooth = makeTile("ᛒ", "Bluetooth", "Подключение устройств") {
+            openBluetoothPairing()
         }
-        val catalog = controlTile("Каталог приложений", "\${installedApps.count { it.packageName !in hiddenPackages }} приложений · запуск и управление") {
-            showAppCatalog()
+        val themeLabels = arrayOf("Светлая", "Тёмная", "Авто")
+        val theme = makeTile("◐", "Тема", themeLabels[themeMode.coerceIn(0, 2)]) {
+            themeMode = (themeMode + 1) % 3
+            prefs.edit().putInt("theme_mode", themeMode).apply()
+            applyWallpaper()
+            showControlCenter()
         }
-        val launcherSettings = controlTile("Настройки RFTV", "Персонализация и приложения") {
+        val ramInfo = readRamUsage()
+        val ram = makeTile("▥", "RAM · ${ramInfo.first}%", "Используется из ${ramInfo.second}") {
+            System.runFinalization()
+            Runtime.getRuntime().gc()
+            handler.postDelayed({
+                if (root.findViewWithTag<View>("rftv-control-center") != null) showControlCenter()
+            }, 500)
+        }
+        val saver = makeTile("◷", "Запуск заставки", "Погода · курсы валют · новости") {
+            showScreensaver()
+        }
+        val launcherSettings = makeTile("⚙", "Настройки лаунчера", "Оформление · Dock · заставка") {
             showLauncherSettings()
         }
-        val systemSettings = controlTile("Системные настройки", "Настройки устройства") {
+        val tvSettings = makeTile("▣", "Настройки ТВ", "Системные настройки устройства") {
             openSettings(Settings.ACTION_SETTINGS)
         }
-        listOf(memory, wallpapers, catalog, launcherSettings, systemSettings).forEach { tile ->
-            content.addView(tile, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
+
+        fun addFull(tile: View) {
+            content.addView(tile, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
+        }
+        fun addPair(left: View, right: View) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            row.addView(left, LinearLayout.LayoutParams(0, dp(76), 1f).apply { rightMargin = dp(6) })
+            row.addView(right, LinearLayout.LayoutParams(0, dp(76), 1f).apply { leftMargin = dp(6) })
+            content.addView(row, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
         }
 
-        // Explicit focus graph: horizontal movement stays within each row;
-        // vertical movement follows the visual rows and never escapes to the
-        // home toolbar behind the overlay.
-        val focusables = (themeItems + listOf(wifi, bluetooth, memory, wallpapers, catalog, launcherSettings, systemSettings))
-        focusables.forEach { it.id = View.generateViewId() }
-        fun link(view: View, up: View, down: View, left: View, right: View) {
-            view.nextFocusUpId = up.id
-            view.nextFocusDownId = down.id
-            view.nextFocusLeftId = left.id
-            view.nextFocusRightId = right.id
-        }
-        val themeMiddle = themeItems[1]
-        link(themeItems[0], themeItems[0], wifi, themeItems[0], themeItems[1])
-        link(themeItems[1], themeItems[1], wifi, themeItems[0], themeItems[2])
-        link(themeItems[2], themeItems[2], bluetooth, themeItems[1], themeItems[2])
-        link(wifi, themeMiddle, memory, wifi, bluetooth)
-        link(bluetooth, themeMiddle, memory, wifi, bluetooth)
-        val verticalItems = listOf(memory, wallpapers, catalog, launcherSettings, systemSettings)
-        verticalItems.forEachIndexed { index, view ->
-            val up = if (index == 0) wifi else verticalItems[index - 1]
-            val down = verticalItems.getOrNull(index + 1) ?: view
-            link(view, up, down, view, view)
+        addFull(wifi)
+        addFull(bluetooth)
+        addPair(theme, ram)
+        addFull(saver)
+        addPair(launcherSettings, tvSettings)
+
+        val focusRows = listOf(
+            listOf(wifi),
+            listOf(bluetooth),
+            listOf(theme, ram),
+            listOf(saver),
+            listOf(launcherSettings, tvSettings)
+        )
+        focusRows.flatten().forEach { it.id = View.generateViewId() }
+        focusRows.forEachIndexed { rowIndex, row ->
+            row.forEachIndexed { columnIndex, view ->
+                val sameRowNeighbor = row.getOrNull(if (columnIndex == 0) 1 else columnIndex - 1)
+                val upperRow = focusRows.getOrNull(rowIndex - 1)
+                val lowerRow = focusRows.getOrNull(rowIndex + 1)
+                view.nextFocusLeftId = if (columnIndex > 0) row[columnIndex - 1].id else view.id
+                view.nextFocusRightId = if (columnIndex < row.lastIndex) row[columnIndex + 1].id else view.id
+                view.nextFocusUpId = upperRow?.getOrNull(columnIndex.coerceAtMost((upperRow.size - 1).coerceAtLeast(0)))?.id ?: view.id
+                view.nextFocusDownId = lowerRow?.getOrNull(columnIndex.coerceAtMost((lowerRow.size - 1).coerceAtLeast(0)))?.id ?: view.id
+            }
         }
 
         scroll.addView(content)
         card.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         overlay.addView(card, FrameLayout.LayoutParams(
-            (resources.displayMetrics.widthPixels * .38f).toInt(),
-            (resources.displayMetrics.heightPixels * .88f).toInt(),
+            (resources.displayMetrics.widthPixels * .43f).toInt(),
+            (resources.displayMetrics.heightPixels * .91f).toInt(),
             Gravity.TOP or Gravity.RIGHT
-        ).apply { rightMargin = dp(24); topMargin = dp(24) })
+        ).apply { rightMargin = dp(22); topMargin = dp(18) })
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
+        overlay.post { wifi.requestFocus() }
+    }
 
-        // Start on the selected theme. Focus is restored to the gear button
-        // when the panel closes.
-        overlay.post {
-            themeItems[themeMode.coerceIn(0, 2)].requestFocus()
+    private fun readRamUsage(): Pair<Int, String> {
+        val manager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        val memory = ActivityManager.MemoryInfo()
+        manager.getMemoryInfo(memory)
+        val total = memory.totalMem.coerceAtLeast(1L)
+        val used = (total - memory.availMem).coerceAtLeast(0L)
+        val percent = ((used * 100L) / total).toInt().coerceIn(0, 100)
+        val usedGb = String.format(Locale.getDefault(), "%.1f", used / 1024.0 / 1024.0 / 1024.0)
+        val totalGb = String.format(Locale.getDefault(), "%.1f", total / 1024.0 / 1024.0 / 1024.0)
+        return percent to "$usedGb / $totalGb ГБ"
+    }
+
+    private fun openBluetoothPairing() {
+        try {
+            startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+        } catch (_: Exception) {
+            try {
+                startActivity(Intent(Settings.ACTION_SETTINGS))
+            } catch (_: Exception) {
+                Toast.makeText(this, "Настройки Bluetooth недоступны", Toast.LENGTH_SHORT).show()
+            }
         }
+    }
+
+    private fun showScreensaver() {
+        ScreensaverActivity.launch(this)
     }
 
     private fun closeControlCenter() {
@@ -1319,6 +1392,16 @@ class MainActivity : Activity() {
             body.addView(controlTile("О системе", "Версия, обновления и OTA") {
                 showAboutSystem()
             }, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(8) })
+
+            body.addView(sectionLabel("ЗАСТАВКА · запуск после бездействия"))
+            listOf(0, 5, 15, 30, 60).forEach { minutes ->
+                val label = if (minutes == 0) "Отключено" else "$minutes минут"
+                body.addView(controlTile(if (screensaverTimeoutMinutes == minutes) "✓  $label" else label, "Автоматический запуск экрана ожидания") {
+                    screensaverTimeoutMinutes = minutes
+                    prefs.edit().putInt("screensaver_timeout_minutes", minutes).apply()
+                    showLauncherSettings()
+                }, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(6) })
+            }
 
             body.addView(sectionLabel("Ширина Dock · " + dockWidthPercent + "%"))
             body.addView(settingSlider(65, 100, dockWidthPercent) { value ->

@@ -52,6 +52,9 @@ jobs:
             echo "::warning::No unit test source files are present yet; build and APK metadata checks will run."
           fi
 
+      - name: Run Android lint
+        run: gradle --no-daemon --stacktrace lintDebug
+
       - name: Build Debug for CI diagnostics only
         run: gradle --no-daemon --stacktrace assembleDebug
 

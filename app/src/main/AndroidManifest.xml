@@ -11,10 +11,17 @@
 
     <application
         android:allowBackup="false"
+        android:banner="@drawable/rftv_banner"
         android:label="RFTV Launcher"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:usesCleartextTraffic="false">
+
+        <activity
+            android:name=".ScreensaverActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize"
+            android:exported="false"
+            android:screenOrientation="landscape" />
 
         <activity
             android:name=".MainActivity"
