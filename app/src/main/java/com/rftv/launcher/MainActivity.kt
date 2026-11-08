@@ -1647,10 +1647,17 @@ class MainActivity : Activity() {
                     val state = if (isPackageDisabled(app.packageName, app.enabled)) "Отключено" else "Включено"
                     val category = if (isSystem) "Системное" else "Пользовательское"
                     val (riskLabel, riskColor) = risk(app.packageName)
-                    val card = infoCard(label, app.packageName,
-                        "$category · $state\nРиск: $riskLabel · только диагностика")
-                    card.background = roundedGlass(Color.argb(RftvDesignSystem.GlassAlpha.RISK_CARD, riskColor.red(), riskColor.green(), riskColor.blue()), RftvDesignSystem.Radius.CONTROL)
-                    list.addView(card)
+                    val card = controlTile(label, app.packageName,
+                        "$category · $state · $riskLabel · ОК — подробности") {
+                        showTvPackageDetails(app)
+                    }
+                    card.background = roundedGlass(
+                        Color.argb(RftvDesignSystem.GlassAlpha.RISK_CARD, riskColor.red(), riskColor.green(), riskColor.blue()),
+                        RftvDesignSystem.Radius.CONTROL
+                    )
+                    list.addView(card, LinearLayout.LayoutParams(-1, dp(66)).apply {
+                        bottomMargin = dp(7)
+                    })
                 }
             }
             search.addTextChangedListener(object : android.text.TextWatcher {
@@ -1674,6 +1681,70 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(10) })
             body.addView(glassButton("Назад к данным ТВ") { showTvDeviceInfo() },
                 LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
+        }
+    }
+
+    private fun showTvPackageDetails(app: ApplicationInfo) {
+        val packageInfo = try {
+            packageManager.getPackageInfo(app.packageName, PackageManager.GET_PERMISSIONS)
+        } catch (_: Exception) {
+            showTvPackages()
+            return
+        }
+        val requested = packageInfo.requestedPermissions ?: emptyArray()
+        val permissions = requested.map { permission ->
+            val granted = packageManager.checkPermission(permission, app.packageName) == PackageManager.PERMISSION_GRANTED
+            val permissionLabel = try {
+                packageManager.getPermissionInfo(permission, 0).loadLabel(packageManager).toString()
+            } catch (_: Exception) {
+                permission.substringAfterLast(".")
+            }
+            Triple(permission, granted, permissionLabel)
+        }
+        val grantedCount = permissions.count { it.second }
+        val deniedCount = permissions.size - grantedCount
+        val appLabel = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
+        val installTime = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+            .format(Date(packageInfo.firstInstallTime))
+        val updateTime = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+            .format(Date(packageInfo.lastUpdateTime))
+
+        showPanel("Пакет · $appLabel") { body ->
+            body.addView(infoCard("ИДЕНТИФИКАЦИЯ", appLabel, app.packageName))
+            body.addView(infoCard(
+                "СОСТОЯНИЕ",
+                if (isPackageDisabled(app.packageName, app.enabled)) "Отключено" else "Включено",
+                (if (app.flags and ApplicationInfo.FLAG_SYSTEM != 0) "Системное приложение" else "Пользовательское приложение") +
+                    "\nUID: ${app.uid}\nУстановлено: $installTime\nОбновлено: $updateTime"
+            ))
+            body.addView(infoCard(
+                "РАЗРЕШЕНИЯ",
+                "${permissions.size} запрошено · $grantedCount выдано · $deniedCount не выдано",
+                "Статус рассчитан по фактической проверке PackageManager. Отсутствие разрешения не означает ошибку приложения."
+            ))
+            if (permissions.isEmpty()) {
+                body.addView(infoCard("Разрешения не запрошены", "Список пуст", "Пакет не объявил permissions в манифесте."))
+            } else {
+                permissions.forEach { (permission, granted, label) ->
+                    body.addView(infoCard(
+                        if (granted) "ВЫДАНО" else "НЕ ВЫДАНО",
+                        label,
+                        permission
+                    ).apply {
+                        background = roundedGlass(
+                            Color.argb(
+                                RftvDesignSystem.GlassAlpha.RISK_CARD,
+                                if (granted) 42 else 150,
+                                if (granted) 150 else 112,
+                                if (granted) 82 else 42
+                            ),
+                            RftvDesignSystem.Radius.CONTROL
+                        )
+                    })
+                }
+            }
+            body.addView(glassButton("Назад к списку пакетов") { showTvPackages() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(10) })
         }
     }
 
