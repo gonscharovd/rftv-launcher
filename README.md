@@ -51,7 +51,7 @@ GitHub Actions builds pushes to main and feature/** branches and pull requests t
 - Glass is approximated with translucent fills and strokes. Real-time background blur is intentionally avoided for the low-memory target device.
 - Brightness, Wi-Fi and Bluetooth entries open Android settings. Direct toggles depend on StarOS permissions and firmware APIs and are not claimed to work universally.
 - RAM is informational. Android controls background process lifecycle; this app does not force-stop arbitrary apps or claim to free RAM by killing protected processes.
-- Theme selection and dock dimensions are persisted. Favourites, per-app ordering, icon sizing and full appearance editor are not implemented yet.
+- Theme selection and dock dimensions are persisted. Favourite apps, moving favourites left/right, hiding apps and restoring hidden apps are implemented. Arbitrary sorting of the full catalogue, drag-and-drop ordering, icon sizing and a full appearance editor are not implemented yet.
 - The screensaver must be selected by the user in Android/StarOS Settings > Display > Screen saver if the firmware exposes DreamService. Some TV firmware builds remove this system feature; this must be verified on the physical Sber TV.
 - Random screensaver photos are served by LoremFlickr and cached locally. The service retains only a small cache to protect internal storage.
 - Device installation, launcher replacement behaviour, remote navigation and performance still require testing on the physical Sber TV.
