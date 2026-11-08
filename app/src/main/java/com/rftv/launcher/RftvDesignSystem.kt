@@ -22,6 +22,9 @@ internal object RftvDesignSystem {
         const val PANEL_GRADIENT_START = -13944498
         const val PANEL_GRADIENT_END = -15656664
         const val PANEL_SURFACE = -266721735
+        const val CONTROL_CENTER_SURFACE = -400873670
+        const val RISK_CRITICAL = -41130
+        const val RISK_REVIEW = -16826
         const val GLASS_STROKE = 0x56FFFFFF
         const val GLASS_FILL = 0x2DFFFFFF
         const val GLASS_FOCUS = 0x78FFFFFF
@@ -39,6 +42,15 @@ internal object RftvDesignSystem {
         const val LG = 22
         const val XL = 32
         const val XXL = 54
+    }
+
+    object GlassAlpha {
+        const val BUTTON = 45
+        const val CONTROL_TILE = 38
+        const val CONTROL_PANEL = 232
+        const val PALETTE_SELECTED = 115
+        const val PALETTE_RESTING = 32
+        const val PALETTE_FOCUSED = 145
     }
 
     object Radius {
@@ -90,6 +102,9 @@ internal object RftvDesignSystem {
 
     fun dockSurface(context: Context): GradientDrawable =
         surface(context, Color.argb(34, 255, 255, 255), Radius.DOCK)
+
+    fun controlCenterSurface(context: Context): GradientDrawable =
+        surface(context, ColorTokens.CONTROL_CENTER_SURFACE, Radius.BUTTON, 72)
 
     fun panelSurface(context: Context): GradientDrawable =
         surface(context, ColorTokens.PANEL_SURFACE, Radius.DOCK, 72)
