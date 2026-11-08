@@ -177,8 +177,14 @@ jobs:
           test "$(jq -r '.prerelease' <<< "$RELEASE_JSON")" = "false"
           CURRENT_SHA="$(jq -r '.assets[] | select(.name == "app-release.apk") | .digest // empty' <<< "$RELEASE_JSON")"
           CURRENT_SIZE="$(jq -r '.assets[] | select(.name == "app-release.apk") | .size // empty' <<< "$RELEASE_JSON")"
-          if [ "$CURRENT_SHA" = "sha256:$EXPECTED_APK_SHA256" ] && [ "$CURRENT_SIZE" = "$EXPECTED_APK_SIZE" ]; then
-            echo "Existing draft already contains this exact verified APK; reusing assets."
+          ASSETS_COMPLETE=true
+          for required_asset in app-release.apk app-release.apk.sha256 apk-metadata.txt signature.txt; do
+            if ! jq -e --arg name "$required_asset" '.assets[] | select(.name == $name)' <<< "$RELEASE_JSON" >/dev/null; then
+              ASSETS_COMPLETE=false
+            fi
+          done
+          if [ "$CURRENT_SHA" = "sha256:$EXPECTED_APK_SHA256" ] && [ "$CURRENT_SIZE" = "$EXPECTED_APK_SIZE" ] && [ "$ASSETS_COMPLETE" = "true" ]; then
+            echo "Existing draft already contains this exact verified APK and all required assets; reusing."
             exit 0
           fi
 
