@@ -597,13 +597,18 @@ class MainActivity : Activity() {
 
     private fun buildDockContent() {
         dockContent.removeAllViews()
-        val favorites = installedApps.filter { it.packageName in favoritePackages && it.packageName !in hiddenPackages }
-        dockContent.addView(buildAppRow(favorites), LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)))
+        val visibleApps = installedApps.filter { it.packageName !in hiddenPackages }
+        val favorites = visibleApps.filter { it.packageName in favoritePackages }
+        // If the user removes every favorite, keep the launcher usable by
+        // showing the complete launchable app list in the first Dock row.
+        val firstRow = favorites.ifEmpty { visibleApps }
+        dockContent.addView(buildAppRow(firstRow), LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)))
         if (dockExpanded) {
-            val allApps = installedApps.filter { it.packageName !in favoritePackages && it.packageName !in hiddenPackages }
+            val firstRowPackages = firstRow.map { it.packageName }.toSet()
+            val allApps = visibleApps.filter { it.packageName !in firstRowPackages }
             dockContent.addView(buildAppRow(allApps), LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)))
         }
-        if (favorites.isEmpty()) {
+        if (firstRow.isEmpty()) {
             val empty = TextView(this).apply {
                 text = "Приложения появятся здесь после установки"
                 textSize = 14f
