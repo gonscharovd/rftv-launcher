@@ -33,7 +33,14 @@ jobs:
           SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
+          set +e
           yes | "$SDKMANAGER" --licenses >/dev/null
+          LICENSE_STATUS=(${PIPESTATUS[@]})
+          set -e
+          if [ "${LICENSE_STATUS[1]}" -ne 0 ]; then
+            echo "sdkmanager --licenses failed with exit code ${LICENSE_STATUS[1]}" >&2
+            exit "${LICENSE_STATUS[1]}"
+          fi
           "$SDKMANAGER" --install "build-tools;35.0.0"
 
       - name: Verify artifact before publication
