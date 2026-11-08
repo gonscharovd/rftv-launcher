@@ -6,6 +6,7 @@
 
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:allowBackup="false"
@@ -31,6 +32,9 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+        <receiver
+            android:name=".OtaInstallReceiver"
+            android:exported="false" />
         <service
             android:name=".RftvDreamService"
             android:label="RFTV Экран ожидания"
