@@ -808,7 +808,8 @@ class MainActivity : Activity() {
                     downloadOta(apkUrl) { value, message ->
                         otaProgress = value
                         otaStatus = message
-                        if (!isFinishing) showAboutSystem()
+                        status.text = message
+                        progress.progress = value
                     }
                 }
             }, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
@@ -895,6 +896,7 @@ class MainActivity : Activity() {
         } catch (e: Exception) {
             otaStatus = "Не удалось запустить установку: ${e.message ?: "ошибка"}"
         }
+        handler.post { if (!isFinishing && page == "panel") showAboutSystem() }
     }
 
     private fun showLauncherSettings() {
