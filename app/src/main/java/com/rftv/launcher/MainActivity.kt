@@ -902,7 +902,8 @@ class MainActivity : Activity() {
 
     private fun showAboutSystem() {
         showPanel("О системе") { body ->
-            body.addView(infoCard("RFTV LAUNCHER", "Версия 0.1.0", "Android TV · package com.rftv.launcher"))
+            val installedVersion = packageManager.getPackageInfo(packageName, 0).versionName ?: "неизвестно"
+            body.addView(infoCard("RFTV LAUNCHER", "Версия $installedVersion", "Android TV · package com.rftv.launcher"))
             val status = TextView(this).apply {
                 text = otaStatus
                 textSize = 14f
@@ -916,33 +917,51 @@ class MainActivity : Activity() {
             }
             body.addView(progress, LinearLayout.LayoutParams(-1, dp(12)).apply { bottomMargin = dp(12) })
             body.addView(glassButton("Проверить обновления GitHub") {
-                status.text = "Проверяем последнюю версию…"
+                status.text = "Проверяем опубликованные релизы…"
                 Thread {
                     try {
-                        val connection = (URL("https://api.github.com/repos/gonscharovd/rftv-launcher/releases/latest").openConnection() as java.net.HttpURLConnection).apply {
+                        val connection = (URL("https://api.github.com/repos/gonscharovd/rftv-launcher/releases?per_page=10").openConnection() as java.net.HttpURLConnection).apply {
                             connectTimeout = 10000
                             readTimeout = 15000
                             setRequestProperty("Accept", "application/vnd.github+json")
                             setRequestProperty("User-Agent", "RFTV-Launcher")
                         }
-                        val json = try {
-                            if (connection.responseCode !in 200..299) throw IllegalStateException("GitHub HTTP ${connection.responseCode}")
-                            org.json.JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
-                        } finally { connection.disconnect() }
-                        val tag = json.optString("tag_name", "неизвестно")
-                        val url = json.optString("html_url", "https://github.com/gonscharovd/rftv-launcher/releases")
-                        val assets = json.optJSONArray("assets")
-                        var apkUrl: String? = null
-                        if (assets != null) for (i in 0 until assets.length()) {
-                            val asset = assets.getJSONObject(i)
-                            if (asset.optString("name").endsWith(".apk", true)) {
-                                apkUrl = asset.optString("browser_download_url")
-                                break
+                        val releases = try {
+                            if (connection.responseCode !in 200..299) {
+                                throw IllegalStateException("GitHub HTTP ${connection.responseCode}")
                             }
+                            org.json.JSONArray(connection.inputStream.bufferedReader().use { it.readText() })
+                        } finally { connection.disconnect() }
+
+                        val release = (0 until releases.length())
+                            .map { releases.getJSONObject(it) }
+                            .firstOrNull { !it.optBoolean("draft", true) && !it.optBoolean("prerelease", false) }
+
+                        if (release == null) {
+                            otaStatus = "На GitHub пока нет опубликованных релизов. OTA станет доступно после публикации первого релиза."
+                            prefs.edit().remove("ota_url").putString("ota_release_url", "https://github.com/gonscharovd/rftv-launcher/releases").remove("ota_tag").apply()
+                        } else {
+                            val tag = release.optString("tag_name", "неизвестно")
+                            val url = release.optString("html_url", "https://github.com/gonscharovd/rftv-launcher/releases")
+                            val assets = release.optJSONArray("assets")
+                            var apkUrl: String? = null
+                            if (assets != null) for (i in 0 until assets.length()) {
+                                val asset = assets.getJSONObject(i)
+                                if (asset.optString("name").endsWith(".apk", true)) {
+                                    apkUrl = asset.optString("browser_download_url").takeIf { it.isNotBlank() }
+                                    break
+                                }
+                            }
+                            val installed = packageManager.getPackageInfo(packageName, 0).versionName ?: "0.0.0"
+                            val remote = tag.removePrefix("v")
+                            otaStatus = when {
+                                compareVersionStrings(remote, installed) <= 0 -> "Установлена актуальная версия $installed"
+                                apkUrl == null -> "Доступна версия $tag, но APK в релизе не найден"
+                                else -> "Доступно обновление $tag · установлена $installed"
+                            }
+                            prefs.edit().putString("ota_url", if (compareVersionStrings(remote, installed) > 0) apkUrl else null)
+                                .putString("ota_release_url", url).putString("ota_tag", tag).apply()
                         }
-                        otaStatus = if (tag == "v0.1.0" || tag == "0.1.0") "Установлена последняя версия $tag"
-                            else "Доступна версия $tag" + if (apkUrl == null) " · APK в релизе не найден" else " · APK доступен"
-                        prefs.edit().putString("ota_url", apkUrl).putString("ota_release_url", url).putString("ota_tag", tag).apply()
                     } catch (e: Exception) {
                         otaStatus = "Не удалось проверить GitHub: ${e.message ?: "ошибка сети"}"
                     }
@@ -971,6 +990,17 @@ class MainActivity : Activity() {
             body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
                 LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(10) })
         }
+    }
+
+    private fun compareVersionStrings(first: String, second: String): Int {
+        val a = Regex("\\d+").findAll(first).map { it.value.toIntOrNull() ?: 0 }.toList()
+        val b = Regex("\\d+").findAll(second).map { it.value.toIntOrNull() ?: 0 }.toList()
+        for (index in 0 until maxOf(a.size, b.size)) {
+            val left = a.getOrElse(index) { 0 }
+            val right = b.getOrElse(index) { 0 }
+            if (left != right) return left.compareTo(right)
+        }
+        return 0
     }
 
     private fun downloadOta(address: String, update: (Int, String) -> Unit) {
