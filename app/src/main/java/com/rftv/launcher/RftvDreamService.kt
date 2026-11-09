@@ -240,10 +240,10 @@ class RftvDreamService : DreamService() {
         ratesText?.text = data.rates.ifBlank { "Курсы ЦБ РФ пока недоступны" }
         weatherText?.text = data.weather.ifBlank { "Погодные данные пока недоступны" }
         russiaText?.text = data.russia.takeIf { it.isNotEmpty() }
-            ?.joinToString("\\n", prefix = "• ") { it }
+            ?.joinToString("\n", prefix = "• ") { it }
             ?: "Российская лента пока недоступна"
         worldText?.text = data.world.takeIf { it.isNotEmpty() }
-            ?.joinToString("\\n", prefix = "• ") { it }
+            ?.joinToString("\n", prefix = "• ") { it }
             ?: "Мировая лента пока недоступна"
     }
 
