@@ -1390,18 +1390,19 @@ class MainActivity : Activity() {
             })
         }
 
-        addFull(wifi)
-        addFull(bluetooth)
+        content.addView(sectionLabel("ПОДКЛЮЧЕНИЯ"))
+        addPair(wifi, bluetooth)
+        content.addView(sectionLabel("СИСТЕМА"))
         addPair(theme, ram)
-        addFull(saver)
-        addPair(launcherSettings, tvSettings)
+        content.addView(sectionLabel("БЫСТРЫЕ ДЕЙСТВИЯ"))
+        addPair(saver, launcherSettings)
+        addFull(tvSettings)
 
         val focusRows = listOf(
-            listOf(wifi),
-            listOf(bluetooth),
+            listOf(wifi, bluetooth),
             listOf(theme, ram),
-            listOf(saver),
-            listOf(launcherSettings, tvSettings)
+            listOf(saver, launcherSettings),
+            listOf(tvSettings)
         )
         focusRows.flatten().forEach { it.id = View.generateViewId() }
         focusRows.forEachIndexed { rowIndex, row ->
