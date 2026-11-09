@@ -2671,11 +2671,11 @@ class MainActivity : Activity() {
                         isFocusable = true
                         isFocusableInTouchMode = true
                         isChecked = !disabled
-                        isEnabled = channelReady && if (disabled) {
+                        isEnabled = channelReady && (if (disabled) {
                             owned != null
                         } else {
                             !protected && owned == null
-                        }
+                        })
                         contentDescription = if (owned != null) "Восстановить ${app.packageName}" else "Отключить ${app.packageName}"
                     }
                     toggle.setOnCheckedChangeListener { button, checked ->
