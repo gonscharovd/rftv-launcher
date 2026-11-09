@@ -18,25 +18,20 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
-import org.json.JSONObject
-import org.xmlpull.v1.XmlPullParser
-import org.xmlpull.v1.XmlPullParserFactory
 
 /** Full-screen dashboard screensaver. Any remote key dismisses it. */
 class ScreensaverActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private val io = Executors.newFixedThreadPool(4)
     private val refreshing = AtomicBoolean(false)
+    private var dashboardFuture: Future<*>? = null
     private lateinit var clock: TextView
     private lateinit var date: TextView
     private lateinit var rates: TextView
@@ -45,14 +40,6 @@ class ScreensaverActivity : Activity() {
     private lateinit var worldList: LinearLayout
     private lateinit var wallpaper: ImageView
     private var alive = false
-
-    private data class DashboardData(
-        val weather: String,
-        val rates: String,
-        val russia: List<String>,
-        val world: List<String>,
-        val updatedAt: Long
-    )
 
     private val tick = object : Runnable {
         override fun run() {
@@ -95,8 +82,11 @@ class ScreensaverActivity : Activity() {
 
     override fun onPause() {
         alive = false
+        dashboardFuture?.cancel(true)
+        dashboardFuture = null
+        refreshing.set(false)
         handler.removeCallbacksAndMessages(null)
-        super.onPause()
+        super.onPause
     }
 
     override fun onDestroy() {
@@ -153,7 +143,7 @@ class ScreensaverActivity : Activity() {
         val clockCard = glassCard().apply { orientation = LinearLayout.VERTICAL }
         clock = TextView(this).apply {
             text = "00:00"
-            textSize = 62f
+            textSize = RftvDesignSystem.Size.SCREENSAVER_CLOCK_TEXT_SP
             letterSpacing = -0.045f
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(Color.WHITE)
@@ -332,163 +322,36 @@ class ScreensaverActivity : Activity() {
         }
     }
 
-    private fun readCachedDashboard(): DashboardData {
-        val cache = getSharedPreferences("screensaver_cache", MODE_PRIVATE)
-        return DashboardData(
-            cache.getString("weather", "") ?: "",
-            cache.getString("rates", "") ?: "",
-            (cache.getString("russia", "") ?: "").split("\n").filter { it.isNotBlank() },
-            (cache.getString("world", "") ?: "").split("\n").filter { it.isNotBlank() },
-            cache.getLong("dashboard_at", 0L)
-        )
-    }
+    private fun readCachedDashboard(): ScreensaverDashboardRepository.Snapshot =
+        ScreensaverDashboardRepository.readCached(this)
 
-    private fun renderDashboard(data: DashboardData) {
+    private fun renderDashboard(data: ScreensaverDashboardRepository.Snapshot) {
         if (!::weather.isInitialized) return
-        weather.text = data.weather.ifBlank { "Погодные данные загружаются…" }
-        rates.text = data.rates.ifBlank { "Курсы ЦБ РФ загружаются…" }
+        weather.text = data.weather.ifBlank { "Погодные данные пока недоступны" }
+        rates.text = data.rates.ifBlank { "Курсы ЦБ РФ пока недоступны" }
         addNewsItems(russiaList, data.russia, "Российская лента пока недоступна")
         addNewsItems(worldList, data.world, "Мировая лента пока недоступна")
     }
 
     private fun loadDashboard(force: Boolean = false) {
         if (!refreshing.compareAndSet(false, true)) return
-        val cached = readCachedDashboard()
-        if (!force && cached.updatedAt > 0L && System.currentTimeMillis() - cached.updatedAt < 15 * 60_000L) {
+        if (!force && ScreensaverDashboardRepository.isFresh(this)) {
             refreshing.set(false)
             return
         }
-        val weatherResult = AtomicReference(cached.weather)
-        val ratesResult = AtomicReference(cached.rates)
-        val russiaResult = AtomicReference(cached.russia)
-        val worldResult = AtomicReference(cached.world)
-        val remaining = AtomicInteger(4)
-
-        fun completed() {
-            if (remaining.decrementAndGet() != 0) return
-            val next = DashboardData(
-                weatherResult.get().ifBlank { cached.weather },
-                ratesResult.get().ifBlank { cached.rates },
-                russiaResult.get().ifEmpty { cached.russia },
-                worldResult.get().ifEmpty { cached.world },
-                System.currentTimeMillis()
-            )
-            val cache = getSharedPreferences("screensaver_cache", MODE_PRIVATE)
-            cache.edit()
-                .putString("weather", next.weather)
-                .putString("rates", next.rates)
-                .putString("russia", next.russia.joinToString("\n"))
-                .putString("world", next.world.joinToString("\n"))
-                .putLong("dashboard_at", next.updatedAt)
-                .apply()
-            refreshing.set(false)
-            handler.post { if (alive && !isFinishing) renderDashboard(next) }
-        }
-
-        io.execute { try { weatherResult.set(fetchWeather()) } catch (_: Exception) { }; completed() }
-        io.execute { try { ratesResult.set(fetchRates()) } catch (_: Exception) { }; completed() }
-        io.execute { try { russiaResult.set(fetchNews("https://ria.ru/export/rss2/archive/index.xml")) } catch (_: Exception) { }; completed() }
-        io.execute { try { worldResult.set(fetchNews("https://news.google.com/rss/headlines/section/topic/WORLD?hl=ru&gl=RU&ceid=RU:ru")) } catch (_: Exception) { }; completed() }
-    }
-
-    private fun fetchWeather(): String {
-        val json = read(
-            "https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026" +
-                "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m" +
-                "&timezone=Asia%2FYekaterinburg"
-        )
-        val current = JSONObject(json).getJSONObject("current")
-        val temp = current.getDouble("temperature_2m").toInt()
-        val feels = current.getDouble("apparent_temperature").toInt()
-        val wind = current.getDouble("wind_speed_10m").toInt()
-        val code = current.getInt("weather_code")
-        val condition = when (code) {
-            0 -> "Ясно"
-            1, 2 -> "Переменная облачность"
-            3 -> "Облачно"
-            45, 48 -> "Туман"
-            in 51..67 -> "Дождь"
-            in 71..77 -> "Снег"
-            in 80..82 -> "Ливень"
-            in 85..86 -> "Снегопад"
-            95, 96, 99 -> "Гроза"
-            else -> "Погодные условия"
-        }
-        return "$temp°C · $condition\nОщущается $feels°C · ветер $wind км/ч"
-    }
-
-    private fun fetchRates(): String {
-        val xml = read("https://www.cbr.ru/scripts/XML_daily.asp", "windows-1251")
-        val parser = XmlPullParserFactory.newInstance().newPullParser()
-        parser.setInput(java.io.StringReader(xml))
-        var currency = ""
-        var value = ""
-        var usd = ""
-        var eur = ""
-        var event = parser.eventType
-        while (event != XmlPullParser.END_DOCUMENT) {
-            if (event == XmlPullParser.START_TAG) {
-                when (parser.name) {
-                    "CharCode" -> currency = parser.nextText()
-                    "Value" -> value = parser.nextText()
+        dashboardFuture = io.submit {
+            try {
+                val next = ScreensaverDashboardRepository.load(this, force)
+                handler.post {
+                    if (alive && !isFinishing) renderDashboard(next)
                 }
-            } else if (event == XmlPullParser.END_TAG && parser.name == "Valute") {
-                if (currency == "USD") usd = value
-                if (currency == "EUR") eur = value
+            } catch (interrupted: InterruptedException) {
+                Thread.currentThread().interrupt()
+            } catch (error: Exception) {
+                android.util.Log.w("RFTVScreensaver", "Dashboard refresh failed", error)
+            } finally {
+                refreshing.set(false)
             }
-            event = parser.next()
-        }
-        if (usd.isBlank() || eur.isBlank()) error("CBR response has no USD/EUR values")
-        return "USD  $usd ₽\nEUR  $eur ₽"
-    }
-
-    private fun fetchNews(feedUrl: String): List<String> {
-        val xml = read(feedUrl)
-        val parser = XmlPullParserFactory.newInstance().newPullParser()
-        parser.setInput(java.io.StringReader(xml))
-        val titles = mutableListOf<String>()
-        var inItem = false
-        var event = parser.eventType
-        while (event != XmlPullParser.END_DOCUMENT && titles.size < 5) {
-            if (event == XmlPullParser.START_TAG) {
-                if (parser.name == "item") inItem = true
-                if (inItem && parser.name == "title") {
-                    val title = parser.nextText().replace(Regex("<[^>]*>"), "").trim()
-                    if (title.isNotBlank() && !title.equals("Новости", ignoreCase = true)) titles.add(title)
-                }
-            } else if (event == XmlPullParser.END_TAG && parser.name == "item") {
-                inItem = false
-            }
-            event = parser.next()
-        }
-        return titles
-    }
-
-    private fun read(address: String, charset: String = "UTF-8"): String {
-        val connection = URL(address).openConnection() as HttpURLConnection
-        return try {
-            connection.connectTimeout = 6_000
-            connection.readTimeout = 8_000
-            connection.instanceFollowRedirects = true
-            connection.useCaches = true
-            connection.setRequestProperty("User-Agent", "RFTV-Launcher/0.8")
-            connection.setRequestProperty("Accept", "application/rss+xml, application/xml, application/json, text/xml, */*")
-            if (connection.responseCode !in 200..299) error("HTTP ${connection.responseCode}")
-            connection.inputStream.bufferedReader(java.nio.charset.Charset.forName(charset)).use { reader ->
-                val result = StringBuilder()
-                val buffer = CharArray(8192)
-                var total = 0
-                while (true) {
-                    val count = reader.read(buffer)
-                    if (count < 0) break
-                    total += count
-                    if (total > 2 * 1024 * 1024) error("Response exceeds 2 MB")
-                    result.append(buffer, 0, count)
-                }
-                result.toString()
-            }
-        } finally {
-            connection.disconnect()
         }
     }
 
