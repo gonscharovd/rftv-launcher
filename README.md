@@ -5,18 +5,18 @@ A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direc
 ## Implemented features
 
 - Native Kotlin Android Views (no Compose and no third-party UI dependencies).
-- Home screen with a large centered clock, date, weather entry point and glass-style settings button.
-- Translucent app dock with focus scaling and a second row revealed with DPAD Down / hidden again with DPAD Up.
+- Home screen with large glass-style clock/date, current Chelyabinsk weather beside the clock, a five-day forecast overlay, and the Control Center entry point.
+- Single-row adaptive translucent app dock with focus scaling and a dedicated All Apps entry; DPAD Down does not expand the dock.
 - Dock and catalog refresh automatically after app installation, removal or replacement, without restarting the launcher; focus and favorite ordering are preserved.
 - 10 photographic daytime and 10 photographic nighttime landscape wallpapers from Unsplash.
 - Separate day/night wallpaper selection and carousel modes, with a configurable 1–60 minute interval.
 - Wallpaper photographs are downloaded over HTTPS on first use and cached in app-private storage. Once cached, they work offline.
-- Control panel with Wi-Fi, Bluetooth, display settings, RAM information, launcher settings and Android settings shortcuts.
+- Full-height right-side glass Control Center with vector icons, grouped Wi-Fi/Bluetooth, theme, RAM, screensaver and settings actions.
 - Dock width and height controls saved locally.
 - TV Cleaner lists user-installed apps and delegates uninstall to Android's confirmation screen.
 - RFTV TV Manager provides system-package inventory and analysis, strict full-device profile matching, a Shizuku UserService bridge, manual per-package cleanup, durable original-state snapshots, operation journal, verified restore and reverse-order rollback.
 - Remote-control focus states and large TV-friendly controls.
-- Both the manual idle screen and Android DreamService keep the displayed date synchronized with the clock.
+- Manual screensaver dashboard uses the active Home wallpaper with a blurred backdrop, clock, CBR currency rates, current weather, and separate Russia/World RSS columns. Android DreamService also uses the active Home wallpaper.
 
 ## Target device
 
@@ -50,14 +50,13 @@ GitHub Actions builds pushes to main and feature/** branches and pull requests t
 
 ## Important prototype limitations
 
-- RFTV now includes an Android DreamService screensaver prototype with hourly random landscape downloads, cached images, Open-Meteo weather for Chelyabinsk, official Bank of Russia USD/EUR rates, and RSS headlines from RIA Novosti and Google News (Russian-language world feed). The initial city and feeds are hard-coded; configuration UI is a follow-up.
+- The manual screensaver and Android DreamService use Open-Meteo weather for Chelyabinsk, official Bank of Russia USD/EUR rates, and RSS feeds from RIA Novosti and Google News (Russian-language world feed). The initial city and feeds are hard-coded. The manual dashboard has the full two-column layout; the system DreamService still needs visual parity work.
 - Wallpaper photos require an internet connection for their first download. The launcher stores each downloaded image privately; previously downloaded wallpapers remain available offline.
 - Liquid Glass surfaces use layered translucent fills, highlights, strokes and a blurred backdrop. Android 9 uses an asynchronously generated, downsampled snapshot blur; newer Android versions may use native blur APIs with a compatible fallback. The effect is evaluated on the target TV rather than disabled by assumption.
 - Brightness, Wi-Fi and Bluetooth entries open Android settings. Direct toggles depend on StarOS permissions and firmware APIs and are not claimed to work universally.
 - RAM is informational. Android controls background process lifecycle; this app does not force-stop arbitrary apps or claim to free RAM by killing protected processes.
 - Theme selection, dock dimensions, favourites, per-app ordering and hidden-app state are persisted. Per-app icon sizing and a full appearance editor are not implemented.
 - The screensaver must be selected by the user in Android/StarOS Settings > Display > Screen saver if the firmware exposes DreamService. Some TV firmware builds remove this system feature; this must be verified on the physical Sber TV.
-- Random screensaver photos are served by LoremFlickr and cached locally. The service retains only a small cache to protect internal storage.
 - Device installation, launcher replacement behaviour, remote navigation and performance still require testing on the physical Sber TV.
 
 ## Cleaner safety
