@@ -1293,13 +1293,25 @@ class MainActivity : Activity() {
         card.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         card.alpha = 0f
         card.translationX = dp(18).toFloat()
+        // Keep the Control Center above the Dock instead of drawing over app
+        // labels. Compute available height from the actual Dock dimensions for
+        // consistent spacing on both 720p and 1080p TV screens.
+        val controlCenterTop = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TOP_INSET)
+        val controlCenterBottomClearance = dp(
+            dockHeightDp + RftvDesignSystem.Spacing.DOCK_BOTTOM_INSET + 14
+        )
+        val controlCenterHeight = (
+            resources.displayMetrics.heightPixels -
+                controlCenterTop -
+                controlCenterBottomClearance
+            ).coerceAtLeast(dp(360))
         overlay.addView(card, FrameLayout.LayoutParams(
             (resources.displayMetrics.widthPixels * RftvDesignSystem.Size.CONTROL_CENTER_WIDTH_FRACTION).toInt(),
-            (resources.displayMetrics.heightPixels * RftvDesignSystem.Size.CONTROL_CENTER_HEIGHT_FRACTION).toInt(),
+            controlCenterHeight,
             Gravity.TOP or Gravity.RIGHT
         ).apply {
             rightMargin = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_RIGHT_INSET)
-            topMargin = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TOP_INSET)
+            topMargin = controlCenterTop
         })
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
         card.animate()
