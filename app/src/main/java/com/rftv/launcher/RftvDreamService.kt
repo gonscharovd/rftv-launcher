@@ -94,7 +94,11 @@ class RftvDreamService : DreamService() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        refreshFuture?.cancel(true)
+        refreshFuture = null
         executor.shutdownNow()
+        if (sessionAcquired) ScreensaverSession.release()
+        sessionAcquired = false
         super.onDestroy()
     }
 
