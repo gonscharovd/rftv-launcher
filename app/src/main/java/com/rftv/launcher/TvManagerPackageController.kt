@@ -118,7 +118,7 @@ internal class TvManagerPackageController(
                 hiddenByDevicePolicy = false
             )
         }
-        val decision = PackageOperationPolicy.canDisable(
+        val policyDecision = PackageOperationPolicy.canDisable(
             PackageOperationPolicy.Candidate(
                 packageName = packageName,
                 isOwnPackage = packageName == appContext.packageName,
@@ -138,6 +138,14 @@ internal class TvManagerPackageController(
             access,
             mode
         )
+        val decision = if (store.activeSnapshot(packageName) != null) {
+            PackageOperationPolicy.Decision(
+                allowed = false,
+                reason = "Для пакета уже существует сохранённая операция RFTV. Сначала проверь и заверши восстановление."
+            )
+        } else {
+            policyDecision
+        }
         return Preview(
             packageName = packageName,
             label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { packageName },
