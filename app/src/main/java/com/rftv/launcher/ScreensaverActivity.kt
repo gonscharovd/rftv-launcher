@@ -194,7 +194,7 @@ class ScreensaverActivity : Activity() {
         weatherCard.addView(cardCaption("ПОГОДА · ЧЕЛЯБИНСК"))
         weather = cardValue("Загрузка текущих условий…")
         weatherCard.addView(weather, LinearLayout.LayoutParams(-1, 0, 1f))
-        topRow.addView(weatherCard, LinearLayout.LayoutParams(0, dp(142), 1f))
+        topRow.addView(weatherCard, LinearLayout.LayoutParams(0, dp(topCardHeightDp), 1f))
         content.addView(topRow, LinearLayout.LayoutParams(-1, dp(topCardHeightDp)))
 
         val newsRow = LinearLayout(this).apply {
