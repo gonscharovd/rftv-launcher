@@ -172,7 +172,7 @@ internal object RftvDesignSystem {
         const val EMPTY_DOCK_TEXT_SP = 14f
         const val EMPTY_DOCK_HEIGHT = 122
         const val HOME_DATE_LEFT_PADDING = 4
-        const val CLOCK_TEXT_SP = 88f
+        const val CLOCK_TEXT_SP = 104f
         const val DATE_TEXT_SP = 18f
         const val PAGE_TITLE_SP = 29f
         const val CONTROL_CENTER_TITLE_SP = 21f
