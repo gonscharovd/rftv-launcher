@@ -134,7 +134,7 @@ class RftvDreamService : DreamService() {
         val clockCard = glassCard()
         val time = TextView(this).apply {
             text = "00:00"
-            textSize = RftvDesignSystem.Size.SCREENSAVER_CLOCK_TEXT_SP
+            textSize = if (screenHeightDp < 760) 52f else RftvDesignSystem.Size.SCREENSAVER_CLOCK_TEXT_SP
             letterSpacing = -0.045f
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
