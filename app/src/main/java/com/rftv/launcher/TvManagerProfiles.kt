@@ -28,16 +28,22 @@ internal object TvManagerProfiles {
         val testedNotes: String,
         val packages: List<PackageEntry>
     ) {
-        fun matches(): Boolean {
-            val boardIdentity = listOf(Build.BOARD, Build.HARDWARE).map { it.lowercase() }
-            val deviceIdentity = listOf(Build.DEVICE, Build.PRODUCT).map { it.lowercase() }
-            val boardMatch = boardTokens.any { token ->
-                boardIdentity.any { it == token.lowercase() }
-            }
-            val deviceMatch = deviceTokens.any { token ->
-                deviceIdentity.any { it == token.lowercase() }
-            }
-            return Build.VERSION.SDK_INT == sdk && boardMatch && deviceMatch
+        fun matches(): Boolean = matchesFingerprint(
+            Build.BOARD, Build.HARDWARE, Build.DEVICE, Build.PRODUCT, Build.VERSION.SDK_INT
+        )
+
+        fun matchesFingerprint(
+            board: String,
+            hardware: String,
+            device: String,
+            product: String,
+            sdk: Int
+        ): Boolean {
+            val boardIdentity = listOf(board, hardware).map { it.lowercase() }
+            val deviceIdentity = listOf(device, product).map { it.lowercase() }
+            val boardMatch = boardTokens.any { token -> boardIdentity.any { it == token.lowercase() } }
+            val deviceMatch = deviceTokens.any { token -> deviceIdentity.any { it == token.lowercase() } }
+            return sdk == this.sdk && boardMatch && deviceMatch
         }
     }
 

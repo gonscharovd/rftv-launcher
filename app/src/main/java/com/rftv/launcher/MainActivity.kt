@@ -99,6 +99,9 @@ class MainActivity : Activity() {
     private var dockExpanded = false
     private var page = "home"
     private var activePanelTitle = ""
+    private var settingsNavigationActive = false
+    private var settingsHubVisible = false
+    private var settingsSelectedIndex = 0
     private var packageReceiverRegistered = false
     private var themeMode = 2 // 0 light, 1 dark, 2 automatic
     private var wallpaperLight = 0
@@ -116,6 +119,7 @@ class MainActivity : Activity() {
     }
     private var otaStatus = "Обновления ещё не проверялись"
     private var otaProgress = 0
+    private var otaInProgress = false
     private val favoritePackages = mutableListOf<String>()
     private val hiddenPackages = mutableSetOf<String>()
 
@@ -329,7 +333,8 @@ class MainActivity : Activity() {
                     return true
                 }
                 if (page == "panel") {
-                    showHome()
+                    if (settingsNavigationActive && !settingsHubVisible) showLauncherSettings()
+                    else showHome()
                     return true
                 }
             }
@@ -585,6 +590,9 @@ class MainActivity : Activity() {
     }
 
     private fun showHome() {
+        settingsNavigationActive = false
+        settingsHubVisible = false
+        settingsSelectedIndex = 0
         page = "home"
         activePanelTitle = ""
         dockExpanded = false
@@ -680,6 +688,7 @@ class MainActivity : Activity() {
         root.addView(dock, dockParams)
 
         val wallpaperButton = glassButton("Обои  ◀   ▶") { nextWallpaper() }.apply {
+            tag = "rftv-wallpaper-button"
             setOnLongClickListener {
                 retryCurrentWallpaper()
                 true
@@ -792,8 +801,10 @@ class MainActivity : Activity() {
         val previouslyFocusedPackage = currentFocus?.tag as? String
         dockExpanded = expanded
         val params = dock.layoutParams as FrameLayout.LayoutParams
-        params.height = dp(if (expanded) max(270, dockHeightDp + 112) else dockHeightDp)
+        val expandedHeight = if (expanded) max(270, dockHeightDp + 112) else dockHeightDp
+        params.height = dp(expandedHeight)
         dock.layoutParams = params
+        updateWallpaperButtonPosition(expandedHeight)
         buildDockContent()
         dock.animate().alpha(1f).setDuration(RftvDesignSystem.Motion.DOCK_REVEAL_DURATION_MS).start()
         if (expanded) {
@@ -1220,112 +1231,117 @@ class MainActivity : Activity() {
             body.addView(status)
             val changelog = prefs.getString("ota_changelog", null)
             if (!changelog.isNullOrBlank()) {
-                body.addView(infoCard("ИЗМЕНЕНИЯ РЕЛИЗА", prefs.getString("ota_tag", "Последний релиз") ?: "Последний релиз", changelog))
+                body.addView(infoCard("ИЗМЕНЕНИЯ ПОСЛЕДНЕГО РЕЛИЗА",
+                    prefs.getString("ota_tag", "Последний релиз") ?: "Последний релиз", changelog))
             }
             val progress = android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
                 max = 100
                 this.progress = otaProgress
             }
             body.addView(progress, LinearLayout.LayoutParams(-1, dp(12)).apply { bottomMargin = dp(12) })
-            body.addView(glassButton("Проверить обновления GitHub") {
-                status.text = "Проверяем опубликованные релизы…"
-                Thread {
-                    try {
-                        val connection = (URL("https://api.github.com/repos/gonscharovd/rftv-launcher/releases?per_page=10").openConnection() as java.net.HttpURLConnection).apply {
-                            connectTimeout = 10000
-                            readTimeout = 15000
-                            setRequestProperty("Accept", "application/vnd.github+json")
-                            setRequestProperty("User-Agent", "RFTV-Launcher")
-                        }
-                        val releases = try {
-                            if (connection.responseCode !in 200..299) {
-                                throw IllegalStateException("GitHub HTTP ${connection.responseCode}")
-                            }
-                            org.json.JSONArray(connection.inputStream.bufferedReader().use { it.readText() })
-                        } finally { connection.disconnect() }
-
-                        val release = (0 until releases.length())
-                            .map { releases.getJSONObject(it) }
-                            .firstOrNull { !it.optBoolean("draft", true) && !it.optBoolean("prerelease", false) }
-
-                        if (release == null) {
-                            otaStatus = "На GitHub пока нет опубликованных стабильных релизов."
-                            prefs.edit().remove("ota_url").remove("ota_sha256").remove("ota_tag")
-                                .remove("ota_changelog")
-                                .putString("ota_release_url", "https://github.com/gonscharovd/rftv-launcher/releases").apply()
-                        } else {
-                            val tag = release.optString("tag_name", "неизвестно")
-                            val url = release.optString("html_url", "https://github.com/gonscharovd/rftv-launcher/releases")
-                            val releaseNotes = release.optString("body", "").take(3000)
-                            val assets = release.optJSONArray("assets")
-                            var apkUrl: String? = null
-                            var apkDigest: String? = null
-                            var apkName: String? = null
-                            if (assets != null) for (i in 0 until assets.length()) {
-                                val asset = assets.getJSONObject(i)
-                                val name = asset.optString("name")
-                                if (name.endsWith(".apk", true)) {
-                                    apkUrl = asset.optString("browser_download_url").takeIf { it.startsWith("https://") }
-                                    apkDigest = asset.optString("digest").removePrefix("sha256:").lowercase(Locale.ROOT)
-                                        .takeIf { it.matches(Regex("[0-9a-f]{64}")) }
-                                    apkName = name
-                                    break
-                                }
-                            }
-                            val installed = packageManager.getPackageInfo(packageName, 0).versionName ?: "0.0.0"
-                            // Release tags/versionName are descriptive and can remain unchanged while
-                            // versionCode increases. Do not hide a candidate based on its tag alone:
-                            // the downloaded APK is checked against the installed versionCode and
-                            // signing certificate before Android's installer can be opened.
-                            otaStatus = when {
-                                apkUrl == null -> "Найдена версия $tag, но корректный HTTPS APK asset не найден"
-                                apkDigest == null -> "Найдена версия $tag, но GitHub не предоставил SHA-256 APK. Установка заблокирована."
-                                else -> "Найдена сборка $tag · установлена $installed. Перед установкой проверим versionCode и подпись APK."
-                            }
-                            prefs.edit()
-                                .putString("ota_url", if (apkUrl != null && apkDigest != null) apkUrl else null)
-                                .putString("ota_sha256", if (apkUrl != null && apkDigest != null) apkDigest else null)
-                                .putString("ota_asset_name", apkName)
-                                .putString("ota_release_url", url)
-                                .putString("ota_tag", tag)
-                                .putString("ota_changelog", releaseNotes)
-                                .apply()
-                        }
-                    } catch (e: Exception) {
-                        val error = e.message ?: "ошибка сети"
-                        otaStatus = if (error.contains("GitHub HTTP 404")) {
-                            "GitHub вернул 404. Проверь доступность публичного репозитория и API."
-                        } else {
-                            "Не удалось проверить GitHub: $error"
-                        }
-                    }
-                    handler.post { if (!isFinishing) showAboutSystem() }
-                }.start()
-            }, LinearLayout.LayoutParams(-1, dp(50)))
             body.addView(glassButton("Скачать и установить обновление") {
-                val apkUrl = prefs.getString("ota_url", null)
-                val expectedSha256 = prefs.getString("ota_sha256", null)
-                if (apkUrl.isNullOrBlank() || expectedSha256.isNullOrBlank()) {
-                    otaStatus = "Сначала проверь обновления. APK без SHA-256 не устанавливается."
-                    showAboutSystem()
-                } else {
-                    downloadOta(apkUrl, expectedSha256) { value, message ->
-                        otaProgress = value
-                        otaStatus = message
-                        status.text = message
-                        progress.progress = value
-                    }
-                }
-            }, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
+                downloadLatestAndInstall(status, progress)
+            }, LinearLayout.LayoutParams(-1, dp(54)))
             body.addView(glassButton("Открыть релизы GitHub") {
                 val url = prefs.getString("ota_release_url", "https://github.com/gonscharovd/rftv-launcher/releases")
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
             }, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
             body.addView(infoCard("ПРОВЕРКИ ПЕРЕД УСТАНОВКОЙ", "SHA-256 · пакет · версия · подпись",
-                "RFTV проверит контрольную сумму, package name, увеличение versionCode, совместимость ABI и совпадение сертификата с установленным приложением. Затем Android запросит подтверждение установки."))
+                "Одна команда: поиск последнего стабильного релиза, загрузка APK, проверка SHA-256, package name, versionCode, ABI и сертификата. Затем Android покажет штатное подтверждение установки."))
             body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
                 LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(10) })
         }
+    }
+
+    private fun downloadLatestAndInstall(
+        statusView: TextView,
+        progressView: android.widget.ProgressBar
+    ) {
+        if (otaInProgress) {
+            statusView.text = "Обновление уже выполняется."
+            return
+        }
+        otaInProgress = true
+        otaProgress = 0
+        otaStatus = "Ищем последний стабильный релиз GitHub…"
+        statusView.text = otaStatus
+        progressView.progress = 0
+
+        Thread {
+            var connection: java.net.HttpURLConnection? = null
+            try {
+                connection = (URL("https://api.github.com/repos/gonscharovd/rftv-launcher/releases/latest")
+                    .openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 10000
+                    readTimeout = 15000
+                    setRequestProperty("Accept", "application/vnd.github+json")
+                    setRequestProperty("User-Agent", "RFTV-Launcher")
+                }
+                if (connection.responseCode !in 200..299) {
+                    throw IllegalStateException("GitHub HTTP ${connection.responseCode}")
+                }
+                val release = org.json.JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                if (release.optBoolean("draft", true) || release.optBoolean("prerelease", false)) {
+                    throw IllegalStateException("GitHub не вернул стабильный релиз")
+                }
+                val tag = release.optString("tag_name", "неизвестно")
+                val releaseUrl = release.optString("html_url",
+                    "https://github.com/gonscharovd/rftv-launcher/releases")
+                val notes = release.optString("body", "").take(3000)
+                val assets = release.optJSONArray("assets")
+                    ?: throw IllegalStateException("В релизе отсутствует список APK")
+                var apkUrl: String? = null
+                var digest: String? = null
+                var assetName: String? = null
+                for (index in 0 until assets.length()) {
+                    val asset = assets.getJSONObject(index)
+                    val name = asset.optString("name")
+                    if (name.equals("app-release.apk", true)) {
+                        apkUrl = asset.optString("browser_download_url")
+                            .takeIf { it.startsWith("https://") }
+                        digest = asset.optString("digest").removePrefix("sha256:")
+                            .lowercase(Locale.ROOT)
+                            .takeIf { it.matches(Regex("[0-9a-f]{64}")) }
+                        assetName = name
+                        break
+                    }
+                }
+                val verifiedApkUrl = apkUrl?.takeIf { it.isNotBlank() }
+                    ?: throw IllegalStateException("В стабильном релизе нет app-release.apk")
+                val verifiedDigest = digest?.takeIf { it.isNotBlank() }
+                    ?: throw IllegalStateException("GitHub не предоставил SHA-256 APK")
+                prefs.edit()
+                    .putString("ota_url", verifiedApkUrl)
+                    .putString("ota_sha256", verifiedDigest)
+                    .putString("ota_asset_name", assetName)
+                    .putString("ota_release_url", releaseUrl)
+                    .putString("ota_tag", tag)
+                    .putString("ota_changelog", notes)
+                    .apply()
+                handler.post {
+                    if (isFinishing || isDestroyed) {
+                        otaInProgress = false
+                        return@post
+                    }
+                    otaStatus = "Найден стабильный релиз $tag · загружаем APK…"
+                    statusView.text = otaStatus
+                    downloadOta(verifiedApkUrl, verifiedDigest) { value, message ->
+                        otaProgress = value
+                        otaStatus = message
+                        statusView.text = message
+                        progressView.progress = value
+                    }
+                }
+            } catch (e: Exception) {
+                handler.post {
+                    otaInProgress = false
+                    otaStatus = "Не удалось начать обновление: ${e.message ?: "ошибка сети"}"
+                    statusView.text = otaStatus
+                }
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
     }
 
     private fun compareVersionStrings(first: String, second: String): Int {
@@ -1461,6 +1477,7 @@ class MainActivity : Activity() {
                 }
             } finally {
                 connection?.disconnect()
+                handler.post { otaInProgress = false }
             }
         }.start()
     }
@@ -1503,31 +1520,230 @@ class MainActivity : Activity() {
     }
 
     private fun showLauncherSettings() {
-        showPanel("Настройки RFTV") { body ->
-            body.addView(infoCard(
-                "НАСТРОЙКИ ЛАУНЧЕРА",
-                "Всё важное — по разделам",
-                "Выбери раздел. Изменения сохраняются автоматически и доступны с пульта."
-            ))
-            body.addView(controlTile("Внешний вид и обои", "Дневные и ночные фотографии · карусель · оформление") {
-                showAppearanceSettings()
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
-            body.addView(controlTile("Dock", "Размер и расположение панели приложений") {
-                showDockSettings()
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
-            body.addView(controlTile("Заставка", "Таймер бездействия и системный экран ожидания") {
-                showScreensaverSettings()
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
-            body.addView(controlTile("Приложения", "Каталог · избранное · скрытые приложения") {
-                showAppSettings()
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
-            body.addView(controlTile("TV Manager", "Информация об устройстве и диагностика пакетов") {
-                showTvManager()
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
-            body.addView(controlTile("О системе и обновления", "Версия RFTV · скачать и установить OTA") {
-                showAboutSystem()
-            }, LinearLayout.LayoutParams(-1, dp(76)))
+        settingsNavigationActive = true
+        settingsHubVisible = true
+        page = "panel"
+        activePanelTitle = "Настройки RFTV"
+        handler.removeCallbacks(clockTask)
+        handler.removeCallbacks(carouselTask)
+        root = FrameLayout(this).apply { setBackgroundColor(RftvDesignSystem.ColorTokens.PANEL_SCRIM) }
+        val shell = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = RftvDesignSystem.panelSurface(this@MainActivity)
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+            elevation = dp(RftvDesignSystem.Elevation.PANEL_DP).toFloat()
         }
+        val sidebar = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = roundedGlass(Color.argb(30, 255, 255, 255), RftvDesignSystem.Radius.CARD)
+            setPadding(dp(14), dp(18), dp(14), dp(14))
+        }
+        sidebar.addView(TextView(this).apply {
+            text = "RFTV"; textSize = 23f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE); setPadding(dp(10), dp(4), dp(10), dp(2))
+        })
+        sidebar.addView(TextView(this).apply {
+            text = "НАСТРОЙКИ"; textSize = 10f; letterSpacing = .14f
+            setTextColor(Color.LTGRAY); setPadding(dp(10), 0, dp(10), dp(18))
+        })
+        val contentColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(4), dp(4), dp(4))
+        }
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+        }
+        header.addView(TextView(this).apply {
+            text = "Настройки"; textSize = 28f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+        }, LinearLayout.LayoutParams(0, dp(56), 1f))
+        header.addView(glassButton("Закрыть  ✕") { showHome() }, LinearLayout.LayoutParams(-2, dp(46)))
+        contentColumn.addView(header)
+        val detailScroll = ScrollView(this).apply { clipToPadding = false }
+        val detail = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(0, dp(12), 0, dp(14))
+        }
+        detailScroll.addView(detail)
+        contentColumn.addView(detailScroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        val sections = listOf(
+            Triple("Обзор", "Быстрый доступ к настройкам", { showLauncherSettings() }),
+            Triple("Внешний вид", "Обои и визуальное оформление", { showAppearanceSettings() }),
+            Triple("Dock", "Размер и пропорции панели", { showDockSettings() }),
+            Triple("Заставка", "Таймер и экран ожидания", { showScreensaverSettings() }),
+            Triple("Приложения", "Каталог, избранное и скрытые", { showAppSettings() }),
+            Triple("TV Manager", "Устройство и анализ пакетов", { showTvManager() }),
+            Triple("О системе", "Версия и OTA-обновления", { showAboutSystem() })
+        )
+        val navItems = mutableListOf<TextView>()
+        var selectedIndex = settingsSelectedIndex
+        fun findFirstFocusable(view: View): View? {
+            if (view.isFocusable && view.isEnabled && view.visibility == View.VISIBLE) return view
+            if (view is ViewGroup) {
+                for (childIndex in 0 until view.childCount) {
+                    val found = findFirstFocusable(view.getChildAt(childIndex))
+                    if (found != null) return found
+                }
+            }
+            return null
+        }
+
+        fun refreshNavigation() {
+            navItems.forEachIndexed { index, item ->
+                val focused = item.hasFocus()
+                item.background = RftvDesignSystem.focusSurface(
+                    this, focused, RftvDesignSystem.Radius.CONTROL, 28, 105, index == selectedIndex
+                )
+                item.setTextColor(if (index == selectedIndex) Color.WHITE else Color.LTGRAY)
+            }
+        }
+        fun renderSection(index: Int) {
+            selectedIndex = index
+            settingsSelectedIndex = index
+            refreshNavigation()
+            detail.removeAllViews()
+            val section = sections[index]
+            val label = when (index) {
+                0 -> "ЦЕНТР НАСТРОЕК"; 1 -> "ВНЕШНИЙ ВИД"; 2 -> "ПАНЕЛЬ ПРИЛОЖЕНИЙ"
+                3 -> "ЭКРАН ОЖИДАНИЯ"; 4 -> "УПРАВЛЕНИЕ ПРИЛОЖЕНИЯМИ"
+                5 -> "ДИАГНОСТИКА УСТРОЙСТВА"; else -> "СИСТЕМА И ОБНОВЛЕНИЯ"
+            }
+            detail.addView(infoCard(label, section.first, section.second))
+            when (index) {
+                0 -> {
+                    detail.addView(sectionLabel("БЫСТРЫЙ ДОСТУП"))
+                    for (target in 1..6) {
+                        val entry = sections[target]
+                        detail.addView(controlTile(entry.first, entry.second) {
+                            renderSection(target)
+                            navItems.getOrNull(target)?.requestFocus()
+                        }, LinearLayout.LayoutParams(-1, dp(66)).apply { bottomMargin = dp(8) })
+                    }
+                }
+                1 -> {
+                    detail.addView(sectionLabel("ОБОИ И ОФОРМЛЕНИЕ"))
+                    addWallpaperSettings(detail)
+                }
+                2 -> {
+                    detail.addView(sectionLabel("ШИРИНА DOCK · $dockWidthPercent%"))
+                    detail.addView(settingSlider(65, 100, dockWidthPercent) { value ->
+                        dockWidthPercent = value
+                        prefs.edit().putInt("dock_width", value).apply()
+                        updateDockSize()
+                    })
+                    detail.addView(sectionLabel("ВЫСОТА DOCK · $dockHeightDp dp"))
+                    detail.addView(settingSlider(130, 210, dockHeightDp) { value ->
+                        dockHeightDp = value
+                        prefs.edit().putInt("dock_height", value).apply()
+                        updateDockSize()
+                    })
+                }
+                3 -> {
+                    detail.addView(sectionLabel("АВТОЗАПУСК ПОСЛЕ БЕЗДЕЙСТВИЯ"))
+                    listOf(0, 5, 15, 30, 60).forEach { minutes ->
+                        val label = if (minutes == 0) "Отключено" else "$minutes минут"
+                        detail.addView(controlTile(
+                            if (screensaverTimeoutMinutes == minutes) "✓  $label" else label,
+                            if (screensaverTimeoutMinutes == minutes) "Текущий интервал" else "Запуск через $label"
+                        ) {
+                            screensaverTimeoutMinutes = minutes
+                            prefs.edit().putInt("screensaver_timeout_minutes", minutes).apply()
+                            renderSection(3)
+                            detail.post { requestFirstFocusable(detail) }
+                        }, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(7) })
+                    }
+                    detail.addView(controlTile("Системные настройки заставки", "Выбор Dream Service") {
+                        openSettings("android.settings.DREAM_SETTINGS")
+                    }, LinearLayout.LayoutParams(-1, dp(64)))
+                }
+                4 -> {
+                    detail.addView(controlTile("Каталог приложений", "Полный список · запуск и управление") {
+                        settingsHubVisible = false
+                        showAppCatalog()
+                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(controlTile("Скрытые приложения", "Восстановить приложения, скрытые из Dock и каталога") {
+                        settingsHubVisible = false
+                        showHiddenAppsPage()
+                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(controlTile("Обновить список приложений", "Повторно прочитать установленные приложения Android") {
+                        loadInstalledApps()
+                        renderSection(4)
+                        detail.post { requestFirstFocusable(detail) }
+                    }, LinearLayout.LayoutParams(-1, dp(68)))
+                }
+                5 -> {
+                    val matchedProfiles = TvManagerProfiles.matchingProfiles()
+                    detail.addView(infoCard(
+                        "АНАЛИЗ УСТРОЙСТВА",
+                        "${Build.MANUFACTURER} ${Build.MODEL}",
+                        "Android ${Build.VERSION.RELEASE} · API ${Build.VERSION.SDK_INT}\nСовпавших проверенных профилей: ${matchedProfiles.size}\nПакеты анализируются без изменения системного состояния."
+                    ))
+                    detail.addView(controlTile("Данные по ТВ", "Характеристики устройства и установленные пакеты") {
+                        settingsHubVisible = false
+                        showTvDeviceInfo()
+                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(controlTile("Очистка ТВ", "Подбор профиля и безопасный предварительный анализ") {
+                        settingsHubVisible = false
+                        showTvCleanup()
+                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(controlTile("Отключённые пакеты", "Состояние и доступность восстановления") {
+                        settingsHubVisible = false
+                        showTvDisabledPackages()
+                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(controlTile("Журнал операций", "История действий TV Manager") {
+                        settingsHubVisible = false
+                        showTvOperationLog()
+                    }, LinearLayout.LayoutParams(-1, dp(68)))
+                }
+                else -> {
+                    detail.addView(controlTile("О системе и обновления", "Версия RFTV · скачать и установить OTA") {
+                        settingsHubVisible = false
+                        showAboutSystem()
+                    }, LinearLayout.LayoutParams(-1, dp(76)))
+                }
+            }
+            detail.addView(TextView(this).apply {
+                text = "Настройки сохраняются автоматически. Управление с пульта: стрелки, OK и Back."
+                textSize = 13f
+                setTextColor(Color.LTGRAY)
+                setPadding(dp(4), dp(18), dp(4), dp(8))
+            })
+            val firstRight = findFirstFocusable(detail)
+            if (firstRight != null) {
+                if (firstRight.id == View.NO_ID) firstRight.id = View.generateViewId()
+                navItems.forEach { it.nextFocusRightId = firstRight.id }
+                firstRight.nextFocusLeftId = navItems.getOrNull(index)?.id ?: View.NO_ID
+            }
+        }
+        sections.forEachIndexed { index, section ->
+            val item = TextView(this).apply {
+                id = View.generateViewId()
+                text = section.first; textSize = 16f; typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER_VERTICAL; isFocusable = true; isFocusableInTouchMode = true
+                setPadding(dp(14), 0, dp(10), 0)
+                background = RftvDesignSystem.focusSurface(
+                    this@MainActivity, false, RftvDesignSystem.Radius.CONTROL, 28, 105
+                )
+                setOnFocusChangeListener { view, focused ->
+                    view.background = RftvDesignSystem.focusSurface(
+                        this@MainActivity, focused, RftvDesignSystem.Radius.CONTROL,
+                        28, 105, index == selectedIndex
+                    )
+                    RftvDesignSystem.applyFocusScale(view, focused, 1.015f)
+                }
+                setOnClickListener { renderSection(index) }
+            }
+            navItems += item
+            sidebar.addView(item, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT)).apply { bottomMargin = dp(5) })
+        }
+        shell.addView(sidebar, LinearLayout.LayoutParams((resources.displayMetrics.widthPixels * RftvDesignSystem.Size.SETTINGS_SIDEBAR_WIDTH_FRACTION).toInt(), -1))
+        shell.addView(contentColumn, LinearLayout.LayoutParams(0, -1, 1f))
+        root.addView(shell, FrameLayout.LayoutParams(
+            (resources.displayMetrics.widthPixels * RftvDesignSystem.Size.SETTINGS_PANEL_WIDTH_FRACTION).toInt(),
+            (resources.displayMetrics.heightPixels * RftvDesignSystem.Size.SETTINGS_PANEL_HEIGHT_FRACTION).toInt(), Gravity.CENTER
+        ))
+        setContentView(root)
+        renderSection(settingsSelectedIndex)
+        sidebar.post { navItems.getOrNull(settingsSelectedIndex)?.requestFocus() }
     }
 
     private fun showAppearanceSettings() {
@@ -1821,8 +2037,18 @@ class MainActivity : Activity() {
         if (!::dock.isInitialized) return
         val params = dock.layoutParams as FrameLayout.LayoutParams
         params.width = (resources.displayMetrics.widthPixels * dockWidthPercent / 100f).toInt()
-        params.height = dp(dockHeightDp)
+        val actualHeight = if (dockExpanded) max(270, dockHeightDp + 112) else dockHeightDp
+        params.height = dp(actualHeight)
         dock.layoutParams = params
+        updateWallpaperButtonPosition(actualHeight)
+    }
+
+    private fun updateWallpaperButtonPosition(actualDockHeightDp: Int) {
+        if (!::root.isInitialized) return
+        val button = root.findViewWithTag<View>("rftv-wallpaper-button") ?: return
+        val params = button.layoutParams as? FrameLayout.LayoutParams ?: return
+        params.bottomMargin = dp(actualDockHeightDp + RftvDesignSystem.Spacing.HOME_WALLPAPER_DOCK_GAP)
+        button.layoutParams = params
     }
 
     private fun showTvManager() {
@@ -1998,7 +2224,11 @@ class MainActivity : Activity() {
 
     private fun showTvPackageDetails(app: ApplicationInfo) {
         val packageInfo = try {
-            packageManager.getPackageInfo(app.packageName, PackageManager.GET_PERMISSIONS)
+            packageManager.getPackageInfo(
+                app.packageName,
+                PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES or
+                    PackageManager.GET_RECEIVERS or PackageManager.GET_ACTIVITIES
+            )
         } catch (_: Exception) {
             showTvPackages()
             return
@@ -2021,7 +2251,41 @@ class MainActivity : Activity() {
         val updateTime = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
             .format(Date(packageInfo.lastUpdateTime))
 
+        val matchedProfileEntry = TvManagerProfiles.matchingProfiles()
+            .flatMap { it.packages }
+            .firstOrNull { it.packageId == app.packageName }
+        val analysis = PackageAnalysisPolicy.analyze(
+            PackageAnalysisPolicy.Signals(
+                packageName = app.packageName,
+                label = appLabel,
+                isSystemApp = app.flags and ApplicationInfo.FLAG_SYSTEM != 0,
+                enabled = !isPackageDisabled(app.packageName, app.enabled),
+                requestedPermissions = requested.toList(),
+                serviceCount = packageInfo.services?.size ?: 0,
+                receiverCount = packageInfo.receivers?.size ?: 0,
+                activityCount = packageInfo.activities?.size ?: 0,
+                profilePurpose = matchedProfileEntry?.note,
+                profileRisk = matchedProfileEntry?.risk
+            )
+        )
+        val analysisSeverity = when (analysis.severity) {
+            PackageAnalysisPolicy.Severity.CRITICAL -> "КРИТИЧЕСКИЙ КОМПОНЕНТ"
+            PackageAnalysisPolicy.Severity.REVIEW -> "ТРЕБУЕТ ПРОВЕРКИ"
+            PackageAnalysisPolicy.Severity.INFORMATIONAL -> "ИНФОРМАЦИЯ"
+        }
+        val analysisConfidence = when (analysis.confidence) {
+            PackageAnalysisPolicy.Confidence.HIGH -> "Высокая"
+            PackageAnalysisPolicy.Confidence.MEDIUM -> "Средняя"
+            PackageAnalysisPolicy.Confidence.LOW -> "Низкая"
+        }
+
         showPanel("Пакет · $appLabel") { body ->
+            body.addView(infoCard(
+                "АНАЛИЗ RFTV · $analysisSeverity",
+                analysis.purpose,
+                "Категория: ${analysis.category}\nУверенность: $analysisConfidence\n\nФакты:\n• " +
+                    analysis.evidence.joinToString("\n• ") + "\n\nОграничение: ${analysis.limitation}"
+            ))
             body.addView(infoCard("ИДЕНТИФИКАЦИЯ", appLabel, app.packageName))
             body.addView(infoCard(
                 "СОСТОЯНИЕ",
@@ -2288,7 +2552,7 @@ class MainActivity : Activity() {
         shell.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         root.addView(panelBackground, FrameLayout.LayoutParams(-1, -1))
         root.addView(shell, FrameLayout.LayoutParams(
-            (resources.displayMetrics.widthPixels * .82f).toInt(),
+            (resources.displayMetrics.widthPixels * RftvDesignSystem.Size.PANEL_WIDTH_FRACTION).toInt(),
             (resources.displayMetrics.heightPixels * .88f).toInt(),
             Gravity.CENTER
         ))
@@ -2304,7 +2568,7 @@ class MainActivity : Activity() {
     private fun infoCard(title: String, subtitle: String, detail: String): View {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = glassPanel(42, 20)
+            background = RftvDesignSystem.cardSurface(this@MainActivity)
             setPadding(dp(RftvDesignSystem.Spacing.CARD_PADDING_HORIZONTAL), dp(RftvDesignSystem.Spacing.CARD_PADDING_VERTICAL), dp(RftvDesignSystem.Spacing.CARD_PADDING_HORIZONTAL), dp(RftvDesignSystem.Spacing.CARD_PADDING_VERTICAL))
         }
         card.addView(TextView(this).apply {

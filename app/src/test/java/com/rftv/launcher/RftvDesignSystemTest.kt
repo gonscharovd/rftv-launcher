@@ -25,6 +25,11 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Size.EMPTY_DOCK_TEXT_SP in 12f..18f)
         assertTrue(RftvDesignSystem.Size.HOME_DATE_LEFT_PADDING >= 0)
         assertTrue(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN in 0..8)
+        assertTrue(RftvDesignSystem.Size.PANEL_WIDTH_FRACTION in 0.84f..0.92f)
+        assertTrue(RftvDesignSystem.Size.SETTINGS_SIDEBAR_WIDTH_FRACTION in 0.20f..0.32f)
+        assertTrue(RftvDesignSystem.Size.SETTINGS_PANEL_WIDTH_FRACTION in 0.88f..0.96f)
+        assertTrue(RftvDesignSystem.Size.SETTINGS_PANEL_HEIGHT_FRACTION in 0.82f..0.94f)
+        assertTrue(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT in 48..72)
     }
 
     @Test

@@ -133,6 +133,11 @@ internal object RftvDesignSystem {
         const val HOME_WALLPAPER_BUTTON_HEIGHT = 42
         const val PANEL_HEADER_HEIGHT = 56
         const val PANEL_CLOSE_HEIGHT = 48
+        const val PANEL_WIDTH_FRACTION = 0.88f
+        const val SETTINGS_NAV_ITEM_HEIGHT = 58
+        const val SETTINGS_SIDEBAR_WIDTH_FRACTION = 0.255f
+        const val SETTINGS_PANEL_WIDTH_FRACTION = 0.92f
+        const val SETTINGS_PANEL_HEIGHT_FRACTION = 0.88f
     }
 
     object Motion {
