@@ -55,6 +55,20 @@ class RftvDesignSystemTest {
     }
 
     @Test
+    fun controlCenterAndScreensaverTokensStayWithinTvFriendlyRanges() {
+        assertTrue(RftvDesignSystem.Radius.CONTROL_CENTER_PANEL >= 28)
+        assertTrue(RftvDesignSystem.Radius.CONTROL_CENTER_TILE >= 24)
+        assertTrue(RftvDesignSystem.Size.CONTROL_CENTER_WIDTH_FRACTION in 0.38f..0.48f)
+        assertTrue(RftvDesignSystem.Size.CONTROL_CENTER_HEIGHT_FRACTION in 0.85f..0.96f)
+        assertTrue(RftvDesignSystem.Size.CONTROL_CENTER_TILE_HEIGHT in 64..88)
+        assertTrue(RftvDesignSystem.Motion.CONTROL_CENTER_REVEAL_DURATION_MS in 120L..300L)
+        assertTrue(RftvDesignSystem.GlassAlpha.CONTROL_CENTER_TILE_RESTING in 0..255)
+        assertTrue(RftvDesignSystem.GlassAlpha.CONTROL_CENTER_TILE_FOCUSED in 0..255)
+        assertTrue(RftvDesignSystem.Size.SCREENSAVER_CLOCK_TEXT_SP > RftvDesignSystem.Size.CLOCK_TEXT_SP)
+        assertTrue(RftvDesignSystem.Size.SCREENSAVER_HINT_TEXT_SP in 12f..18f)
+    }
+
+    @Test
     fun semanticRiskColorsRemainDistinct() {
         assertTrue(RftvDesignSystem.ColorTokens.RISK_CRITICAL != RftvDesignSystem.ColorTokens.RISK_REVIEW)
         assertEquals(-1, RftvDesignSystem.ColorTokens.TEXT_PRIMARY)
