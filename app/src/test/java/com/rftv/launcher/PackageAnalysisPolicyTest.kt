@@ -56,6 +56,21 @@ class PackageAnalysisPolicyTest {
     }
 
     @Test
+    fun dynamicallyProtectedHomeRoleIsReportedAsCritical() {
+        val report = PackageAnalysisPolicy.analyze(
+            PackageAnalysisPolicy.Signals(
+                packageName = "com.example.home",
+                label = "OEM Home",
+                isSystemApp = true,
+                enabled = true,
+                isProtected = true
+            )
+        )
+        assertEquals(PackageAnalysisPolicy.Severity.CRITICAL, report.severity)
+        assertTrue(report.evidence.any { it.contains("динамически защищён") })
+    }
+
+    @Test
     fun ordinaryAppNameContainingSettingsIsNotMarkedCritical() {
         val report = PackageAnalysisPolicy.analyze(
             PackageAnalysisPolicy.Signals(
@@ -95,6 +110,22 @@ class PackageAnalysisPolicyTest {
                 )
                 assertEquals(PackageAnalysisPolicy.Severity.CRITICAL, report.severity)
             }
+    }
+
+    @Test
+    fun hardProtectedIdentityAndPlatformPrefixesAreDeniedForOperations() {
+        listOf(
+            "com.android.systemui",
+            "com.android.settings",
+            "com.android.providers.tv",
+            "com.android.tv.settings",
+            "com.mediatek.tv.service",
+            "com.cvte.platform.service",
+            "ru.sberdevices.starlauncher",
+            "ru.sberdevices.services.remote",
+            "ru.sberdevices.tvinputs.service"
+        ).forEach { assertTrue("Expected protected package: $it", PackageAnalysisPolicy.isProtectedPackage(it)) }
+        assertTrue(!PackageAnalysisPolicy.isProtectedPackage("com.example.settings.helper"))
     }
 
     @Test

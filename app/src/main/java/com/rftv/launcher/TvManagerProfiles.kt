@@ -5,8 +5,9 @@ import android.os.Build
 /**
  * Curated reference profiles derived from CleanYourTV examples.
  *
- * These are reference-only. A profile is never applied to a device unless its
- * hardware/OS fingerprint matches, and this prototype has no privileged bridge.
+ * These are reference-only. A profile is never applied unless its hardware/OS
+ * fingerprint matches. Donor entries are not automatically considered safe: the
+ * optional/dependency flags default to false until independently validated.
  */
 internal object TvManagerProfiles {
     data class PackageEntry(
@@ -14,7 +15,10 @@ internal object TvManagerProfiles {
         val label: String,
         val group: String,
         val note: String,
-        val risk: String = "Проверить"
+        val risk: String = "Проверить",
+        val verifiedOptional: Boolean = false,
+        val confidenceHigh: Boolean = false,
+        val dependenciesVerified: Boolean = false
     )
 
     data class Profile(
@@ -23,13 +27,20 @@ internal object TvManagerProfiles {
         val boardTokens: List<String>,
         val deviceTokens: List<String>,
         val sdk: Int,
+        val hardwareTokens: List<String> = emptyList(),
+        val productTokens: List<String> = emptyList(),
         val androidLabel: String,
         val sourceUrl: String,
         val testedNotes: String,
-        val packages: List<PackageEntry>
+        val packages: List<PackageEntry>,
+        val manufacturerTokens: List<String> = emptyList(),
+        val modelTokens: List<String> = emptyList(),
+        val buildFingerprintTokens: List<String> = emptyList(),
+        val abiTokens: List<String> = emptyList()
     ) {
         fun matches(): Boolean = matchesFingerprint(
-            Build.BOARD, Build.HARDWARE, Build.DEVICE, Build.PRODUCT, Build.VERSION.SDK_INT
+            Build.BOARD, Build.HARDWARE, Build.DEVICE, Build.PRODUCT, Build.VERSION.SDK_INT,
+            Build.MANUFACTURER, Build.MODEL, Build.FINGERPRINT, Build.SUPPORTED_ABIS.toList()
         )
 
         fun matchesFingerprint(
@@ -37,13 +48,27 @@ internal object TvManagerProfiles {
             hardware: String,
             device: String,
             product: String,
-            sdk: Int
+            sdk: Int,
+            manufacturer: String = "",
+            model: String = "",
+            buildFingerprint: String = "",
+            supportedAbis: List<String> = emptyList()
         ): Boolean {
-            val boardIdentity = listOf(board, hardware).map { it.lowercase() }
-            val deviceIdentity = listOf(device, product).map { it.lowercase() }
-            val boardMatch = boardTokens.any { token -> boardIdentity.any { it == token.lowercase() } }
-            val deviceMatch = deviceTokens.any { token -> deviceIdentity.any { it == token.lowercase() } }
-            return sdk == this.sdk && boardMatch && deviceMatch
+            val boardMatch = boardTokens.any { it.equals(board, ignoreCase = true) }
+            val hardwareMatch = hardwareTokens.isNotEmpty() &&
+                hardwareTokens.any { it.equals(hardware, ignoreCase = true) }
+            val deviceMatch = deviceTokens.any { it.equals(device, ignoreCase = true) }
+            val productMatch = productTokens.isNotEmpty() &&
+                productTokens.any { it.equals(product, ignoreCase = true) }
+            val manufacturerMatch = manufacturerTokens.isNotEmpty() &&
+                manufacturerTokens.any { it.equals(manufacturer, ignoreCase = true) }
+            val modelMatch = modelTokens.isNotEmpty() &&
+                modelTokens.any { it.equals(model, ignoreCase = true) }
+            val buildMatch = buildFingerprintTokens.isNotEmpty() &&
+                buildFingerprintTokens.any { it == buildFingerprint }
+            val abiMatch = abiTokens.isNotEmpty() && supportedAbis.toSet() == abiTokens.toSet()
+            return sdk == this.sdk && boardMatch && hardwareMatch && deviceMatch && productMatch &&
+                manufacturerMatch && modelMatch && buildMatch && abiMatch
         }
     }
 
