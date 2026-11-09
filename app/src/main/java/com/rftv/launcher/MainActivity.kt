@@ -2304,7 +2304,7 @@ class MainActivity : Activity() {
                         .filter { it.packageName != packageName }
                     val loadedRows = apps.map { app ->
                         val label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
-                        val preview = tvManagerController.preview(app.packageName, PackageOperationPolicy.Mode.MANUAL)
+                        val preview = tvManagerController.preview(app.packageName, PackageOperationPolicy.Mode.MANUAL, hasActiveSnapshot = false)
                         val protected = preview?.isProtected == true
                         val (riskLabel, riskColor) = risk(app.packageName, protected)
                         PackageRow(
@@ -2382,7 +2382,7 @@ class MainActivity : Activity() {
                 profilePurpose = matchedProfileEntry?.note,
                 profileRisk = matchedProfileEntry?.risk,
                 isProtected = tvManagerController.preview(
-                    app.packageName, PackageOperationPolicy.Mode.MANUAL
+                    app.packageName, PackageOperationPolicy.Mode.MANUAL, hasActiveSnapshot = false
                 )?.isProtected == true
             )
         )
@@ -2868,7 +2868,11 @@ class MainActivity : Activity() {
                         .filter { it.packageName != packageName }
                     val loadedRows = loadedApps.map { app ->
                         val label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
-                        val preview = tvManagerController.preview(app.packageName, PackageOperationPolicy.Mode.MANUAL)
+                        val preview = tvManagerController.preview(
+                            app.packageName,
+                            PackageOperationPolicy.Mode.MANUAL,
+                            hasActiveSnapshot = app.packageName in snapshots
+                        )
                         val setting = preview?.enabledSetting ?: try {
                             packageManager.getApplicationEnabledSetting(app.packageName)
                         } catch (_: Exception) { PackageManager.COMPONENT_ENABLED_STATE_DEFAULT }
