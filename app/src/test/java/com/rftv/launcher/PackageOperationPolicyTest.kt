@@ -17,7 +17,7 @@ class PackageOperationPolicyTest {
         currentlyEnabled = true,
         originalState = PackageOperationPolicy.OriginalState(
             PackageOperationPolicy.EnabledSetting.DEFAULT,
-            manifestEnabled = true
+            applicationEnabled = true
         )
     )
 
