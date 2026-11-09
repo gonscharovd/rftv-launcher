@@ -119,6 +119,7 @@ class MainActivity : Activity() {
     }
     private var otaStatus = "Обновления ещё не проверялись"
     private var otaProgress = 0
+    private var otaInProgress = false
     private val favoritePackages = mutableListOf<String>()
     private val hiddenPackages = mutableSetOf<String>()
 
@@ -1230,112 +1231,115 @@ class MainActivity : Activity() {
             body.addView(status)
             val changelog = prefs.getString("ota_changelog", null)
             if (!changelog.isNullOrBlank()) {
-                body.addView(infoCard("ИЗМЕНЕНИЯ РЕЛИЗА", prefs.getString("ota_tag", "Последний релиз") ?: "Последний релиз", changelog))
+                body.addView(infoCard("ИЗМЕНЕНИЯ ПОСЛЕДНЕГО РЕЛИЗА",
+                    prefs.getString("ota_tag", "Последний релиз") ?: "Последний релиз", changelog))
             }
             val progress = android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
                 max = 100
                 this.progress = otaProgress
             }
             body.addView(progress, LinearLayout.LayoutParams(-1, dp(12)).apply { bottomMargin = dp(12) })
-            body.addView(glassButton("Проверить обновления GitHub") {
-                status.text = "Проверяем опубликованные релизы…"
-                Thread {
-                    try {
-                        val connection = (URL("https://api.github.com/repos/gonscharovd/rftv-launcher/releases?per_page=10").openConnection() as java.net.HttpURLConnection).apply {
-                            connectTimeout = 10000
-                            readTimeout = 15000
-                            setRequestProperty("Accept", "application/vnd.github+json")
-                            setRequestProperty("User-Agent", "RFTV-Launcher")
-                        }
-                        val releases = try {
-                            if (connection.responseCode !in 200..299) {
-                                throw IllegalStateException("GitHub HTTP ${connection.responseCode}")
-                            }
-                            org.json.JSONArray(connection.inputStream.bufferedReader().use { it.readText() })
-                        } finally { connection.disconnect() }
-
-                        val release = (0 until releases.length())
-                            .map { releases.getJSONObject(it) }
-                            .firstOrNull { !it.optBoolean("draft", true) && !it.optBoolean("prerelease", false) }
-
-                        if (release == null) {
-                            otaStatus = "На GitHub пока нет опубликованных стабильных релизов."
-                            prefs.edit().remove("ota_url").remove("ota_sha256").remove("ota_tag")
-                                .remove("ota_changelog")
-                                .putString("ota_release_url", "https://github.com/gonscharovd/rftv-launcher/releases").apply()
-                        } else {
-                            val tag = release.optString("tag_name", "неизвестно")
-                            val url = release.optString("html_url", "https://github.com/gonscharovd/rftv-launcher/releases")
-                            val releaseNotes = release.optString("body", "").take(3000)
-                            val assets = release.optJSONArray("assets")
-                            var apkUrl: String? = null
-                            var apkDigest: String? = null
-                            var apkName: String? = null
-                            if (assets != null) for (i in 0 until assets.length()) {
-                                val asset = assets.getJSONObject(i)
-                                val name = asset.optString("name")
-                                if (name.endsWith(".apk", true)) {
-                                    apkUrl = asset.optString("browser_download_url").takeIf { it.startsWith("https://") }
-                                    apkDigest = asset.optString("digest").removePrefix("sha256:").lowercase(Locale.ROOT)
-                                        .takeIf { it.matches(Regex("[0-9a-f]{64}")) }
-                                    apkName = name
-                                    break
-                                }
-                            }
-                            val installed = packageManager.getPackageInfo(packageName, 0).versionName ?: "0.0.0"
-                            // Release tags/versionName are descriptive and can remain unchanged while
-                            // versionCode increases. Do not hide a candidate based on its tag alone:
-                            // the downloaded APK is checked against the installed versionCode and
-                            // signing certificate before Android's installer can be opened.
-                            otaStatus = when {
-                                apkUrl == null -> "Найдена версия $tag, но корректный HTTPS APK asset не найден"
-                                apkDigest == null -> "Найдена версия $tag, но GitHub не предоставил SHA-256 APK. Установка заблокирована."
-                                else -> "Найдена сборка $tag · установлена $installed. Перед установкой проверим versionCode и подпись APK."
-                            }
-                            prefs.edit()
-                                .putString("ota_url", if (apkUrl != null && apkDigest != null) apkUrl else null)
-                                .putString("ota_sha256", if (apkUrl != null && apkDigest != null) apkDigest else null)
-                                .putString("ota_asset_name", apkName)
-                                .putString("ota_release_url", url)
-                                .putString("ota_tag", tag)
-                                .putString("ota_changelog", releaseNotes)
-                                .apply()
-                        }
-                    } catch (e: Exception) {
-                        val error = e.message ?: "ошибка сети"
-                        otaStatus = if (error.contains("GitHub HTTP 404")) {
-                            "GitHub вернул 404. Проверь доступность публичного репозитория и API."
-                        } else {
-                            "Не удалось проверить GitHub: $error"
-                        }
-                    }
-                    handler.post { if (!isFinishing) showAboutSystem() }
-                }.start()
-            }, LinearLayout.LayoutParams(-1, dp(50)))
             body.addView(glassButton("Скачать и установить обновление") {
-                val apkUrl = prefs.getString("ota_url", null)
-                val expectedSha256 = prefs.getString("ota_sha256", null)
-                if (apkUrl.isNullOrBlank() || expectedSha256.isNullOrBlank()) {
-                    otaStatus = "Сначала проверь обновления. APK без SHA-256 не устанавливается."
-                    showAboutSystem()
-                } else {
-                    downloadOta(apkUrl, expectedSha256) { value, message ->
-                        otaProgress = value
-                        otaStatus = message
-                        status.text = message
-                        progress.progress = value
-                    }
-                }
-            }, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
+                downloadLatestAndInstall(status, progress)
+            }, LinearLayout.LayoutParams(-1, dp(54)))
             body.addView(glassButton("Открыть релизы GitHub") {
                 val url = prefs.getString("ota_release_url", "https://github.com/gonscharovd/rftv-launcher/releases")
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
             }, LinearLayout.LayoutParams(-1, dp(50)).apply { topMargin = dp(8) })
             body.addView(infoCard("ПРОВЕРКИ ПЕРЕД УСТАНОВКОЙ", "SHA-256 · пакет · версия · подпись",
-                "RFTV проверит контрольную сумму, package name, увеличение versionCode, совместимость ABI и совпадение сертификата с установленным приложением. Затем Android запросит подтверждение установки."))
+                "Одна команда: поиск последнего стабильного релиза, загрузка APK, проверка SHA-256, package name, versionCode, ABI и сертификата. Затем Android покажет штатное подтверждение установки."))
             body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
                 LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(10) })
         }
+    }
+
+    private fun downloadLatestAndInstall(
+        statusView: TextView,
+        progressView: android.widget.ProgressBar
+    ) {
+        if (otaInProgress) {
+            statusView.text = "Обновление уже выполняется."
+            return
+        }
+        otaInProgress = true
+        otaProgress = 0
+        otaStatus = "Ищем последний стабильный релиз GitHub…"
+        statusView.text = otaStatus
+        progressView.progress = 0
+
+        Thread {
+            var connection: java.net.HttpURLConnection? = null
+            try {
+                connection = (URL("https://api.github.com/repos/gonscharovd/rftv-launcher/releases/latest")
+                    .openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 10000
+                    readTimeout = 15000
+                    setRequestProperty("Accept", "application/vnd.github+json")
+                    setRequestProperty("User-Agent", "RFTV-Launcher")
+                }
+                if (connection.responseCode !in 200..299) {
+                    throw IllegalStateException("GitHub HTTP \${connection.responseCode}")
+                }
+                val release = org.json.JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                if (release.optBoolean("draft", true) || release.optBoolean("prerelease", false)) {
+                    throw IllegalStateException("GitHub не вернул стабильный релиз")
+                }
+                val tag = release.optString("tag_name", "неизвестно")
+                val releaseUrl = release.optString("html_url",
+                    "https://github.com/gonscharovd/rftv-launcher/releases")
+                val notes = release.optString("body", "").take(3000)
+                val assets = release.optJSONArray("assets")
+                    ?: throw IllegalStateException("В релизе отсутствует список APK")
+                var apkUrl: String? = null
+                var digest: String? = null
+                var assetName: String? = null
+                for (index in 0 until assets.length()) {
+                    val asset = assets.getJSONObject(index)
+                    val name = asset.optString("name")
+                    if (name.equals("app-release.apk", true)) {
+                        apkUrl = asset.optString("browser_download_url")
+                            .takeIf { it.startsWith("https://") }
+                        digest = asset.optString("digest").removePrefix("sha256:")
+                            .lowercase(Locale.ROOT)
+                            .takeIf { it.matches(Regex("[0-9a-f]{64}")) }
+                        assetName = name
+                        break
+                    }
+                }
+                if (apkUrl.isNullOrBlank()) throw IllegalStateException("В стабильном релизе нет app-release.apk")
+                if (digest.isNullOrBlank()) throw IllegalStateException("GitHub не предоставил SHA-256 APK")
+                prefs.edit()
+                    .putString("ota_url", apkUrl)
+                    .putString("ota_sha256", digest)
+                    .putString("ota_asset_name", assetName)
+                    .putString("ota_release_url", releaseUrl)
+                    .putString("ota_tag", tag)
+                    .putString("ota_changelog", notes)
+                    .apply()
+                handler.post {
+                    if (isFinishing || isDestroyed) {
+                        otaInProgress = false
+                        return@post
+                    }
+                    otaStatus = "Найден стабильный релиз $tag · загружаем APK…"
+                    statusView.text = otaStatus
+                    downloadOta(apkUrl, digest) { value, message ->
+                        otaProgress = value
+                        otaStatus = message
+                        statusView.text = message
+                        progressView.progress = value
+                    }
+                }
+            } catch (e: Exception) {
+                handler.post {
+                    otaInProgress = false
+                    otaStatus = "Не удалось начать обновление: \${e.message ?: "ошибка сети"}"
+                    statusView.text = otaStatus
+                }
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
     }
 
     private fun compareVersionStrings(first: String, second: String): Int {
@@ -1471,6 +1475,7 @@ class MainActivity : Activity() {
                 }
             } finally {
                 connection?.disconnect()
+                otaInProgress = false
             }
         }.start()
     }
