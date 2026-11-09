@@ -131,7 +131,7 @@ class RftvDreamService : DreamService() {
         }
         clockCard.addView(time, LinearLayout.LayoutParams(-1, -2))
         clockCard.addView(day, LinearLayout.LayoutParams(-1, -2))
-        top.addView(clockCard, LinearLayout.LayoutParams(0, dp(142), 1.1f).apply { rightMargin = dp(12) })
+        top.addView(clockCard, LinearLayout.LayoutParams(0, dp(172), 1.1f).apply { rightMargin = dp(12) })
 
         val ratesCard = glassCard()
         ratesCard.addView(cardCaption("КУРСЫ ЦБ РФ"))
@@ -154,7 +154,7 @@ class RftvDreamService : DreamService() {
         ruCard.addView(newsHeading("РОССИЯ"))
         val ru = newsValue("Российская лента загружается…")
         ruCard.addView(ru, LinearLayout.LayoutParams(-1, 0, 1f))
-        news.addView(ruCard, LinearLayout.LayoutParams(0, dp(510), 1f).apply {
+        news.addView(ruCard, LinearLayout.LayoutParams(0, dp(480), 1f).apply {
             rightMargin = dp(12); topMargin = dp(18)
         })
 
@@ -165,7 +165,7 @@ class RftvDreamService : DreamService() {
         news.addView(worldCard, LinearLayout.LayoutParams(0, dp(510), 1f).apply {
             leftMargin = dp(12); topMargin = dp(18)
         })
-        content.addView(news, LinearLayout.LayoutParams(-1, dp(528)))
+        content.addView(news, LinearLayout.LayoutParams(-1, dp(498)))
         content.addView(TextView(this).apply {
             text = "RFTV  ·  Экран ожидания"
             textSize = 13f
