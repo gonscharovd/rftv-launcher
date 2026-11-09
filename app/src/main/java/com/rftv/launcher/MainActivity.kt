@@ -2202,16 +2202,15 @@ class MainActivity : Activity() {
             val label: String,
             val isSystem: Boolean,
             val disabled: Boolean,
+            val isProtected: Boolean,
             val riskLabel: String,
             val riskColor: Int
         )
 
         val generation = ++tvManagerInventoryGeneration
         val matched = TvManagerProfiles.matchingProfiles()
-        fun risk(packageId: String): Pair<String, Int> {
-            val criticalTokens = listOf("android", "systemui", "settings", "packageinstaller",
-                "inputmethod", "telephony", "networkstack", "launcher", "sberdevices.services")
-            if (criticalTokens.any { packageId.contains(it, true) }) {
+        fun risk(packageId: String, protected: Boolean): Pair<String, Int> {
+            if (protected || PackageAnalysisPolicy.isProtectedPackage(packageId)) {
                 return Pair("КРИТИЧЕСКИЙ", RftvDesignSystem.ColorTokens.RISK_CRITICAL)
             }
             val known = matched.flatMap { it.packages }.firstOrNull { it.packageId == packageId }
@@ -2305,12 +2304,15 @@ class MainActivity : Activity() {
                         .filter { it.packageName != packageName }
                     val loadedRows = apps.map { app ->
                         val label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
-                        val (riskLabel, riskColor) = risk(app.packageName)
+                        val preview = tvManagerController.preview(app.packageName, PackageOperationPolicy.Mode.MANUAL)
+                        val protected = preview?.isProtected == true
+                        val (riskLabel, riskColor) = risk(app.packageName, protected)
                         PackageRow(
                             app,
                             label,
                             app.flags and ApplicationInfo.FLAG_SYSTEM != 0,
                             isPackageDisabled(app.packageName, app.enabled),
+                            protected,
                             riskLabel,
                             riskColor
                         )
