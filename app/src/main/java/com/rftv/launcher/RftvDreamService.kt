@@ -14,16 +14,12 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import org.json.JSONObject
-import org.xmlpull.v1.XmlPullParser
-import android.util.Xml
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 /**
  * RFTV ambient screensaver.
@@ -34,6 +30,7 @@ import java.util.concurrent.Executors
 class RftvDreamService : DreamService() {
     private val handler = Handler(Looper.getMainLooper())
     private val executor = Executors.newSingleThreadExecutor()
+    private var refreshFuture: Future<*>? = null
     private var root: FrameLayout? = null
     private var wallpaper: ImageView? = null
     private var clock: TextView? = null
@@ -44,13 +41,6 @@ class RftvDreamService : DreamService() {
     private var worldText: TextView? = null
     private var lastHourKey = -1L
     @Volatile private var dreaming = false
-
-    private data class DashboardData(
-        val weather: String,
-        val rates: String,
-        val russia: String,
-        val world: String
-    )
 
     private val refreshTask = object : Runnable {
         override fun run() {
@@ -85,6 +75,8 @@ class RftvDreamService : DreamService() {
     override fun onDreamingStopped() {
         dreaming = false
         handler.removeCallbacksAndMessages(null)
+        refreshFuture?.cancel(true)
+        refreshFuture = null
         super.onDreamingStopped()
     }
 
@@ -123,7 +115,7 @@ class RftvDreamService : DreamService() {
         val clockCard = glassCard()
         val time = TextView(this).apply {
             text = "00:00"
-            textSize = 62f
+            textSize = RftvDesignSystem.Size.SCREENSAVER_CLOCK_TEXT_SP
             letterSpacing = -0.045f
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
@@ -240,10 +232,24 @@ class RftvDreamService : DreamService() {
             .format(now).replaceFirstChar { it.uppercase() }
     }
 
+    private fun renderDashboard(data: ScreensaverDashboardRepository.Snapshot) {
+        ratesText?.text = data.rates.ifBlank { "Курсы ЦБ РФ пока недоступны" }
+        weatherText?.text = data.weather.ifBlank { "Погодные данные пока недоступны" }
+        russiaText?.text = data.russia.takeIf { it.isNotEmpty() }
+            ?.joinToString("\\n", prefix = "• ") { it }
+            ?: "Российская лента пока недоступна"
+        worldText?.text = data.world.takeIf { it.isNotEmpty() }
+            ?.joinToString("\\n", prefix = "• ") { it }
+            ?: "Мировая лента пока недоступна"
+    }
+
     private fun refreshOnlineContent(hourKey: Long) {
-        executor.execute {
+        // Show the last successful values immediately, then refresh stale sources.
+        renderDashboard(ScreensaverDashboardRepository.readCached(this))
+        refreshFuture?.cancel(true)
+        refreshFuture = executor.submit {
+            val dashboard = ScreensaverDashboardRepository.load(this)
             val imageFile = activeHomeWallpaperFile()
-            val dashboard = loadDashboard()
             val blurred = imageFile?.let { file ->
                 val source = BitmapFactory.decodeFile(file.absolutePath, BitmapFactory.Options().apply {
                     inPreferredConfig = Bitmap.Config.RGB_565
@@ -252,7 +258,10 @@ class RftvDreamService : DreamService() {
                 source?.let {
                     val result = try {
                         GlassBackdrop.createBlurredSnapshot(it, 480, 270, radius = 10, passes = 3)
-                    } catch (_: Exception) { null }
+                    } catch (error: Exception) {
+                        android.util.Log.w("RFTVDream", "Wallpaper blur failed", error)
+                        null
+                    }
                     it.recycle()
                     result
                 }
@@ -262,11 +271,15 @@ class RftvDreamService : DreamService() {
                     blurred?.recycle()
                     return@post
                 }
-                if (blurred != null) wallpaper?.setImageBitmap(blurred)
-                ratesText?.text = dashboard.rates
-                weatherText?.text = dashboard.weather
-                russiaText?.text = dashboard.russia
-                worldText?.text = dashboard.world
+                if (blurred != null) {
+                    val previous = wallpaper?.drawable
+                    wallpaper?.setImageBitmap(blurred)
+                    if (previous is android.graphics.drawable.BitmapDrawable) {
+                        val old = previous.bitmap
+                        if (old !== blurred && !old.isRecycled) old.recycle()
+                    }
+                }
+                renderDashboard(dashboard)
             }
         }
     }
@@ -291,94 +304,6 @@ class RftvDreamService : DreamService() {
         }
     }
 
-    private fun readHttpText(address: String, charsetName: String = "UTF-8"): String {
-        val connection = (URL(address).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 8_000
-            readTimeout = 10_000
-            instanceFollowRedirects = true
-            setRequestProperty("User-Agent", "RFTV-Launcher/0.2")
-        }
-        return try {
-            if (connection.responseCode !in 200..299) {
-                throw IllegalStateException("HTTP ${connection.responseCode}")
-            }
-            connection.inputStream.bufferedReader(java.nio.charset.Charset.forName(charsetName)).use { it.readText() }
-        } finally {
-            connection.disconnect()
-        }
-    }
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-    private fun loadDashboard(): DashboardData {
-        val weather = fetchWeather()
-        val rates = fetchRates()
-        val russian = fetchRssTitles("https://ria.ru/export/rss2/archive/index.xml")
-        val world = fetchRssTitles("https://news.google.com/rss/headlines/section/topic/WORLD?hl=ru&gl=RU&ceid=RU:ru")
-        return DashboardData(weather, rates, russian, world)
-    }
-
-    private fun fetchWeather(): String {
-        return try {
-            // Chelyabinsk is the initial default; city selection will be exposed in launcher settings.
-            val json = readHttpText("https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Asia%2FYekaterinburg")
-            val current = JSONObject(json).getJSONObject("current")
-            val temp = current.getDouble("temperature_2m").toInt()
-            val feels = current.getDouble("apparent_temperature").toInt()
-            val wind = current.getDouble("wind_speed_10m").toInt()
-            "$temp°C, ощущается $feels°C, ветер $wind км/ч"
-        } catch (_: Exception) {
-            "нет данных"
-        }
-    }
-
-    private fun fetchRates(): String {
-        return try {
-            val parser = Xml.newPullParser()
-            parser.setInput(java.io.StringReader(readHttpText("https://www.cbr.ru/scripts/XML_daily.asp", "windows-1251")))
-            var currency = ""
-            var value = ""
-            var usd = ""
-            var eur = ""
-            var event = parser.eventType
-            while (event != XmlPullParser.END_DOCUMENT) {
-                if (event == XmlPullParser.START_TAG) {
-                    when (parser.name) {
-                        "CharCode" -> currency = parser.nextText()
-                        "Value" -> value = parser.nextText()
-                    }
-                } else if (event == XmlPullParser.END_TAG && parser.name == "Valute") {
-                    if (currency == "USD") usd = value
-                    if (currency == "EUR") eur = value
-                }
-                event = parser.next()
-            }
-            "USD $usd ₽ · EUR $eur ₽"
-        } catch (_: Exception) {
-            "нет данных"
-        }
-    }
-
-    private fun fetchRssTitles(feedUrl: String): String {
-        return try {
-            val parser = Xml.newPullParser()
-            parser.setInput(java.io.StringReader(readHttpText(feedUrl)))
-            val titles = mutableListOf<String>()
-            var inItem = false
-            var event = parser.eventType
-            while (event != XmlPullParser.END_DOCUMENT && titles.size < 5) {
-                if (event == XmlPullParser.START_TAG) {
-                    if (parser.name == "item") inItem = true
-                    if (inItem && parser.name == "title") {
-                        val title = parser.nextText().trim()
-                        if (title.isNotBlank()) titles.add(title)
-                    }
-                } else if (event == XmlPullParser.END_TAG && parser.name == "item") {
-                    inItem = false
-                }
-                event = parser.next()
-            }
-            if (titles.isEmpty()) "Новостная лента пуста" else titles.joinToString("\n• ", "• ")
-        } catch (_: Exception) {
-            "Лента временно недоступна"
-        }
-    }
 }
