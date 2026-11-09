@@ -28,13 +28,17 @@ class ScreensaverActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private val io = Executors.newSingleThreadExecutor()
     private lateinit var clock: TextView
+    private lateinit var date: TextView
     private lateinit var details: TextView
     private var alive = false
 
     private val tick = object : Runnable {
         override fun run() {
             if (!alive) return
-            clock.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+            val now = Date()
+            clock.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(now)
+            date.text = SimpleDateFormat("EEEE, d MMMM", Locale("ru")).format(now)
+                .replaceFirstChar { it.uppercase() }
             handler.postDelayed(this, 15_000L)
         }
     }
@@ -73,12 +77,13 @@ class ScreensaverActivity : Activity() {
             gravity = Gravity.CENTER
         }
         content.addView(clock, LinearLayout.LayoutParams(-1, -2))
-        content.addView(TextView(this).apply {
+        date = TextView(this).apply {
             text = SimpleDateFormat("EEEE, d MMMM", Locale("ru")).format(Date()).replaceFirstChar { it.uppercase() }
             textSize = 23f
             setTextColor(Color.argb(220, 255, 255, 255))
             gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(42)))
+        }
+        content.addView(date, LinearLayout.LayoutParams(-1, dp(42)))
         details = TextView(this).apply {
             text = "Загружаем погоду, курсы валют и новости…"
             textSize = 19f
