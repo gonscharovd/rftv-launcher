@@ -75,35 +75,38 @@ internal object ScreensaverDashboardRepository {
         val cached = readCached(context)
         if (!force && isFresh(context)) return cached
 
-        val tasks = listOf(
-            Callable { "weather" to fetchWeather() },
-            Callable { "rates" to fetchRates() },
-            Callable { "russia" to fetchNews("https://ria.ru/export/rss2/archive/index.xml") },
-            Callable { "world" to fetchNews("https://news.google.com/rss/headlines/section/topic/WORLD?hl=ru&gl=RU&ceid=RU:ru") }
-        )
+        val weatherFuture: java.util.concurrent.Future<String> =
+            requests.submit(Callable<String> { fetchWeather() })
+        val ratesFuture: java.util.concurrent.Future<String> =
+            requests.submit(Callable<String> { fetchRates() })
+        val russiaFuture: java.util.concurrent.Future<List<String>> =
+            requests.submit(Callable<List<String>> { fetchNews("https://ria.ru/export/rss2/archive/index.xml") })
+        val worldFuture: java.util.concurrent.Future<List<String>> =
+            requests.submit(Callable<List<String>> { fetchNews("https://news.google.com/rss/headlines/section/topic/WORLD?hl=ru&gl=RU&ceid=RU:ru") })
 
-        val results = try {
-            requests.invokeAll(tasks, TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        val weatherValue: String?
+        val ratesValue: String?
+        val russiaValue: List<String>?
+        val worldValue: List<String>?
+        try {
+            weatherValue = await(weatherFuture)
+            ratesValue = await(ratesFuture)
+            russiaValue = await(russiaFuture)
+            worldValue = await(worldFuture)
         } catch (interrupted: InterruptedException) {
+            weatherFuture.cancel(true)
+            ratesFuture.cancel(true)
+            russiaFuture.cancel(true)
+            worldFuture.cancel(true)
             Thread.currentThread().interrupt()
             return cached
         }
 
         val successful = mutableMapOf<String, Any>()
-        results.forEach { future ->
-            if (future.isCancelled) return@forEach
-            try {
-                val (key, value) = future.get()
-                val valid = when (value) {
-                    is String -> value.isNotBlank()
-                    is List<*> -> value.filterIsInstance<String>().any { it.isNotBlank() }
-                    else -> false
-                }
-                if (valid) successful[key] = value
-            } catch (error: Exception) {
-                Log.w(TAG, "A dashboard source failed", error.cause ?: error)
-            }
-        }
+        weatherValue?.takeIf { it.isNotBlank() }?.let { successful["weather"] = it }
+        ratesValue?.takeIf { it.isNotBlank() }?.let { successful["rates"] = it }
+        russiaValue?.takeIf { it.any(String::isNotBlank) }?.let { successful["russia"] = it }
+        worldValue?.takeIf { it.any(String::isNotBlank) }?.let { successful["world"] = it }
 
         val now = System.currentTimeMillis()
         val cache = context.getSharedPreferences(CACHE_NAME, Context.MODE_PRIVATE)
@@ -126,6 +129,19 @@ internal object ScreensaverDashboardRepository {
         edit.apply()
 
         return readCached(context)
+    }
+
+    private fun <T> await(future: java.util.concurrent.Future<T>): T? {
+        return try {
+            future.get(TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        } catch (interrupted: InterruptedException) {
+            future.cancel(true)
+            throw interrupted
+        } catch (error: Exception) {
+            future.cancel(true)
+            Log.w(TAG, "Dashboard source request failed", error.cause ?: error)
+            null
+        }
     }
 
     internal fun weatherDescription(code: Int): String = when (code) {
