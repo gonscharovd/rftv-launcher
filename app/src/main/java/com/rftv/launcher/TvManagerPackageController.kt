@@ -58,10 +58,23 @@ internal class TvManagerPackageController(
             )?.activityInfo?.packageName?.let { protected += it }
         } catch (_: Exception) { }
         try {
+            val resolver = appContext.contentResolver
+            val inputMethods = listOf(
+                android.provider.Settings.Secure.DEFAULT_INPUT_METHOD,
+                android.provider.Settings.Secure.ENABLED_INPUT_METHODS
+            )
+            inputMethods.forEach { key ->
+                android.provider.Settings.Secure.getString(resolver, key)
+                    ?.split(':')
+                    ?.mapNotNull { android.content.ComponentName.unflattenFromString(it)?.packageName }
+                    ?.let(protected::addAll)
+            }
             android.provider.Settings.Secure.getString(
-                appContext.contentResolver,
-                android.provider.Settings.Secure.DEFAULT_INPUT_METHOD
-            )?.let { android.content.ComponentName.unflattenFromString(it)?.packageName?.let(protected::add) }
+                resolver,
+                android.provider.Settings.Secure.SCREENSAVER_COMPONENTS
+            )?.split(':')
+                ?.mapNotNull { android.content.ComponentName.unflattenFromString(it)?.packageName }
+                ?.let(protected::addAll)
         } catch (_: Exception) { }
         protected
     }
