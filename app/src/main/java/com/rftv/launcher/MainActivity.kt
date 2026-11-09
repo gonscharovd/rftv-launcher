@@ -768,7 +768,7 @@ class MainActivity : Activity() {
         timeColumn.addView(clockText)
         timeColumn.addView(dateText)
         timeColumn.gravity = Gravity.CENTER
-        clockText.textSize = 104f
+        clockText.textSize = RftvDesignSystem.Size.CLOCK_TEXT_SP
         clockText.letterSpacing = -0.055f
         clockText.setShadowLayer(RftvDesignSystem.Size.CLOCK_SHADOW_RADIUS, 0f, RftvDesignSystem.Size.CLOCK_SHADOW_DY, RftvDesignSystem.ColorTokens.CLOCK_SHADOW)
         clockText.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
