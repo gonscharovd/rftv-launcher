@@ -2371,6 +2371,50 @@ class MainActivity : Activity() {
     private fun Int.green(): Int = android.graphics.Color.green(this)
     private fun Int.blue(): Int = android.graphics.Color.blue(this)
 
+    private fun connectTvManagerShizuku() {
+        if (!TvManagerShizukuBridge.isBinderReady()) {
+            val launch = packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
+            if (launch != null) {
+                startActivity(launch)
+            } else {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/guide/setup/")))
+            }
+            Toast.makeText(this, "Запусти Shizuku и вернись в RFTV", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (!TvManagerShizukuBridge.isSupportedServer()) {
+            Toast.makeText(this, "Версия Shizuku API не поддерживается", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (!TvManagerShizukuBridge.hasPermission()) {
+            try {
+                TvManagerShizukuBridge.requestPermission()
+            } catch (error: Exception) {
+                Toast.makeText(this, "Не удалось запросить доступ Shizuku: ${error.message}", Toast.LENGTH_LONG).show()
+            }
+            return
+        }
+        bindTvManagerShizukuService()
+    }
+
+    private fun bindTvManagerShizukuService() {
+        if (!TvManagerShizukuBridge.hasPermission()) {
+            Toast.makeText(this, "Нет разрешения Shizuku", Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            if (!TvManagerShizukuBridge.bind(this, tvManagerShizukuConnection)) {
+                Toast.makeText(this, "Привилегированный канал недоступен", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(this, "Подключение TV Manager запрошено", Toast.LENGTH_SHORT).show()
+            }
+        } catch (error: Exception) {
+            tvManagerShellService = null
+            tvManagerShellUid = -1
+            Toast.makeText(this, "Ошибка подключения Shizuku: ${error.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun showTvAdb() {
         val adbDebuggingEnabled = try {
             android.provider.Settings.Global.getInt(contentResolver,
@@ -2386,12 +2430,28 @@ class MainActivity : Activity() {
         } catch (_: Exception) { "Недоступен" }
 
         showPanel("ADB и разрешения") { body ->
+        val shizukuReady = TvManagerShizukuBridge.isSupportedServer()
+        val shizukuPermission = TvManagerShizukuBridge.hasPermission()
+        val shizukuConnected = tvManagerShellService != null && (tvManagerShellUid == 0 || tvManagerShellUid == 2000)
+
             body.addView(infoCard("СИСТЕМНЫЙ СТАТУС ADB",
                 if (adbDebuggingEnabled) "ADB Debugging включён" else "ADB Debugging выключен",
                 "Это только системный индикатор отладки. RFTV не изменяет этот параметр."))
             body.addView(infoCard("ДОСТУП RFTV К ADB",
-                if (access.shellAvailable) "ADB Shell доступен" else "ADB Shell не получен",
-                access.details))
+                if (shizukuConnected) "Привилегированный канал подключён · UID $tvManagerShellUid" else "ADB Shell не получен",
+                if (shizukuConnected) "Shizuku UserService отвечает. Это подтверждает UID канала, но не означает, что любая команда управления пакетами разрешена прошивкой."
+                else access.details))
+            body.addView(infoCard("SHIZUKU",
+                when {
+                    shizukuConnected -> "Подключён"
+                    shizukuReady && shizukuPermission -> "Сервер готов · требуется подключить службу"
+                    shizukuReady -> "Сервер готов · ожидается разрешение RFTV"
+                    else -> "Сервер не обнаружен"
+                },
+                "Shizuku запускается отдельно. На Android до 11 для старта без root обычно нужен авторизованный ADB-хост; после перезагрузки службу может потребоваться запустить снова."))
+            body.addView(glassButton(
+                if (shizukuConnected) "Переподключить Shizuku" else "Подключить Shizuku"
+            ) { connectTvManagerShizuku() }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
             body.addView(infoCard("ЛОКАЛЬНЫЙ IP", ip,
                 "Сетевой адрес интерфейса устройства. Не является подтверждением подключения ADB."))
             body.addView(infoCard("ADB-ПОРТ", access.portLabel,
