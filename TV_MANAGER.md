@@ -5,6 +5,7 @@
 - The settings hub uses a two-column TV layout: a persistent left navigation rail and a contextual right-hand content area. It reuses the existing settings screens for actual controls.
 - Package details include a conservative metadata report: category, severity, confidence, observed permissions and declared component counts, with explicit limitations.
 - Sensitive permissions are described as requested metadata, never as proof of recording, tracking or data transmission.
+- Permission-only privacy flags remain low-confidence. AppOps history and actual network traffic are not available through this PackageManager-only screen.
 - Protected package identities receive a critical guard classification; unknown packages remain unverified.
 
 - Reads the installed system-package inventory using Android PackageManager.
@@ -13,7 +14,11 @@
 - Matches a reference profile only when its board/device token and Android API level match.
 - Shows each profile's package IDs, descriptions, risk notes and original source link.
 
-The catalogue is deliberately reference-only. It does not execute shell commands, disable packages, uninstall packages, or modify system state. A profile match is not permission to apply a list automatically.
+The catalogue is deliberately reference-only. It does not execute shell commands, disable packages, uninstall packages, or modify system state.
+
+## Analysis evidence and limits
+
+The package report reads declared permissions and component counts from PackageManager. A requested permission is not proof that an app used the capability. A shared system UID can make permission grants appear on many unrelated packages. Internet access alone is not evidence of tracking or exfiltration. This screen does not read AppOps history, packet captures, runtime sensor use, or remote endpoints. Where a sensitive permission and network access coexist, the report requests review with low confidence; it does not assert surveillance. A profile match is not permission to apply a list automatically.
 
 ## CleanYourTV source and attribution
 
