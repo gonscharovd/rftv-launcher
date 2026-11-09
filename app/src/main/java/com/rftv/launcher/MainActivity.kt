@@ -820,6 +820,13 @@ class MainActivity : Activity() {
             setPadding(0, dp(6), 0, 0)
         }
         weatherColumn.addView(homeWeatherText)
+        weatherColumn.addView(TextView(this).apply {
+            text = "ПРОГНОЗ НА 5 ДНЕЙ  ›"
+            textSize = 10f
+            letterSpacing = 0.08f
+            setTextColor(Color.argb(205, 255, 255, 255))
+            setPadding(0, dp(8), 0, 0)
+        })
         hero.addView(weatherColumn, LinearLayout.LayoutParams(-2, -2))
         root.addView(hero, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
 
