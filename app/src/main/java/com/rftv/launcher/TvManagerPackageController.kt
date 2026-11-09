@@ -320,6 +320,7 @@ internal class TvManagerPackageController(
         val decision = PackageOperationPolicy.canRestore(
             packageName = packageName,
             isOwnPackage = packageName == appContext.packageName,
+            // Only this exact RFTV-owned snapshot may restore a formerly enabled package.
             isProtected = false,
             originalState = PackageOperationPolicy.EnabledSetting.from(snapshot.originalEnabledSetting)?.let {
                 PackageOperationPolicy.OriginalState(it, snapshot.applicationEnabled, snapshot.originalHidden)
