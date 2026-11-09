@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.content.pm.PackageInstaller
 import android.os.Build
 import android.content.BroadcastReceiver
+import android.content.ComponentName
+import android.content.ServiceConnection
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -20,6 +22,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
+import android.os.IBinder
+import android.os.RemoteException
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -48,6 +52,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
+import rikka.shizuku.Shizuku
 
 /**
  * RFTV Launcher visual prototype.
@@ -72,6 +77,40 @@ class MainActivity : Activity() {
     private lateinit var dateText: TextView
     private lateinit var wallpaperView: ImageView
     private var lastAppliedWallpaperKey: String? = null
+    private var tvManagerShellService: ITvManagerShellService? = null
+    private var tvManagerShellUid: Int = -1
+    private val tvManagerShizukuPermissionListener =
+        Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+            if (requestCode == TvManagerShizukuBridge.REQUEST_CODE) {
+                if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                    bindTvManagerShizukuService()
+                } else {
+                    Toast.makeText(this, "Доступ Shizuku не предоставлен", Toast.LENGTH_LONG).show()
+                    if (page == "panel" && activePanelTitle == "ADB и разрешения") showTvAdb()
+                }
+            }
+        }
+    private val tvManagerShizukuConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val remote = ITvManagerShellService.Stub.asInterface(service)
+            tvManagerShellService = remote
+            tvManagerShellUid = try { remote?.uid ?: -1 } catch (_: RemoteException) { -1 }
+            if (tvManagerShellUid != 0 && tvManagerShellUid != 2000) {
+                tvManagerShellService = null
+            }
+            handler.post {
+                if (page == "panel" && activePanelTitle == "ADB и разрешения") showTvAdb()
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            tvManagerShellService = null
+            tvManagerShellUid = -1
+            handler.post {
+                if (page == "panel" && activePanelTitle == "ADB и разрешения") showTvAdb()
+            }
+        }
+    }
 
     private val handler = Handler(Looper.getMainLooper())
     private val wallpaperExecutor = Executors.newSingleThreadExecutor()
@@ -214,6 +253,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Shizuku.addRequestPermissionResultListener(tvManagerShizukuPermissionListener)
         prefs = getSharedPreferences("rftv_preferences", MODE_PRIVATE)
         themeMode = prefs.getInt("theme_mode", 2)
         wallpaperLight = prefs.getInt("wallpaper_light", 0)
@@ -304,6 +344,9 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        Shizuku.removeRequestPermissionResultListener(tvManagerShizukuPermissionListener)
+        TvManagerShizukuBridge.unbind(this, tvManagerShizukuConnection)
+        tvManagerShellService = null
         if (packageReceiverRegistered) {
             try { unregisterReceiver(packageChangeReceiver) } catch (_: IllegalArgumentException) { }
             packageReceiverRegistered = false
