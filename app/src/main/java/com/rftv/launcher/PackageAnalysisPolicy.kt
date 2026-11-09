@@ -73,7 +73,11 @@ internal object PackageAnalysisPolicy {
         "com.android.tv.",
         "com.mediatek.",
         "com.cvte.",
-        "com.droidlogic."
+        "com.droidlogic.",
+        "ru.sberdevices.services.",
+        "com.sberdevices.services.",
+        "ru.sberdevices.tvinputs.",
+        "ru.sberdevices.gamepad."
     )
 
     private val locationPermissions = setOf(
@@ -127,6 +131,7 @@ internal object PackageAnalysisPolicy {
         "com.google.android.tv.remote.service",
         "com.google.android.tv.remote",
         "ru.sberdevices.rcfupdater",
+        "ru.sberdevices.tvinputs",
         "ru.sberdevices.gamepad.service",
         "com.mediatek.androidbox"
     )
