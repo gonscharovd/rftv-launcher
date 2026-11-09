@@ -103,6 +103,9 @@ class RftvDreamService : DreamService() {
     }
 
     private fun buildScreen() {
+        val screenHeightDp = resources.configuration.screenHeightDp
+        val topCardHeightDp = if (screenHeightDp < 760) 118 else 142
+        val newsCardHeightDp = (screenHeightDp - 116 - topCardHeightDp).coerceIn(220, 620)
         val frame = FrameLayout(this).apply {
             setBackgroundColor(Color.rgb(12, 20, 32))
         }
@@ -149,14 +152,14 @@ class RftvDreamService : DreamService() {
         ratesCard.addView(cardCaption("КУРСЫ ЦБ РФ"))
         val rates = cardValue("USD — ₽\nEUR — ₽")
         ratesCard.addView(rates, LinearLayout.LayoutParams(-1, 0, 1f))
-        top.addView(ratesCard, LinearLayout.LayoutParams(0, dp(142), 1f).apply { rightMargin = dp(12) })
+        top.addView(ratesCard, LinearLayout.LayoutParams(0, dp(topCardHeightDp), 1f).apply { rightMargin = dp(12) })
 
         val weatherCard = glassCard()
         weatherCard.addView(cardCaption("ПОГОДА · ЧЕЛЯБИНСК"))
         val weather = cardValue("Загружаем текущие условия…")
         weatherCard.addView(weather, LinearLayout.LayoutParams(-1, 0, 1f))
         top.addView(weatherCard, LinearLayout.LayoutParams(0, dp(142), 1f))
-        content.addView(top, LinearLayout.LayoutParams(-1, dp(142)))
+        content.addView(top, LinearLayout.LayoutParams(-1, dp(topCardHeightDp)))
 
         val news = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -174,7 +177,7 @@ class RftvDreamService : DreamService() {
         worldCard.addView(newsHeading("МИР"))
         val world = newsValue("Мировая лента загружается…")
         worldCard.addView(world, LinearLayout.LayoutParams(-1, 0, 1f))
-        news.addView(worldCard, LinearLayout.LayoutParams(0, dp(510), 1f).apply {
+        news.addView(worldCard, LinearLayout.LayoutParams(0, dp(newsCardHeightDp), 1f).apply {
             leftMargin = dp(12); topMargin = dp(18)
         })
         content.addView(news, LinearLayout.LayoutParams(-1, dp(498)))
