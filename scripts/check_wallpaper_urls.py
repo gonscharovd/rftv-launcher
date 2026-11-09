@@ -40,7 +40,7 @@ def main() -> int:
         return 1
 
     failures = 0
-    for index, url in enumerate(urls, start=1):
+    for index, (group, url) in enumerate(groups, start=1):
         request = urllib.request.Request(
             url,
             headers={
