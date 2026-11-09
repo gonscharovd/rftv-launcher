@@ -32,7 +32,7 @@ internal object RftvDesignSystem {
         const val OVERLAY_TOP = 0x0C000000
         const val OVERLAY_BOTTOM = 0x76000000
         const val LABEL_ON_GLASS = -1092818689
-        const val CONTROL_CENTER_SCRIM = 0x90030818
+        const val CONTROL_CENTER_SCRIM = 0x90030818.toInt()
         const val CONTROL_CENTER_GRADIENT_START = -534557820
         const val CONTROL_CENTER_GRADIENT_MID = -301526233
         const val CONTROL_CENTER_GRADIENT_END = -401990613
