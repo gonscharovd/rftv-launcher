@@ -147,7 +147,7 @@ internal object RftvDesignSystem {
         context: Context,
         fillColor: Int,
         radiusDp: Int,
-        strokeAlpha: Int = 86
+        strokeAlpha: Int = GlassAlpha.SURFACE_STROKE
     ): GradientDrawable = GradientDrawable().apply {
         setColor(fillColor)
         cornerRadius = dp(context, radiusDp).toFloat()
