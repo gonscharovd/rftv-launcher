@@ -30,10 +30,15 @@ internal object TvManagerProfiles {
         val androidLabel: String,
         val sourceUrl: String,
         val testedNotes: String,
-        val packages: List<PackageEntry>
+        val packages: List<PackageEntry>,
+        val manufacturerTokens: List<String> = emptyList(),
+        val modelTokens: List<String> = emptyList(),
+        val buildFingerprintTokens: List<String> = emptyList(),
+        val abiTokens: List<String> = emptyList()
     ) {
         fun matches(): Boolean = matchesFingerprint(
-            Build.BOARD, Build.HARDWARE, Build.DEVICE, Build.PRODUCT, Build.VERSION.SDK_INT
+            Build.BOARD, Build.HARDWARE, Build.DEVICE, Build.PRODUCT, Build.VERSION.SDK_INT,
+            Build.MANUFACTURER, Build.MODEL, Build.FINGERPRINT, Build.SUPPORTED_ABIS.toList()
         )
 
         fun matchesFingerprint(
@@ -41,13 +46,25 @@ internal object TvManagerProfiles {
             hardware: String,
             device: String,
             product: String,
-            sdk: Int
+            sdk: Int,
+            manufacturer: String = "",
+            model: String = "",
+            buildFingerprint: String = "",
+            supportedAbis: List<String> = emptyList()
         ): Boolean {
             val boardIdentity = listOf(board, hardware).map { it.lowercase() }
             val deviceIdentity = listOf(device, product).map { it.lowercase() }
             val boardMatch = boardTokens.any { token -> boardIdentity.any { it == token.lowercase() } }
             val deviceMatch = deviceTokens.any { token -> deviceIdentity.any { it == token.lowercase() } }
-            return sdk == this.sdk && boardMatch && deviceMatch
+            val manufacturerMatch = manufacturerTokens.isNotEmpty() &&
+                manufacturerTokens.any { it.equals(manufacturer, ignoreCase = true) }
+            val modelMatch = modelTokens.isNotEmpty() &&
+                modelTokens.any { it.equals(model, ignoreCase = true) }
+            val buildMatch = buildFingerprintTokens.isNotEmpty() &&
+                buildFingerprintTokens.any { it == buildFingerprint }
+            val abiMatch = abiTokens.isNotEmpty() && supportedAbis.toSet() == abiTokens.toSet()
+            return sdk == this.sdk && boardMatch && deviceMatch &&
+                manufacturerMatch && modelMatch && buildMatch && abiMatch
         }
     }
 
