@@ -2173,6 +2173,29 @@ class MainActivity : Activity() {
                 "Прошивка: ${Build.DISPLAY}\nBuild ID: ${Build.ID}\nFingerprint: ${Build.FINGERPRINT}"))
             body.addView(infoCard("ПРОЦЕССОР", Build.SUPPORTED_ABIS.joinToString(),
                 "Ядра CPU: ${Runtime.getRuntime().availableProcessors()}"))
+            body.addView(glassButton("Экспортировать fingerprint устройства") {
+                val fingerprint = listOf(
+                    "manufacturer=${Build.MANUFACTURER}",
+                    "model=${Build.MODEL}",
+                    "brand=${Build.BRAND}",
+                    "board=${Build.BOARD}",
+                    "hardware=${Build.HARDWARE}",
+                    "device=${Build.DEVICE}",
+                    "product=${Build.PRODUCT}",
+                    "android_release=${Build.VERSION.RELEASE}",
+                    "sdk=${Build.VERSION.SDK_INT}",
+                    "build_id=${Build.ID}",
+                    "display=${Build.DISPLAY}",
+                    "build_fingerprint=${Build.FINGERPRINT}",
+                    "supported_abis=${Build.SUPPORTED_ABIS.joinToString(",")}"
+                ).joinToString("\n")
+                val send = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, "RFTV — fingerprint устройства")
+                    putExtra(Intent.EXTRA_TEXT, fingerprint)
+                }
+                startActivity(Intent.createChooser(send, "Экспорт fingerprint"))
+            }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
             body.addView(infoCard("ОПЕРАТИВНАЯ ПАМЯТЬ",
                 "${formatBytes(memory.totalMem)} всего · ${formatBytes(memory.availMem)} свободно",
                 "Порог низкой памяти: ${formatBytes(memory.threshold)}\nLow memory: ${memory.lowMemory}"))
