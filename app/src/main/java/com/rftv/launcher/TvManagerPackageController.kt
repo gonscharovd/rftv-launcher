@@ -84,7 +84,11 @@ internal class TvManagerPackageController(
         protected
     }
 
-    fun preview(packageName: String, mode: PackageOperationPolicy.Mode): Preview? {
+    fun preview(
+        packageName: String,
+        mode: PackageOperationPolicy.Mode,
+        hasActiveSnapshot: Boolean? = null
+    ): Preview? {
         // The shell bridge intentionally targets only Android's primary user.
         if (android.os.Process.myUid() / 100000 != 0) return null
         if (!PACKAGE_NAME.matches(packageName) || packageName == appContext.packageName) return null
@@ -146,7 +150,8 @@ internal class TvManagerPackageController(
             access,
             mode
         )
-        val decision = if (store.activeSnapshot(packageName) != null) {
+        val hasSnapshot = hasActiveSnapshot ?: (store.activeSnapshot(packageName) != null)
+        val decision = if (hasSnapshot) {
             PackageOperationPolicy.Decision(
                 allowed = false,
                 reason = "Для пакета уже существует сохранённая операция RFTV. Сначала проверь и заверши восстановление."
