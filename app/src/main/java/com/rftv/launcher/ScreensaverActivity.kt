@@ -124,6 +124,9 @@ class ScreensaverActivity : Activity() {
     }
 
     private fun buildScreen() {
+        val screenHeightDp = resources.configuration.screenHeightDp
+        val topCardHeightDp = if (screenHeightDp < 760) 118 else 142
+        val newsCardHeightDp = (screenHeightDp - 116 - topCardHeightDp).coerceIn(220, 620)
         val root = FrameLayout(this).apply {
             setBackground(
                 GradientDrawable(
@@ -183,7 +186,7 @@ class ScreensaverActivity : Activity() {
         ratesCard.addView(cardCaption("КУРСЫ ЦБ РФ"))
         rates = cardValue("USD  — ₽\nEUR  — ₽")
         ratesCard.addView(rates, LinearLayout.LayoutParams(-1, 0, 1f))
-        topRow.addView(ratesCard, LinearLayout.LayoutParams(0, dp(142), 1f).apply {
+        topRow.addView(ratesCard, LinearLayout.LayoutParams(0, dp(topCardHeightDp), 1f).apply {
             rightMargin = dp(12)
         })
 
@@ -192,7 +195,7 @@ class ScreensaverActivity : Activity() {
         weather = cardValue("Загрузка текущих условий…")
         weatherCard.addView(weather, LinearLayout.LayoutParams(-1, 0, 1f))
         topRow.addView(weatherCard, LinearLayout.LayoutParams(0, dp(142), 1f))
-        content.addView(topRow, LinearLayout.LayoutParams(-1, dp(142)))
+        content.addView(topRow, LinearLayout.LayoutParams(-1, dp(topCardHeightDp)))
 
         val newsRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -223,7 +226,7 @@ class ScreensaverActivity : Activity() {
         worldScroll.addView(worldList)
         worldCard.addView(worldScroll, LinearLayout.LayoutParams(-1, 0, 1f))
         newsRow.addView(worldCard, LinearLayout.LayoutParams(0, 0, 1f).apply {
-            height = dp(510)
+            height = dp(newsCardHeightDp)
             leftMargin = dp(12)
             topMargin = dp(18)
         })
