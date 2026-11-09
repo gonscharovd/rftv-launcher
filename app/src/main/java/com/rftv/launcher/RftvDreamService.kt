@@ -40,15 +40,19 @@ class RftvDreamService : DreamService() {
     private var russiaText: TextView? = null
     private var worldText: TextView? = null
     private var lastHourKey = -1L
+    private var lastDashboardRefreshAt = 0L
     @Volatile private var dreaming = false
 
     private val refreshTask = object : Runnable {
         override fun run() {
             val hourKey = System.currentTimeMillis() / 3_600_000L
             updateClock()
-            if (hourKey != lastHourKey) {
+            val wallpaperChanged = hourKey != lastHourKey
+            val dashboardStale = System.currentTimeMillis() - lastDashboardRefreshAt >= 15 * 60_000L
+            if (wallpaperChanged || dashboardStale) {
                 lastHourKey = hourKey
-                refreshOnlineContent(hourKey)
+                lastDashboardRefreshAt = System.currentTimeMillis()
+                refreshOnlineContent(refreshWallpaper = wallpaperChanged)
             }
             handler.postDelayed(this, 60_000L)
         }
@@ -243,13 +247,13 @@ class RftvDreamService : DreamService() {
             ?: "Мировая лента пока недоступна"
     }
 
-    private fun refreshOnlineContent(hourKey: Long) {
+    private fun refreshOnlineContent(refreshWallpaper: Boolean) {
         // Show the last successful values immediately, then refresh stale sources.
         renderDashboard(ScreensaverDashboardRepository.readCached(this))
         refreshFuture?.cancel(true)
         refreshFuture = executor.submit {
             val dashboard = ScreensaverDashboardRepository.load(this)
-            val imageFile = activeHomeWallpaperFile()
+            val imageFile = if (refreshWallpaper) activeHomeWallpaperFile() else null
             val blurred = imageFile?.let { file ->
                 val source = BitmapFactory.decodeFile(file.absolutePath, BitmapFactory.Options().apply {
                     inPreferredConfig = Bitmap.Config.RGB_565
