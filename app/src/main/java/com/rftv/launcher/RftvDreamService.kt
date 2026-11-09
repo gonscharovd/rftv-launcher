@@ -158,7 +158,7 @@ class RftvDreamService : DreamService() {
         weatherCard.addView(cardCaption("ПОГОДА · ЧЕЛЯБИНСК"))
         val weather = cardValue("Загружаем текущие условия…")
         weatherCard.addView(weather, LinearLayout.LayoutParams(-1, 0, 1f))
-        top.addView(weatherCard, LinearLayout.LayoutParams(0, dp(142), 1f))
+        top.addView(weatherCard, LinearLayout.LayoutParams(0, dp(topCardHeightDp), 1f))
         content.addView(top, LinearLayout.LayoutParams(-1, dp(topCardHeightDp)))
 
         val news = LinearLayout(this).apply {
