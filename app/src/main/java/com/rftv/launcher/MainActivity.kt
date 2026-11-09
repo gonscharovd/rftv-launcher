@@ -2126,8 +2126,10 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(8) })
             body.addView(infoCard(
                 "РЕЖИМ БЕЗОПАСНОСТИ",
-                "Диагностика доступна · изменение пакетов заблокировано",
-                "Встроенное Android-приложение не получает ADB Shell автоматически. Пока не подтверждён отдельный привилегированный мост, TV Manager не отключает системные пакеты."
+                if (tvManagerShellService != null && (tvManagerShellUid == 0 || tvManagerShellUid == 2000))
+                    "Диагностика доступна · ручные операции доступны через Shizuku"
+                else "Диагностика доступна · изменение пакетов заблокировано",
+                "Автоматический режим включается только при точном профиле и явно проверенных пакетах. Ручной режим требует отдельного подтверждения каждого изменения. Защищённые компоненты недоступны для переключения."
             ))
             body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
                 LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
@@ -2473,8 +2475,8 @@ class MainActivity : Activity() {
                 if (access.shellAvailable) "Доступен" else "Нет доступа",
                 "Проверяется фактическое выполнение без изменения состояния устройства."))
             body.addView(infoCard("Управление пакетами",
-                if (access.packageManagementAvailable) "Подтверждено" else "Недоступно / не подтверждено",
-                "До успешной проверки операция отключения и восстановления заблокирована."))
+                if (shizukuConnected) "Привилегированный канал подключён" else "Недоступно / не подтверждено",
+                "Наличие Shizuku подтверждает UID канала, но не гарантирует разрешение прошивки на конкретную команду. Первая операция выполняется отдельно, после сохранения исходного состояния и с проверкой результата."))
             body.addView(infoCard("Root",
                 if (access.rootAvailable) "Обнаружен" else "Не обнаружен",
                 "Root не требуется для обычной диагностики и не предполагается автоматически."))
@@ -2617,8 +2619,11 @@ class MainActivity : Activity() {
                         isFocusable = true
                         isFocusableInTouchMode = true
                         isChecked = !disabled
-                        isEnabled = channelReady && (!protected || owned != null) &&
-                            (!disabled || owned != null)
+                        isEnabled = channelReady && if (disabled) {
+                            owned != null
+                        } else {
+                            !protected && owned == null
+                        }
                         contentDescription = if (owned != null) "Восстановить ${app.packageName}" else "Отключить ${app.packageName}"
                     }
                     toggle.setOnCheckedChangeListener { button, checked ->
@@ -2662,6 +2667,23 @@ class MainActivity : Activity() {
                     }
                     row.addView(toggle)
                     list.addView(row, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(6) })
+                    if (owned != null && !disabled && channelReady) {
+                        list.addView(glassButton("Проверить и вернуть исходное состояние") {
+                            AlertDialog.Builder(this)
+                                .setTitle("Завершить незавершённую операцию?")
+                                .setMessage("${app.packageName}\nRFTV сохранён исходный snapshot, но текущее состояние не подтверждено. Команда вернёт сохранённое состояние и проверит результат.")
+                                .setNegativeButton("Отмена", null)
+                                .setPositiveButton("Восстановить") { _, _ ->
+                                    tvManagerExecutor.execute {
+                                        val result = tvManagerController.restore(app.packageName)
+                                        runOnUiThread {
+                                            Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                                            showTvManualCleanup()
+                                        }
+                                    }
+                                }.show()
+                        }, LinearLayout.LayoutParams(-2, dp(42)).apply { bottomMargin = dp(8) })
+                    }
                 }
             }
             search.addTextChangedListener(object : android.text.TextWatcher {
