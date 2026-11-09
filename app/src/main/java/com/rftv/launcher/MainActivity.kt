@@ -101,6 +101,7 @@ class MainActivity : Activity() {
     private var activePanelTitle = ""
     private var settingsNavigationActive = false
     private var settingsHubVisible = false
+    private var settingsSelectedIndex = 0
     private var packageReceiverRegistered = false
     private var themeMode = 2 // 0 light, 1 dark, 2 automatic
     private var wallpaperLight = 0
@@ -590,6 +591,7 @@ class MainActivity : Activity() {
     private fun showHome() {
         settingsNavigationActive = false
         settingsHubVisible = false
+        settingsSelectedIndex = 0
         page = "home"
         activePanelTitle = ""
         dockExpanded = false
@@ -1563,7 +1565,7 @@ class MainActivity : Activity() {
             Triple("О системе", "Версия и OTA-обновления", { showAboutSystem() })
         )
         val navItems = mutableListOf<TextView>()
-        var selectedIndex = 0
+        var selectedIndex = settingsSelectedIndex
         fun refreshNavigation() {
             navItems.forEachIndexed { index, item ->
                 val focused = item.hasFocus()
@@ -1575,6 +1577,7 @@ class MainActivity : Activity() {
         }
         fun renderSection(index: Int) {
             selectedIndex = index
+            settingsSelectedIndex = index
             refreshNavigation()
             detail.removeAllViews()
             val section = sections[index]
@@ -1631,8 +1634,8 @@ class MainActivity : Activity() {
             (resources.displayMetrics.heightPixels * RftvDesignSystem.Size.SETTINGS_PANEL_HEIGHT_FRACTION).toInt(), Gravity.CENTER
         ))
         setContentView(root)
-        renderSection(0)
-        sidebar.post { navItems.firstOrNull()?.requestFocus() }
+        renderSection(settingsSelectedIndex)
+        sidebar.post { navItems.getOrNull(settingsSelectedIndex)?.requestFocus() }
     }
 
     private fun showAppearanceSettings() {
