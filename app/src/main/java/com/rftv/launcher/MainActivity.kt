@@ -1503,31 +1503,128 @@ class MainActivity : Activity() {
     }
 
     private fun showLauncherSettings() {
-        showPanel("Настройки RFTV") { body ->
-            body.addView(infoCard(
-                "НАСТРОЙКИ ЛАУНЧЕРА",
-                "Всё важное — по разделам",
-                "Выбери раздел. Изменения сохраняются автоматически и доступны с пульта."
-            ))
-            body.addView(controlTile("Внешний вид и обои", "Дневные и ночные фотографии · карусель · оформление") {
-                showAppearanceSettings()
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
-            body.addView(controlTile("Dock", "Размер и расположение панели приложений") {
-                showDockSettings()
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
-            body.addView(controlTile("Заставка", "Таймер бездействия и системный экран ожидания") {
-                showScreensaverSettings()
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
-            body.addView(controlTile("Приложения", "Каталог · избранное · скрытые приложения") {
-                showAppSettings()
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
-            body.addView(controlTile("TV Manager", "Информация об устройстве и диагностика пакетов") {
-                showTvManager()
-            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
-            body.addView(controlTile("О системе и обновления", "Версия RFTV · скачать и установить OTA") {
-                showAboutSystem()
-            }, LinearLayout.LayoutParams(-1, dp(76)))
+        page = "panel"
+        activePanelTitle = "Настройки RFTV"
+        handler.removeCallbacks(clockTask)
+        handler.removeCallbacks(carouselTask)
+        root = FrameLayout(this).apply { setBackgroundColor(RftvDesignSystem.ColorTokens.PANEL_SCRIM) }
+        val shell = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            background = RftvDesignSystem.panelSurface(this@MainActivity)
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+            elevation = dp(RftvDesignSystem.Elevation.PANEL_DP).toFloat()
         }
+        val sidebar = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = roundedGlass(Color.argb(30, 255, 255, 255), RftvDesignSystem.Radius.CARD)
+            setPadding(dp(14), dp(18), dp(14), dp(14))
+        }
+        sidebar.addView(TextView(this).apply {
+            text = "RFTV"; textSize = 23f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE); setPadding(dp(10), dp(4), dp(10), dp(2))
+        })
+        sidebar.addView(TextView(this).apply {
+            text = "НАСТРОЙКИ"; textSize = 10f; letterSpacing = .14f
+            setTextColor(Color.LTGRAY); setPadding(dp(10), 0, dp(10), dp(18))
+        })
+        val contentColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(4), dp(4), dp(4))
+        }
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+        }
+        header.addView(TextView(this).apply {
+            text = "Настройки"; textSize = 28f; typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.WHITE)
+        }, LinearLayout.LayoutParams(0, dp(56), 1f))
+        header.addView(glassButton("Закрыть  ✕") { showHome() }, LinearLayout.LayoutParams(-2, dp(46)))
+        contentColumn.addView(header)
+        val detailScroll = ScrollView(this).apply { clipToPadding = false }
+        val detail = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(0, dp(12), 0, dp(14))
+        }
+        detailScroll.addView(detail)
+        contentColumn.addView(detailScroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        val sections = listOf(
+            Triple("Обзор", "Быстрый доступ к настройкам", { showLauncherSettings() }),
+            Triple("Внешний вид", "Обои и визуальное оформление", { showAppearanceSettings() }),
+            Triple("Dock", "Размер и пропорции панели", { showDockSettings() }),
+            Triple("Заставка", "Таймер и экран ожидания", { showScreensaverSettings() }),
+            Triple("Приложения", "Каталог, избранное и скрытые", { showAppSettings() }),
+            Triple("TV Manager", "Устройство и анализ пакетов", { showTvManager() }),
+            Triple("О системе", "Версия и OTA-обновления", { showAboutSystem() })
+        )
+        val navItems = mutableListOf<TextView>()
+        var selectedIndex = 0
+        fun refreshNavigation() {
+            navItems.forEachIndexed { index, item ->
+                val focused = item.hasFocus()
+                item.background = RftvDesignSystem.focusSurface(
+                    this, focused, RftvDesignSystem.Radius.CONTROL, 28, 105, index == selectedIndex
+                )
+                item.setTextColor(if (index == selectedIndex) Color.WHITE else Color.LTGRAY)
+            }
+        }
+        fun renderSection(index: Int) {
+            selectedIndex = index
+            refreshNavigation()
+            detail.removeAllViews()
+            val section = sections[index]
+            val label = when (index) {
+                0 -> "ЦЕНТР НАСТРОЕК"; 1 -> "ВНЕШНИЙ ВИД"; 2 -> "ПАНЕЛЬ ПРИЛОЖЕНИЙ"
+                3 -> "ЭКРАН ОЖИДАНИЯ"; 4 -> "УПРАВЛЕНИЕ ПРИЛОЖЕНИЯМИ"
+                5 -> "ДИАГНОСТИКА УСТРОЙСТВА"; else -> "СИСТЕМА И ОБНОВЛЕНИЯ"
+            }
+            detail.addView(infoCard(label, section.first, section.second))
+            if (index == 0) {
+                detail.addView(sectionLabel("БЫСТРЫЙ ДОСТУП"))
+                for (target in 1..6) {
+                    val entry = sections[target]
+                    detail.addView(controlTile(entry.first, entry.second) {
+                        renderSection(target); navItems.getOrNull(target)?.requestFocus()
+                    }, LinearLayout.LayoutParams(-1, dp(66)).apply { bottomMargin = dp(8) })
+                }
+            } else {
+                detail.addView(controlTile("Открыть раздел", "Перейти к параметрам: \${section.first}") {
+                    section.third.invoke()
+                }, LinearLayout.LayoutParams(-1, dp(76)))
+                detail.addView(TextView(this).apply {
+                    text = "Изменения настроек сохраняются автоматически. Навигация поддерживает пульт: стрелки, OK и Back."
+                    textSize = 13f; setTextColor(Color.LTGRAY)
+                    setPadding(dp(4), dp(18), dp(4), dp(8))
+                })
+            }
+        }
+        sections.forEachIndexed { index, section ->
+            val item = TextView(this).apply {
+                text = section.first; textSize = 16f; typeface = Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER_VERTICAL; isFocusable = true; isFocusableInTouchMode = true
+                setPadding(dp(14), 0, dp(10), 0)
+                background = RftvDesignSystem.focusSurface(
+                    this@MainActivity, false, RftvDesignSystem.Radius.CONTROL, 28, 105
+                )
+                setOnFocusChangeListener { view, focused ->
+                    view.background = RftvDesignSystem.focusSurface(
+                        this@MainActivity, focused, RftvDesignSystem.Radius.CONTROL,
+                        28, 105, index == selectedIndex
+                    )
+                    RftvDesignSystem.applyFocusScale(view, focused, 1.015f)
+                }
+                setOnClickListener { renderSection(index) }
+            }
+            navItems += item
+            sidebar.addView(item, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(5) })
+        }
+        shell.addView(sidebar, LinearLayout.LayoutParams((resources.displayMetrics.widthPixels * .255f).toInt(), -1))
+        shell.addView(contentColumn, LinearLayout.LayoutParams(0, -1, 1f))
+        root.addView(shell, FrameLayout.LayoutParams(
+            (resources.displayMetrics.widthPixels * .92f).toInt(),
+            (resources.displayMetrics.heightPixels * .88f).toInt(), Gravity.CENTER
+        ))
+        setContentView(root)
+        renderSection(0)
+        sidebar.post { navItems.firstOrNull()?.requestFocus() }
     }
 
     private fun showAppearanceSettings() {
@@ -1998,7 +2095,11 @@ class MainActivity : Activity() {
 
     private fun showTvPackageDetails(app: ApplicationInfo) {
         val packageInfo = try {
-            packageManager.getPackageInfo(app.packageName, PackageManager.GET_PERMISSIONS)
+            packageManager.getPackageInfo(
+                app.packageName,
+                PackageManager.GET_PERMISSIONS or PackageManager.GET_SERVICES or
+                    PackageManager.GET_RECEIVERS or PackageManager.GET_ACTIVITIES
+            )
         } catch (_: Exception) {
             showTvPackages()
             return
@@ -2021,7 +2122,41 @@ class MainActivity : Activity() {
         val updateTime = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
             .format(Date(packageInfo.lastUpdateTime))
 
+        val matchedProfileEntry = TvManagerProfiles.matchingProfiles()
+            .flatMap { it.packages }
+            .firstOrNull { it.packageId == app.packageName }
+        val analysis = PackageAnalysisPolicy.analyze(
+            PackageAnalysisPolicy.Signals(
+                packageName = app.packageName,
+                label = appLabel,
+                isSystemApp = app.flags and ApplicationInfo.FLAG_SYSTEM != 0,
+                enabled = !isPackageDisabled(app.packageName, app.enabled),
+                requestedPermissions = requested.toList(),
+                serviceCount = packageInfo.services?.size ?: 0,
+                receiverCount = packageInfo.receivers?.size ?: 0,
+                activityCount = packageInfo.activities?.size ?: 0,
+                profilePurpose = matchedProfileEntry?.note,
+                profileRisk = matchedProfileEntry?.risk
+            )
+        )
+        val analysisSeverity = when (analysis.severity) {
+            PackageAnalysisPolicy.Severity.CRITICAL -> "КРИТИЧЕСКИЙ КОМПОНЕНТ"
+            PackageAnalysisPolicy.Severity.REVIEW -> "ТРЕБУЕТ ПРОВЕРКИ"
+            PackageAnalysisPolicy.Severity.INFORMATIONAL -> "ИНФОРМАЦИЯ"
+        }
+        val analysisConfidence = when (analysis.confidence) {
+            PackageAnalysisPolicy.Confidence.HIGH -> "Высокая"
+            PackageAnalysisPolicy.Confidence.MEDIUM -> "Средняя"
+            PackageAnalysisPolicy.Confidence.LOW -> "Низкая"
+        }
+
         showPanel("Пакет · $appLabel") { body ->
+            body.addView(infoCard(
+                "АНАЛИЗ RFTV · $analysisSeverity",
+                analysis.purpose,
+                "Категория: \${analysis.category}\\nУверенность: $analysisConfidence\\n\\nФакты:\\n• " +
+                    analysis.evidence.joinToString("\\n• ") + "\\n\\nОграничение: \${analysis.limitation}"
+            ))
             body.addView(infoCard("ИДЕНТИФИКАЦИЯ", appLabel, app.packageName))
             body.addView(infoCard(
                 "СОСТОЯНИЕ",
