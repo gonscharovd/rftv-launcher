@@ -275,6 +275,20 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (page == "home") { startClock(); resetIdleScreensaverTimer() }
+        if (prefs.getBoolean("ota_install_pending_permission", false)) {
+            val apk = pendingOtaApk()
+            if (Build.VERSION.SDK_INT < 26 || packageManager.canRequestPackageInstalls()) {
+                prefs.edit().remove("ota_install_pending_permission").apply()
+                handler.post {
+                    if (apk.isFile && apk.length() > 100_000L) {
+                        otaStatus = "Разрешение получено · продолжаем установку"
+                        installOta(apk)
+                    } else {
+                        otaStatus = "Проверенный APK не найден. Запусти загрузку обновления повторно."
+                    }
+                }
+            }
+        }
     }
 
     override fun onPause() {
@@ -1288,7 +1302,7 @@ class MainActivity : Activity() {
                     handler.post { if (!isFinishing) showAboutSystem() }
                 }.start()
             }, LinearLayout.LayoutParams(-1, dp(50)))
-            body.addView(glassButton("Скачать и проверить обновление") {
+            body.addView(glassButton("Скачать и установить обновление") {
                 val apkUrl = prefs.getString("ota_url", null)
                 val expectedSha256 = prefs.getString("ota_sha256", null)
                 if (apkUrl.isNullOrBlank() || expectedSha256.isNullOrBlank()) {
@@ -1394,8 +1408,8 @@ class MainActivity : Activity() {
         otaProgress = 0
         Thread {
             var connection: java.net.HttpURLConnection? = null
-            val directory = getExternalFilesDir(null) ?: filesDir
-            val apk = File(directory, "rftv-update.apk")
+            val apk = pendingOtaApk()
+            val directory = apk.parentFile ?: filesDir
             val temporary = File(directory, "rftv-update.apk.part")
             try {
                 apk.delete()
@@ -1451,14 +1465,19 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    private fun pendingOtaApk(): File =
+        File(getExternalFilesDir(null) ?: filesDir, "rftv-update.apk")
+
     private fun installOta(apk: File) {
         try {
             if (Build.VERSION.SDK_INT >= 26 && !packageManager.canRequestPackageInstalls()) {
-                otaStatus = "Разреши установку неизвестных приложений для RFTV"
+                prefs.edit().putBoolean("ota_install_pending_permission", true).apply()
+                otaStatus = "Разреши установку неизвестных приложений для RFTV. После возврата установка продолжится автоматически."
                 startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                     Uri.parse("package:$packageName")))
                 return
             }
+            prefs.edit().remove("ota_install_pending_permission").apply()
             val installer = packageManager.packageInstaller
             val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
             params.setAppPackageName(packageName)
@@ -1485,57 +1504,114 @@ class MainActivity : Activity() {
 
     private fun showLauncherSettings() {
         showPanel("Настройки RFTV") { body ->
-            body.addView(infoCard("ОФОРМЛЕНИЕ", "Liquid Glass", "Лёгкие полупрозрачные поверхности и контуры вместо тяжёлого постоянного размытия."))
-            body.addView(controlTile("О системе", "Версия, обновления и OTA") {
+            body.addView(infoCard(
+                "НАСТРОЙКИ ЛАУНЧЕРА",
+                "Всё важное — по разделам",
+                "Выбери раздел. Изменения сохраняются автоматически и доступны с пульта."
+            ))
+            body.addView(controlTile("Внешний вид и обои", "Дневные и ночные фотографии · карусель · оформление") {
+                showAppearanceSettings()
+            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
+            body.addView(controlTile("Dock", "Размер и расположение панели приложений") {
+                showDockSettings()
+            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
+            body.addView(controlTile("Заставка", "Таймер бездействия и системный экран ожидания") {
+                showScreensaverSettings()
+            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
+            body.addView(controlTile("Приложения", "Каталог · избранное · скрытые приложения") {
+                showAppSettings()
+            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
+            body.addView(controlTile("TV Manager", "Информация об устройстве и диагностика пакетов") {
+                showTvManager()
+            }, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
+            body.addView(controlTile("О системе и обновления", "Версия RFTV · скачать и установить OTA") {
                 showAboutSystem()
-            }, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(8) })
+            }, LinearLayout.LayoutParams(-1, dp(76)))
+        }
+    }
 
-            body.addView(sectionLabel("ЗАСТАВКА · запуск после бездействия"))
-            listOf(0, 5, 15, 30, 60).forEach { minutes ->
-                val label = if (minutes == 0) "Отключено" else "$minutes минут"
-                body.addView(controlTile(if (screensaverTimeoutMinutes == minutes) "✓  $label" else label, "Автоматический запуск экрана ожидания") {
-                    screensaverTimeoutMinutes = minutes
-                    prefs.edit().putInt("screensaver_timeout_minutes", minutes).apply()
-                    showLauncherSettings()
-                }, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(6) })
-            }
+    private fun showAppearanceSettings() {
+        showPanel("Внешний вид и обои") { body ->
+            body.addView(infoCard(
+                "ОФОРМЛЕНИЕ RFTV",
+                "Liquid Glass",
+                "Лёгкие полупрозрачные поверхности, тонкие контуры и выразительный фокус. Тяжёлое постоянное размытие не используется."
+            ))
+            addWallpaperSettings(body)
+            body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(14) })
+        }
+    }
 
-            body.addView(sectionLabel("Ширина Dock · " + dockWidthPercent + "%"))
+    private fun showDockSettings() {
+        showPanel("Настройки Dock") { body ->
+            body.addView(infoCard(
+                "ПАНЕЛЬ ПРИЛОЖЕНИЙ",
+                "Размер и пропорции",
+                "Настройки применяются сразу на главном экране и сохраняются автоматически."
+            ))
+            body.addView(sectionLabel("ШИРИНА DOCK · $dockWidthPercent%"))
             body.addView(settingSlider(65, 100, dockWidthPercent) { value ->
                 dockWidthPercent = value
                 prefs.edit().putInt("dock_width", value).apply()
                 updateDockSize()
             })
-
-            body.addView(sectionLabel("Высота Dock · " + dockHeightDp + " dp"))
+            body.addView(sectionLabel("ВЫСОТА DOCK · $dockHeightDp dp"))
             body.addView(settingSlider(130, 210, dockHeightDp) { value ->
                 dockHeightDp = value
                 prefs.edit().putInt("dock_height", value).apply()
                 updateDockSize()
             })
+            body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(18) })
+        }
+    }
 
-            addWallpaperSettings(body)
+    private fun showScreensaverSettings() {
+        showPanel("Настройки заставки") { body ->
+            body.addView(infoCard(
+                "АВТОМАТИЧЕСКИЙ ЗАПУСК",
+                "После бездействия",
+                "Любая кнопка пульта завершает заставку. Выбери время ожидания перед запуском."
+            ))
+            listOf(0, 5, 15, 30, 60).forEach { minutes ->
+                val label = if (minutes == 0) "Отключено" else "$minutes минут"
+                body.addView(controlTile(
+                    if (screensaverTimeoutMinutes == minutes) "✓  $label" else label,
+                    if (screensaverTimeoutMinutes == minutes) "Текущий интервал" else "Запуск экрана ожидания через $label"
+                ) {
+                    screensaverTimeoutMinutes = minutes
+                    prefs.edit().putInt("screensaver_timeout_minutes", minutes).apply()
+                    showScreensaverSettings()
+                }, LinearLayout.LayoutParams(-1, dp(60)).apply { bottomMargin = dp(8) })
+            }
+            body.addView(controlTile("Системные настройки заставки", "Выбор и параметры системного Dream Service") {
+                openSettings("android.settings.DREAM_SETTINGS")
+            }, LinearLayout.LayoutParams(-1, dp(68)).apply { topMargin = dp(8) })
+            body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(14) })
+        }
+    }
 
-            body.addView(controlTile("Скрытые приложения", "Восстановить приложения, скрытые из обоих списков") {
-                showHiddenAppsPage()
-            }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
-
-            body.addView(controlTile("Приложения", "Обновить список установленных приложений") {
-                loadInstalledApps()
-                showHome()
-            }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
-
+    private fun showAppSettings() {
+        showPanel("Приложения") { body ->
+            body.addView(infoCard(
+                "УПРАВЛЕНИЕ ПРИЛОЖЕНИЯМИ",
+                "${installedApps.size} приложений обнаружено",
+                "Избранное и порядок настраиваются удержанием OK на плитке Dock или в каталоге."
+            ))
             body.addView(controlTile("Каталог приложений", "Полный список · запуск и управление") {
                 showAppCatalog()
-            }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
-
-            body.addView(controlTile("Экран ожидания RFTV", "Обои каждый час · погода · курсы · новости") {
-                openSettings("android.settings.DREAM_SETTINGS")
-            }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
-
-            body.addView(controlTile("TV Manager", "Информация, пакеты, ADB и обслуживание телевизора") {
-                showTvManager()
-            }, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(8) })
+            }, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(8) })
+            body.addView(controlTile("Скрытые приложения", "Восстановить приложения, скрытые из Dock и каталога") {
+                showHiddenAppsPage()
+            }, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(8) })
+            body.addView(controlTile("Обновить список приложений", "Повторно прочитать установленные приложения Android") {
+                loadInstalledApps()
+                showAppSettings()
+            }, LinearLayout.LayoutParams(-1, dp(72)))
+            body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
+                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(14) })
         }
     }
 
