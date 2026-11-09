@@ -146,6 +146,7 @@ class MainActivity : Activity() {
     private val wallpaperFailedKeys = ConcurrentHashMap.newKeySet<String>()
     private val installedApps = mutableListOf<TvApp>()
     private var dockExpanded = false
+    private var controlCenterReturnFocus: View? = null
     private var page = "home"
     private var activePanelTitle = ""
     private var settingsNavigationActive = false
@@ -1053,35 +1054,50 @@ class MainActivity : Activity() {
 
     private fun showControlCenter() {
         if (page != "home") return
-        root.findViewWithTag<View>("rftv-control-center")?.let { root.removeView(it) }
+        val existingOverlay = root.findViewWithTag<View>("rftv-control-center")
+        if (existingOverlay == null) {
+            controlCenterReturnFocus = currentFocus
+                ?.takeIf { it.tag != "rftv-control-center-trigger" }
+                ?: root.findViewWithTag("rftv-control-center-trigger")
+        } else {
+            root.removeView(existingOverlay)
+        }
 
         val overlay = FrameLayout(this).apply {
             tag = "rftv-control-center"
-            setBackgroundColor(Color.argb(112, 3, 8, 24))
+            setBackgroundColor(RftvDesignSystem.ColorTokens.CONTROL_CENTER_SCRIM)
             isFocusable = false
             isFocusableInTouchMode = false
         }
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.argb(224, 35, 75, 132), Color.argb(238, 7, 19, 39), Color.argb(232, 10, 28, 43))
-            ).apply {
-                cornerRadius = dp(34).toFloat()
-                setStroke(dp(1), Color.argb(125, 190, 226, 255))
-            }
-            setPadding(dp(18), dp(18), dp(18), dp(18))
-            elevation = dp(28).toFloat()
+            background = RftvDesignSystem.gradientSurface(
+                this@MainActivity,
+                intArrayOf(
+                    RftvDesignSystem.ColorTokens.CONTROL_CENTER_GRADIENT_START,
+                    RftvDesignSystem.ColorTokens.CONTROL_CENTER_GRADIENT_MID,
+                    RftvDesignSystem.ColorTokens.CONTROL_CENTER_GRADIENT_END
+                ),
+                RftvDesignSystem.Radius.CONTROL_CENTER_PANEL,
+                RftvDesignSystem.ColorTokens.CONTROL_CENTER_STROKE
+            )
+            setPadding(
+                dp(RftvDesignSystem.Spacing.CONTROL_CENTER_PADDING),
+                dp(RftvDesignSystem.Spacing.CONTROL_CENTER_PADDING),
+                dp(RftvDesignSystem.Spacing.CONTROL_CENTER_PADDING),
+                dp(RftvDesignSystem.Spacing.CONTROL_CENTER_PADDING)
+            )
+            elevation = dp(RftvDesignSystem.Elevation.CONTROL_CENTER_DP).toFloat()
             isFocusable = false
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
         }
         val header = TextView(this).apply {
             text = "Пункт управления"
-            textSize = 23f
+            textSize = RftvDesignSystem.Size.CONTROL_CENTER_HEADER_TEXT_SP
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            setTextColor(Color.WHITE)
+            setTextColor(RftvDesignSystem.ColorTokens.TEXT_PRIMARY)
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(6), 0, 0, dp(12))
+            setPadding(dp(6), 0, 0, dp(RftvDesignSystem.Spacing.CONTROL_CENTER_HEADER_BOTTOM))
         }
         card.addView(header, LinearLayout.LayoutParams(-1, dp(48)))
 
@@ -1102,29 +1118,45 @@ class MainActivity : Activity() {
             val tile = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(18), dp(10), dp(18), dp(10))
-                background = GradientDrawable(
-                    GradientDrawable.Orientation.TL_BR,
-                    intArrayOf(Color.argb(92, 83, 157, 224), Color.argb(72, 8, 25, 43))
-                ).apply {
-                    cornerRadius = dp(32).toFloat()
-                    setStroke(dp(1), Color.argb(115, 190, 226, 255))
-                }
+                setPadding(
+                    dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TILE_HORIZONTAL),
+                    dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TILE_VERTICAL),
+                    dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TILE_HORIZONTAL),
+                    dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TILE_VERTICAL)
+                )
+                background = RftvDesignSystem.gradientSurface(
+                    this@MainActivity,
+                    intArrayOf(
+                        RftvDesignSystem.ColorTokens.CONTROL_CENTER_TILE_START,
+                        RftvDesignSystem.ColorTokens.CONTROL_CENTER_TILE_END
+                    ),
+                    RftvDesignSystem.Radius.CONTROL_CENTER_TILE,
+                    RftvDesignSystem.ColorTokens.CONTROL_CENTER_STROKE
+                )
                 isFocusable = true
                 isFocusableInTouchMode = true
                 isClickable = true
                 setOnFocusChangeListener { view, focused ->
-                    view.background = GradientDrawable(
-                        GradientDrawable.Orientation.TL_BR,
-                        if (focused) intArrayOf(Color.rgb(91, 185, 247), Color.rgb(73, 145, 225))
-                        else intArrayOf(Color.argb(92, 83, 157, 224), Color.argb(72, 8, 25, 43))
-                    ).apply {
-                        cornerRadius = dp(32).toFloat()
-                        setStroke(dp(2), if (focused) Color.WHITE else Color.argb(115, 190, 226, 255))
-                    }
-                    val label = (view as LinearLayout).getChildAt(1) as LinearLayout
-                    for (i in 0 until label.childCount) {
-                        (label.getChildAt(i) as? TextView)?.setTextColor(if (focused) Color.rgb(8, 34, 63) else Color.WHITE)
+                    view.background = RftvDesignSystem.gradientSurface(
+                        this@MainActivity,
+                        if (focused) intArrayOf(
+                            RftvDesignSystem.ColorTokens.CONTROL_CENTER_TILE_FOCUSED_START,
+                            RftvDesignSystem.ColorTokens.CONTROL_CENTER_TILE_FOCUSED_END
+                        ) else intArrayOf(
+                            RftvDesignSystem.ColorTokens.CONTROL_CENTER_TILE_START,
+                            RftvDesignSystem.ColorTokens.CONTROL_CENTER_TILE_END
+                        ),
+                        RftvDesignSystem.Radius.CONTROL_CENTER_TILE,
+                        if (focused) RftvDesignSystem.ColorTokens.TEXT_PRIMARY
+                        else RftvDesignSystem.ColorTokens.CONTROL_CENTER_STROKE,
+                        if (focused) 2 else 1
+                    )
+                    val labels = (view as LinearLayout).getChildAt(1) as LinearLayout
+                    for (i in 0 until labels.childCount) {
+                        (labels.getChildAt(i) as? TextView)?.setTextColor(
+                            if (focused) RftvDesignSystem.ColorTokens.CONTROL_CENTER_FOCUSED_TEXT
+                            else RftvDesignSystem.ColorTokens.TEXT_PRIMARY
+                        )
                     }
                     RftvDesignSystem.applyFocusScale(view, focused, 1.025f)
                 }
@@ -1132,22 +1164,28 @@ class MainActivity : Activity() {
             }
             tile.addView(TextView(this).apply {
                 text = icon
-                textSize = 29f
+                textSize = RftvDesignSystem.Size.CONTROL_CENTER_ICON_TEXT_SP
                 gravity = Gravity.CENTER
-                setTextColor(Color.rgb(95, 190, 255))
-            }, LinearLayout.LayoutParams(dp(56), dp(54)))
-            val labels = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL }
+                setTextColor(RftvDesignSystem.ColorTokens.CONTROL_CENTER_ICON)
+            }, LinearLayout.LayoutParams(
+                dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ICON_WIDTH),
+                dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ICON_WIDTH)
+            ))
+            val labels = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
             labels.addView(TextView(this).apply {
                 text = title
-                textSize = 18f
+                textSize = RftvDesignSystem.Size.CONTROL_CENTER_TITLE_TEXT_SP
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                setTextColor(Color.WHITE)
+                setTextColor(RftvDesignSystem.ColorTokens.TEXT_PRIMARY)
                 maxLines = 1
             })
             labels.addView(TextView(this).apply {
                 text = subtitle
-                textSize = 14f
-                setTextColor(Color.rgb(195, 219, 243))
+                textSize = RftvDesignSystem.Size.CONTROL_CENTER_SUBTITLE_TEXT_SP
+                setTextColor(RftvDesignSystem.ColorTokens.CONTROL_CENTER_SUBTITLE)
                 maxLines = 1
             })
             tile.addView(labels, LinearLayout.LayoutParams(0, -2, 1f))
@@ -1186,16 +1224,35 @@ class MainActivity : Activity() {
         }
 
         fun addFull(tile: View) {
-            content.addView(tile, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
+            content.addView(tile, LinearLayout.LayoutParams(
+                -1,
+                dp(RftvDesignSystem.Size.CONTROL_CENTER_TILE_HEIGHT)
+            ).apply {
+                bottomMargin = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ROW_GAP)
+            })
         }
         fun addPair(left: View, right: View) {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
             }
-            row.addView(left, LinearLayout.LayoutParams(0, dp(76), 1f).apply { rightMargin = dp(6) })
-            row.addView(right, LinearLayout.LayoutParams(0, dp(76), 1f).apply { leftMargin = dp(6) })
-            content.addView(row, LinearLayout.LayoutParams(-1, dp(76)).apply { bottomMargin = dp(10) })
+            row.addView(left, LinearLayout.LayoutParams(
+                0,
+                dp(RftvDesignSystem.Size.CONTROL_CENTER_TILE_HEIGHT),
+                1f
+            ).apply {
+                rightMargin = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_COLUMN_GAP)
+            })
+            row.addView(right, LinearLayout.LayoutParams(
+                0,
+                dp(RftvDesignSystem.Size.CONTROL_CENTER_TILE_HEIGHT),
+                1f
+            ).apply {
+                leftMargin = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_COLUMN_GAP)
+            })
+            content.addView(row, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.CONTROL_CENTER_TILE_HEIGHT)).apply {
+                bottomMargin = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ROW_GAP)
+            })
         }
 
         addFull(wifi)
@@ -1214,7 +1271,6 @@ class MainActivity : Activity() {
         focusRows.flatten().forEach { it.id = View.generateViewId() }
         focusRows.forEachIndexed { rowIndex, row ->
             row.forEachIndexed { columnIndex, view ->
-                val sameRowNeighbor = row.getOrNull(if (columnIndex == 0) 1 else columnIndex - 1)
                 val upperRow = focusRows.getOrNull(rowIndex - 1)
                 val lowerRow = focusRows.getOrNull(rowIndex + 1)
                 view.nextFocusLeftId = if (columnIndex > 0) row[columnIndex - 1].id else view.id
@@ -1226,12 +1282,22 @@ class MainActivity : Activity() {
 
         scroll.addView(content)
         card.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        card.alpha = 0f
+        card.translationX = dp(18).toFloat()
         overlay.addView(card, FrameLayout.LayoutParams(
-            (resources.displayMetrics.widthPixels * .43f).toInt(),
-            (resources.displayMetrics.heightPixels * .91f).toInt(),
+            (resources.displayMetrics.widthPixels * RftvDesignSystem.Size.CONTROL_CENTER_WIDTH_FRACTION).toInt(),
+            (resources.displayMetrics.heightPixels * RftvDesignSystem.Size.CONTROL_CENTER_HEIGHT_FRACTION).toInt(),
             Gravity.TOP or Gravity.RIGHT
-        ).apply { rightMargin = dp(22); topMargin = dp(18) })
+        ).apply {
+            rightMargin = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_RIGHT_INSET)
+            topMargin = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TOP_INSET)
+        })
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
+        card.animate()
+            .alpha(1f)
+            .translationX(0f)
+            .setDuration(RftvDesignSystem.Motion.CONTROL_CENTER_REVEAL_DURATION_MS)
+            .start()
         overlay.post { wifi.requestFocus() }
     }
 
@@ -1266,6 +1332,9 @@ class MainActivity : Activity() {
     private fun closeControlCenter() {
         val overlay = root.findViewWithTag<View>("rftv-control-center") ?: return
         root.removeView(overlay)
+        val previous = controlCenterReturnFocus
+        controlCenterReturnFocus = null
+        if (previous != null && previous.isShown && previous.isFocusable && previous.requestFocus()) return
         root.findViewWithTag<View>("rftv-control-center-trigger")?.requestFocus()
     }
 
@@ -1590,25 +1659,25 @@ class MainActivity : Activity() {
         val sidebar = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = roundedGlass(Color.argb(30, 255, 255, 255), RftvDesignSystem.Radius.CARD)
-            setPadding(dp(14), dp(18), dp(14), dp(14))
+            setPadding(dp(RftvDesignSystem.Spacing.SETTINGS_SIDEBAR_PADDING), dp(18), dp(RftvDesignSystem.Spacing.SETTINGS_SIDEBAR_PADDING), dp(RftvDesignSystem.Spacing.SETTINGS_SIDEBAR_PADDING))
         }
         sidebar.addView(TextView(this).apply {
-            text = "RFTV"; textSize = 23f; typeface = Typeface.DEFAULT_BOLD
+            text = "RFTV"; textSize = RftvDesignSystem.Size.SETTINGS_BRAND_TEXT_SP; typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE); setPadding(dp(10), dp(4), dp(10), dp(2))
         })
         sidebar.addView(TextView(this).apply {
-            text = "НАСТРОЙКИ"; textSize = 10f; letterSpacing = .14f
-            setTextColor(Color.LTGRAY); setPadding(dp(10), 0, dp(10), dp(18))
+            text = "НАСТРОЙКИ"; textSize = RftvDesignSystem.Size.SETTINGS_CAPTION_TEXT_SP; letterSpacing = .14f
+            setTextColor(RftvDesignSystem.ColorTokens.TEXT_SECONDARY); setPadding(dp(10), 0, dp(10), dp(18))
         })
         val contentColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(4), dp(4), dp(4))
+            setPadding(dp(RftvDesignSystem.Spacing.SETTINGS_CONTENT_LEFT_PADDING), dp(4), dp(4), dp(4))
         }
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
         }
         header.addView(TextView(this).apply {
-            text = "Настройки"; textSize = 28f; typeface = Typeface.DEFAULT_BOLD
+            text = "Настройки"; textSize = RftvDesignSystem.Size.SETTINGS_HEADER_TEXT_SP; typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
         }, LinearLayout.LayoutParams(0, dp(56), 1f))
         header.addView(glassButton("Закрыть  ✕") { showHome() }, LinearLayout.LayoutParams(-2, dp(46)))
@@ -1757,8 +1826,8 @@ class MainActivity : Activity() {
             }
             detail.addView(TextView(this).apply {
                 text = "Настройки сохраняются автоматически. Управление с пульта: стрелки, OK и Back."
-                textSize = 13f
-                setTextColor(Color.LTGRAY)
+                textSize = RftvDesignSystem.Size.CARD_BODY_SP
+                setTextColor(RftvDesignSystem.ColorTokens.TEXT_SECONDARY)
                 setPadding(dp(4), dp(18), dp(4), dp(8))
             })
             val firstRight = findFirstFocusable(detail)
@@ -3138,7 +3207,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             background = RftvDesignSystem.panelSurface(this@MainActivity)
             setPadding(dp(RftvDesignSystem.Spacing.XL), dp(RftvDesignSystem.Spacing.LG), dp(RftvDesignSystem.Spacing.XL), dp(RftvDesignSystem.Spacing.LG))
-            elevation = dp(24).toFloat()
+            elevation = dp(RftvDesignSystem.Elevation.PANEL_DP).toFloat()
         }
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -3168,7 +3237,7 @@ class MainActivity : Activity() {
         root.addView(panelBackground, FrameLayout.LayoutParams(-1, -1))
         root.addView(shell, FrameLayout.LayoutParams(
             (resources.displayMetrics.widthPixels * RftvDesignSystem.Size.PANEL_WIDTH_FRACTION).toInt(),
-            (resources.displayMetrics.heightPixels * .88f).toInt(),
+            (resources.displayMetrics.heightPixels * RftvDesignSystem.Size.SETTINGS_PANEL_HEIGHT_FRACTION).toInt(),
             Gravity.CENTER
         ))
         setContentView(root)
@@ -3188,7 +3257,7 @@ class MainActivity : Activity() {
         }
         card.addView(TextView(this).apply {
             text = title
-            textSize = 11f
+            textSize = RftvDesignSystem.Size.CARD_LABEL_SP
             letterSpacing = 0.1f
             setTextColor(RftvDesignSystem.ColorTokens.LABEL_ON_GLASS)
         })
@@ -3241,13 +3310,13 @@ class MainActivity : Activity() {
         val tile = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
-            background = RftvDesignSystem.surface(this@MainActivity, Color.argb(38, 255, 255, 255), RftvDesignSystem.Radius.CONTROL)
+            background = RftvDesignSystem.surface(this@MainActivity, Color.argb(RftvDesignSystem.GlassAlpha.CONTROL_TILE, 255, 255, 255), RftvDesignSystem.Radius.CONTROL)
             isFocusable = true
             isFocusableInTouchMode = true
             setPadding(dp(16), dp(9), dp(16), dp(9))
             setOnClickListener { action() }
             setOnFocusChangeListener { view, focused ->
-                view.background = RftvDesignSystem.focusSurface(this@MainActivity, focused, RftvDesignSystem.Radius.CONTROL, 38, 112)
+                view.background = RftvDesignSystem.focusSurface(this@MainActivity, focused, RftvDesignSystem.Radius.CONTROL, RftvDesignSystem.GlassAlpha.CONTROL_TILE, RftvDesignSystem.GlassAlpha.CONTROL_TILE_FOCUSED)
                 RftvDesignSystem.applyFocusScale(view, focused, 1.025f)
             }
         }
@@ -3273,13 +3342,13 @@ class MainActivity : Activity() {
             textSize = RftvDesignSystem.Size.BUTTON_TEXT_SP
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
-            background = RftvDesignSystem.surface(this@MainActivity, Color.argb(45, 255, 255, 255), RftvDesignSystem.Radius.BUTTON)
+            background = RftvDesignSystem.surface(this@MainActivity, Color.argb(RftvDesignSystem.GlassAlpha.BUTTON, 255, 255, 255), RftvDesignSystem.Radius.BUTTON)
             isFocusable = true
             isFocusableInTouchMode = true
             setPadding(dp(18), 0, dp(18), 0)
             setOnClickListener { action() }
             setOnFocusChangeListener { view, focused ->
-                view.background = RftvDesignSystem.focusSurface(this@MainActivity, focused, RftvDesignSystem.Radius.BUTTON, 45, 120)
+                view.background = RftvDesignSystem.focusSurface(this@MainActivity, focused, RftvDesignSystem.Radius.BUTTON, RftvDesignSystem.GlassAlpha.BUTTON, RftvDesignSystem.GlassAlpha.BUTTON_FOCUSED)
                 RftvDesignSystem.applyFocusScale(view, focused, 1.04f)
             }
         }
