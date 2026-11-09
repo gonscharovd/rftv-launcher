@@ -167,7 +167,9 @@ internal class TvManagerPackageController(
             )
             if (!result.success) {
                 val rollbackTargets = buildList {
-                    result.snapshot?.packageName?.let(::add)
+                    result.snapshot?.packageName
+                        ?.takeIf { store.activeSnapshot(it) != null }
+                        ?.let(::add)
                     addAll(applied.asReversed())
                 }
                 val rollback = rollbackTargets.map { packageId ->
