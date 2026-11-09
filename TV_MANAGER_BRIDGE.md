@@ -65,7 +65,7 @@ A package may enter a proposed disable batch only when all conditions hold:
 - analysis confidence is high; package identity, role and required dependencies are reviewed;
 - no unresolved dependency exists;
 - the package is not RFTV itself or any protected Android, TV, OEM, SoC, input, remote, network, installer, audio/video, update, account, setup or launcher component;
-- the active provider has independently confirmed the exact required operation;
+- the active provider identity/UID is verified; the exact package-manager command is verified by read-back only after the owner-approved operation;
 - the original state snapshot has been persisted and verified before the first change.
 
 A profile match alone is never permission to apply a profile. Unknown, low-confidence, untested, newly installed or firmware-mismatched packages are never eligible.
@@ -76,7 +76,7 @@ Before a change, persist an immutable record containing at least:
 
 - package name and user ID;
 - original PackageManager enabled-setting integer (including DEFAULT, ENABLED, DISABLED, DISABLED_USER and DISABLED_UNTIL_USED);
-- manifest enabled flag and observed effective state;
+- the observed `ApplicationInfo.enabled` flag (effective enabled state at capture time);
 - Device Owner hidden state when that provider is used;
 - provider and provider identity/UID;
 - device fingerprint, Android build fingerprint, timestamp and operation ID.
