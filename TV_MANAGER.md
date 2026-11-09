@@ -2,7 +2,7 @@
 
 ## Current implementation status
 
-This feature branch implements the first reversible package-management path. It is not yet merged or released.
+Stable implementation: **RFTV Launcher v0.6.0**. The feature is merged into `main` and published in GitHub Releases. The physical Shizuku/provider and package-operation flow has not yet been validated on the target Sber TV.
 
 - Device and package inventory through Android PackageManager.
 - Package details: requested permissions, granted/denied state, declared services/receivers/activities, category, risk, confidence and analysis limitations.
@@ -11,7 +11,7 @@ This feature branch implements the first reversible package-management path. It 
 - Manual cleanup UI with a searchable package list, per-package switches, package-specific confirmation, protected-package locks and DPAD navigation.
 - Durable before-change snapshots, operation journal, read-back verification, exact-state restoration and reverse-order restore-all.
 - Automatic batch orchestration with fail-fast behavior and reverse-order rollback. It remains unavailable until an exact tested profile explicitly marks optional packages, high confidence and verified dependencies.
-- No package has been disabled during development. Physical device testing has not yet been performed.
+- No package was disabled during development. Physical device testing has not yet been performed; the first target-device validation must remain read-only.
 
 ## Package analysis: evidence and limits
 
