@@ -836,7 +836,7 @@ class MainActivity : Activity() {
         val hero = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            background = ColorDrawable(Color.TRANSPARENT)
+            setBackgroundColor(Color.TRANSPARENT)
             setPadding(dp(30), dp(18), dp(30), dp(18))
             isFocusable = false
         }
