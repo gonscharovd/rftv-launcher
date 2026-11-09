@@ -27,6 +27,8 @@ internal object TvManagerProfiles {
         val boardTokens: List<String>,
         val deviceTokens: List<String>,
         val sdk: Int,
+        val hardwareTokens: List<String> = emptyList(),
+        val productTokens: List<String> = emptyList(),
         val androidLabel: String,
         val sourceUrl: String,
         val testedNotes: String,
@@ -52,10 +54,12 @@ internal object TvManagerProfiles {
             buildFingerprint: String = "",
             supportedAbis: List<String> = emptyList()
         ): Boolean {
-            val boardIdentity = listOf(board, hardware).map { it.lowercase() }
-            val deviceIdentity = listOf(device, product).map { it.lowercase() }
-            val boardMatch = boardTokens.any { token -> boardIdentity.any { it == token.lowercase() } }
-            val deviceMatch = deviceTokens.any { token -> deviceIdentity.any { it == token.lowercase() } }
+            val boardMatch = boardTokens.any { it.equals(board, ignoreCase = true) }
+            val hardwareMatch = hardwareTokens.isNotEmpty() &&
+                hardwareTokens.any { it.equals(hardware, ignoreCase = true) }
+            val deviceMatch = deviceTokens.any { it.equals(device, ignoreCase = true) }
+            val productMatch = productTokens.isNotEmpty() &&
+                productTokens.any { it.equals(product, ignoreCase = true) }
             val manufacturerMatch = manufacturerTokens.isNotEmpty() &&
                 manufacturerTokens.any { it.equals(manufacturer, ignoreCase = true) }
             val modelMatch = modelTokens.isNotEmpty() &&
@@ -63,7 +67,7 @@ internal object TvManagerProfiles {
             val buildMatch = buildFingerprintTokens.isNotEmpty() &&
                 buildFingerprintTokens.any { it == buildFingerprint }
             val abiMatch = abiTokens.isNotEmpty() && supportedAbis.toSet() == abiTokens.toSet()
-            return sdk == this.sdk && boardMatch && deviceMatch &&
+            return sdk == this.sdk && boardMatch && hardwareMatch && deviceMatch && productMatch &&
                 manufacturerMatch && modelMatch && buildMatch && abiMatch
         }
     }
