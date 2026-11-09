@@ -83,7 +83,7 @@ class ScreensaverActivity : Activity() {
         super.onResume()
         alive = true
         tick.run()
-        if (!::wallpaper.isInitialized || wallpaper.drawable == null) loadCurrentWallpaper()
+        if (!::wallpaper.isInitialized || (wallpaper.drawable == null && wallpaperFuture?.isDone != false && pendingWallpaperBitmap == null)) loadCurrentWallpaper()
         loadDashboard()
         handler.removeCallbacks(refreshDashboard)
         handler.postDelayed(refreshDashboard, 15 * 60_000L)
