@@ -77,8 +77,8 @@ class MainActivity : Activity() {
     private lateinit var dateText: TextView
     private lateinit var wallpaperView: ImageView
     private var lastAppliedWallpaperKey: String? = null
-    private var tvManagerShellService: ITvManagerShellService? = null
-    private var tvManagerShellUid: Int = -1
+    @Volatile private var tvManagerShellService: ITvManagerShellService? = null
+    @Volatile private var tvManagerShellUid: Int = -1
     private val tvManagerShizukuPermissionListener =
         Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
             if (requestCode == TvManagerShizukuBridge.REQUEST_CODE) {
