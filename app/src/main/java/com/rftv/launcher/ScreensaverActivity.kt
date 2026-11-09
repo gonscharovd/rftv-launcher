@@ -343,7 +343,10 @@ class ScreensaverActivity : Activity() {
             }
             pendingWallpaperBitmap = blurred
             handler.post {
-                if (pendingWallpaperBitmap !== blurred) return@post
+                if (pendingWallpaperBitmap !== blurred) {
+                    blurred?.takeIf { !it.isRecycled }?.recycle()
+                    return@post
+                }
                 pendingWallpaperBitmap = null
                 if (alive && !isFinishing && blurred != null) wallpaper.setImageBitmap(blurred)
                 else blurred?.takeIf { !it.isRecycled }?.recycle()
