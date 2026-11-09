@@ -40,7 +40,13 @@ internal class TvManagerOperationStore(context: Context) {
 
     @Synchronized
     fun saveSnapshotBeforeChange(snapshot: Snapshot): Boolean {
-        if (snapshot.packageName.isBlank() || snapshot.operationId.isBlank()) return false
+        if (!PACKAGE_NAME.matches(snapshot.packageName) ||
+            snapshot.operationId.isBlank() ||
+            snapshot.userId != 0 ||
+            snapshot.originalEnabledSetting !in 0..4 ||
+            snapshot.provider.isBlank() ||
+            snapshot.deviceFingerprint.isBlank()
+        ) return false
         val active = readSnapshots()
         if (active.has(snapshot.packageName)) return false
         active.put(snapshot.packageName, snapshot.toJson())
@@ -56,20 +62,24 @@ internal class TvManagerOperationStore(context: Context) {
                 .commit()) return false
         val stored = readSnapshots().optJSONObject(snapshot.packageName) ?: return false
         return stored.optString("operationId") == snapshot.operationId &&
-            stored.optInt("originalEnabledSetting", Int.MIN_VALUE) == snapshot.originalEnabledSetting
+            stored.optString("packageName") == snapshot.packageName &&
+            stored.optInt("userId", -1) == snapshot.userId &&
+            stored.optInt("originalEnabledSetting", Int.MIN_VALUE) == snapshot.originalEnabledSetting &&
+            stored.optString("deviceFingerprint") == snapshot.deviceFingerprint
     }
 
     @Synchronized
     fun activeSnapshots(): List<Snapshot> {
         val active = readSnapshots()
         return active.keys().asSequence().mapNotNull { key ->
-            active.optJSONObject(key)?.toSnapshot()
+            active.optJSONObject(key)?.toSnapshot()?.takeIf { it.packageName == key }
         }.toList()
     }
 
     @Synchronized
     fun activeSnapshot(packageName: String): Snapshot? =
         readSnapshots().optJSONObject(packageName)?.toSnapshot()
+            ?.takeIf { it.packageName == packageName }
 
     @Synchronized
     fun recordApplied(snapshot: Snapshot, resultingEnabledSetting: Int, verified: Boolean): Boolean {
@@ -161,8 +171,8 @@ internal class TvManagerOperationStore(context: Context) {
     private fun JSONObject.toSnapshot() = Snapshot(
         operationId = optString("operationId"),
         packageName = optString("packageName"),
-        userId = optInt("userId", 0),
-        originalEnabledSetting = optInt("originalEnabledSetting", 0),
+        userId = optInt("userId", -1),
+        originalEnabledSetting = optInt("originalEnabledSetting", Int.MIN_VALUE),
         manifestEnabled = optBoolean("manifestEnabled", true),
         originalHidden = optBoolean("originalHidden", false),
         provider = optString("provider"),
@@ -196,6 +206,7 @@ internal class TvManagerOperationStore(context: Context) {
         private const val PREFERENCES_NAME = "rftv_tv_manager_operations"
         private const val KEY_ACTIVE = "active_snapshots"
         private const val KEY_JOURNAL = "operation_journal"
+        private val PACKAGE_NAME = Regex("[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)+")
 
         fun newOperationId(): String = UUID.randomUUID().toString()
     }
