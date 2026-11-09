@@ -13,8 +13,14 @@ internal object PackageChangePolicy {
         "android.intent.action.PACKAGE_FULLY_REMOVED"
     )
 
-    fun shouldRefresh(action: String?, changedPackage: String?, ownPackage: String): Boolean =
+    fun shouldRefresh(
+        action: String?,
+        changedPackage: String?,
+        ownPackage: String,
+        isReplacing: Boolean = false
+    ): Boolean =
         action in relevantActions &&
+            !(action == "android.intent.action.PACKAGE_REMOVED" && isReplacing) &&
             !changedPackage.isNullOrBlank() &&
             changedPackage != ownPackage
 }
