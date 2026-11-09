@@ -54,10 +54,11 @@ internal class TvManagerPackageController(
             enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER ||
             enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED ||
             (enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT && !app.enabled)
-        val exactProfile = TvManagerProfiles.matchingProfiles().isNotEmpty()
-        val profileEntry = TvManagerProfiles.matchingProfiles()
+        val matchedProfiles = TvManagerProfiles.matchingProfiles()
+        val profileEntry = matchedProfiles
             .flatMap { it.packages }
             .firstOrNull { it.packageId == packageName }
+        val exactProfile = profileEntry != null
         val protected = isHardProtected(packageName)
         val uid = serviceUidProvider()
         val accessMode = when (uid) {
