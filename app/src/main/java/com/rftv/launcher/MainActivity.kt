@@ -541,7 +541,7 @@ class MainActivity : Activity() {
         }
         clockText = TextView(this).apply {
             text = "09:41"
-            letterSpacing = -0.045f
+            letterSpacing = RftvDesignSystem.Size.CLOCK_LETTER_SPACING
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
         }
@@ -553,9 +553,9 @@ class MainActivity : Activity() {
         timeColumn.addView(dateText)
         timeColumn.gravity = Gravity.CENTER
         clockText.textSize = RftvDesignSystem.Size.CLOCK_TEXT_SP
-        clockText.setShadowLayer(22f, 0f, 4f, RftvDesignSystem.ColorTokens.CLOCK_SHADOW)
+        clockText.setShadowLayer(RftvDesignSystem.Size.CLOCK_SHADOW_RADIUS, 0f, RftvDesignSystem.Size.CLOCK_SHADOW_DY, RftvDesignSystem.ColorTokens.CLOCK_SHADOW)
         dateText.textSize = RftvDesignSystem.Size.DATE_TEXT_SP
-        dateText.setShadowLayer(10f, 0f, 2f, Color.argb(RftvDesignSystem.GlassAlpha.HOME_DATE_SHADOW, 0, 0, 0))
+        dateText.setShadowLayer(RftvDesignSystem.Size.DATE_SHADOW_RADIUS, 0f, RftvDesignSystem.Size.DATE_SHADOW_DY, Color.argb(RftvDesignSystem.GlassAlpha.HOME_DATE_SHADOW, 0, 0, 0))
         root.addView(timeColumn, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
 
         top.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
@@ -637,11 +637,11 @@ class MainActivity : Activity() {
         if (firstRow.isEmpty()) {
             val empty = TextView(this).apply {
                 text = "Приложения появятся здесь после установки"
-                textSize = 14f
+                textSize = RftvDesignSystem.Size.EMPTY_DOCK_TEXT_SP
                 gravity = Gravity.CENTER
                 setTextColor(Color.WHITE)
             }
-            dockContent.addView(empty, LinearLayout.LayoutParams(-1, dp(122)))
+            dockContent.addView(empty, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.EMPTY_DOCK_HEIGHT)))
         }
     }
 
@@ -662,15 +662,15 @@ class MainActivity : Activity() {
                 tag = app.packageName
                 isFocusable = true
                 isFocusableInTouchMode = true
-                background = RftvDesignSystem.focusSurface(this@MainActivity, false, RftvDesignSystem.Radius.DOCK_TILE, restingAlpha = 25, focusedAlpha = 112)
-                setPadding(dp(7), dp(5), dp(7), dp(4))
+                background = RftvDesignSystem.focusSurface(this@MainActivity, false, RftvDesignSystem.Radius.DOCK_TILE, restingAlpha = RftvDesignSystem.GlassAlpha.DOCK_TILE_RESTING, focusedAlpha = RftvDesignSystem.GlassAlpha.DOCK_TILE_FOCUSED)
+                setPadding(dp(RftvDesignSystem.Size.DOCK_TILE_PADDING_HORIZONTAL), dp(RftvDesignSystem.Size.DOCK_TILE_PADDING_TOP), dp(RftvDesignSystem.Size.DOCK_TILE_PADDING_HORIZONTAL), dp(RftvDesignSystem.Size.DOCK_TILE_PADDING_BOTTOM))
                 contentDescription = app.label
                 setOnFocusChangeListener { view, focused ->
                     view.background = RftvDesignSystem.focusSurface(
                         this@MainActivity, focused, RftvDesignSystem.Radius.DOCK_TILE, restingAlpha = 25, focusedAlpha = 112
                     )
                     RftvDesignSystem.applyFocusScale(view, focused, RftvDesignSystem.Size.DOCK_FOCUS_SCALE)
-                    view.elevation = if (focused) dp(12).toFloat() else 0f
+                    view.elevation = if (focused) dp(RftvDesignSystem.Elevation.FOCUSED_TILE_DP).toFloat() else 0f
                 }
                 setOnClickListener { launchApp(app.packageName) }
                 setOnLongClickListener { showAppActions(app); true }
@@ -686,7 +686,7 @@ class MainActivity : Activity() {
                 setTextColor(Color.WHITE)
                 gravity = Gravity.CENTER
                 maxLines = 1
-                setPadding(0, dp(4), 0, 0)
+                setPadding(0, dp(RftvDesignSystem.Size.DOCK_LABEL_TOP_PADDING), 0, 0)
             }
             tile.addView(label, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.DOCK_LABEL_WIDTH), dp(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT)))
             row.addView(tile, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.DOCK_TILE_WIDTH), dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)).apply {
