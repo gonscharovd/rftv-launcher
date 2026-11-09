@@ -20,8 +20,8 @@ class TvManagerShellService : ITvManagerShellService.Stub() {
         if (Process.myUid() != 0 && Process.myUid() != 2000) {
             return "ERROR: неподдерживаемый UID привилегированного процесса"
         }
-        if (!PACKAGE_NAME.matches(packageName) || isHardProtected(packageName)) {
-            return "ERROR: пакет запрещён политикой защиты TV Manager"
+        if (!PACKAGE_NAME.matches(packageName) || packageName == OWN_PACKAGE) {
+            return "ERROR: недопустимый идентификатор пакета"
         }
         if (userId != 0) return "ERROR: поддерживается только основной пользователь Android (0)"
         val command = when (enabledState) {
@@ -31,6 +31,12 @@ class TvManagerShellService : ITvManagerShellService.Stub() {
             3 -> "disable-user"
             4 -> "disable-until-used"
             else -> return "ERROR: неизвестное состояние пакета"
+        }
+        // A protected package can never be disabled through this bridge. Enabling
+        // or restoring an exact RFTV-owned snapshot remains allowed so a package
+        // that became protected after an app/profile update is still recoverable.
+        if (enabledState in 2..4 && isHardProtected(packageName)) {
+            return "ERROR: пакет запрещён политикой защиты TV Manager"
         }
 
         val cmd = runCommand(
