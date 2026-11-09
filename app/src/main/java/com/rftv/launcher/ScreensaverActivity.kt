@@ -439,7 +439,7 @@ class ScreensaverActivity : Activity() {
             event = parser.next()
         }
         if (usd.isBlank() || eur.isBlank()) error("CBR response has no USD/EUR values")
-        "USD  $usd ₽\nEUR  $eur ₽"
+        return "USD  $usd ₽\nEUR  $eur ₽"
     }
 
     private fun fetchNews(feedUrl: String): List<String> {
@@ -461,7 +461,7 @@ class ScreensaverActivity : Activity() {
             }
             event = parser.next()
         }
-        titles
+        return titles
     }
 
     private fun read(address: String, charset: String = "UTF-8"): String {
