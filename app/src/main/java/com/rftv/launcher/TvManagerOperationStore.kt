@@ -76,14 +76,14 @@ internal class TvManagerOperationStore(context: Context) {
     fun activeSnapshots(): List<Snapshot> {
         val active = readSnapshots()
         return active.keys().asSequence().mapNotNull { key ->
-            active.optJSONObject(key)?.toSnapshot()?.takeIf { it.packageName == key }
+            active.optJSONObject(key)?.toSnapshot()?.takeIf { it.packageName == key && it.isValid() }
         }.toList()
     }
 
     @Synchronized
     fun activeSnapshot(packageName: String): Snapshot? =
         readSnapshots().optJSONObject(packageName)?.toSnapshot()
-            ?.takeIf { it.packageName == packageName }
+            ?.takeIf { it.packageName == packageName && it.isValid() }
 
     @Synchronized
     fun recordApplied(snapshot: Snapshot, resultingEnabledSetting: Int, verified: Boolean): Boolean {
@@ -179,6 +179,15 @@ internal class TvManagerOperationStore(context: Context) {
         put("deviceFingerprint", deviceFingerprint)
         put("createdAt", createdAt)
     }
+
+    private fun Snapshot.isValid(): Boolean =
+        PACKAGE_NAME.matches(packageName) &&
+            operationId.isNotBlank() &&
+            userId == 0 &&
+            originalEnabledSetting in 0..4 &&
+            provider.isNotBlank() &&
+            deviceFingerprint.isNotBlank() &&
+            createdAt > 0L
 
     private fun JSONObject.toSnapshot() = Snapshot(
         operationId = optString("operationId"),
