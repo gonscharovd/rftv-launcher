@@ -1686,14 +1686,14 @@ class MainActivity : Activity() {
         root = FrameLayout(this).apply { setBackgroundColor(RftvDesignSystem.ColorTokens.PANEL_SCRIM) }
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            background = RftvDesignSystem.panelSurface(this@MainActivity)
-            setPadding(dp(18), dp(18), dp(18), dp(18))
+            background = RftvDesignSystem.settingsShellSurface(this@MainActivity)
+            setPadding(dp(20), dp(20), dp(20), dp(20))
             elevation = dp(RftvDesignSystem.Elevation.PANEL_DP).toFloat()
         }
         val sidebar = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = roundedGlass(Color.argb(30, 255, 255, 255), RftvDesignSystem.Radius.CARD)
-            setPadding(dp(RftvDesignSystem.Spacing.SETTINGS_SIDEBAR_PADDING), dp(18), dp(RftvDesignSystem.Spacing.SETTINGS_SIDEBAR_PADDING), dp(RftvDesignSystem.Spacing.SETTINGS_SIDEBAR_PADDING))
+            background = RftvDesignSystem.settingsSidebarSurface(this@MainActivity)
+            setPadding(dp(RftvDesignSystem.Spacing.SETTINGS_SIDEBAR_PADDING), dp(20), dp(RftvDesignSystem.Spacing.SETTINGS_SIDEBAR_PADDING), dp(RftvDesignSystem.Spacing.SETTINGS_SIDEBAR_PADDING))
         }
         sidebar.addView(TextView(this).apply {
             text = "RFTV"; textSize = RftvDesignSystem.Size.SETTINGS_BRAND_TEXT_SP; typeface = Typeface.DEFAULT_BOLD
@@ -1759,10 +1759,8 @@ class MainActivity : Activity() {
         fun refreshNavigation() {
             navItems.forEachIndexed { index, item ->
                 val focused = item.hasFocus()
-                item.background = RftvDesignSystem.focusSurface(
-                    this, focused, RftvDesignSystem.Radius.CONTROL, 28, 105, index == selectedIndex
-                )
-                item.setTextColor(if (index == selectedIndex) Color.WHITE else Color.LTGRAY)
+                item.background = RftvDesignSystem.settingsNavigationSurface(this, focused, index == selectedIndex)
+                item.setTextColor(if (focused) 0xFF15243A.toInt() else if (index == selectedIndex) Color.WHITE else 0xFFD0D9E6.toInt())
             }
         }
         fun renderSection(index: Int) {
@@ -1889,15 +1887,11 @@ class MainActivity : Activity() {
                 text = section.first; textSize = 16f; typeface = Typeface.DEFAULT_BOLD
                 gravity = Gravity.CENTER_VERTICAL; isFocusable = true; isFocusableInTouchMode = true
                 setPadding(dp(14), 0, dp(10), 0)
-                background = RftvDesignSystem.focusSurface(
-                    this@MainActivity, false, RftvDesignSystem.Radius.CONTROL, 28, 105
-                )
+                background = RftvDesignSystem.settingsNavigationSurface(this@MainActivity, focused = false, selected = false)
                 setOnFocusChangeListener { view, focused ->
-                    view.background = RftvDesignSystem.focusSurface(
-                        this@MainActivity, focused, RftvDesignSystem.Radius.CONTROL,
-                        28, 105, index == selectedIndex
-                    )
-                    RftvDesignSystem.applyFocusScale(view, focused, 1.015f)
+                    view.background = RftvDesignSystem.settingsNavigationSurface(this@MainActivity, focused, index == selectedIndex)
+                    (view as TextView).setTextColor(if (focused) 0xFF15243A.toInt() else if (index == selectedIndex) Color.WHITE else 0xFFD0D9E6.toInt())
+                    RftvDesignSystem.applyFocusScale(view, focused, 1.025f)
                 }
                 setOnClickListener { renderSection(index) }
             }
