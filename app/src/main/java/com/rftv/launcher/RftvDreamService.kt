@@ -38,10 +38,19 @@ class RftvDreamService : DreamService() {
     private var wallpaper: ImageView? = null
     private var clock: TextView? = null
     private var date: TextView? = null
-    private var info: TextView? = null
+    private var ratesText: TextView? = null
+    private var weatherText: TextView? = null
+    private var russiaText: TextView? = null
+    private var worldText: TextView? = null
     private var lastHourKey = -1L
-    private var dataText = "Загружаем погоду, курсы и новости…"
     @Volatile private var dreaming = false
+
+    private data class DashboardData(
+        val weather: String,
+        val rates: String,
+        val russia: String,
+        val world: String
+    )
 
     private val refreshTask = object : Runnable {
         override fun run() {
@@ -92,65 +101,137 @@ class RftvDreamService : DreamService() {
         val image = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
             setBackgroundColor(Color.rgb(12, 20, 32))
+            contentDescription = "Размытые активные обои главного экрана"
         }
         frame.addView(image, FrameLayout.LayoutParams(-1, -1))
         frame.addView(View(this).apply {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(Color.argb(24, 0, 0, 0), Color.argb(175, 0, 0, 0))
+                intArrayOf(Color.argb(95, 3, 8, 18), Color.argb(190, 3, 8, 18))
             )
         }, FrameLayout.LayoutParams(-1, -1))
 
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(48), dp(34), dp(48), dp(30))
+        }
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val clockCard = glassCard()
         val time = TextView(this).apply {
             text = "00:00"
-            textSize = 94f
-            letterSpacing = -0.04f
+            textSize = 62f
+            letterSpacing = -0.045f
             setTextColor(Color.WHITE)
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            setShadowLayer(20f, 0f, 3f, Color.argb(170, 0, 0, 0))
-            gravity = Gravity.CENTER
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setShadowLayer(12f, 0f, 2f, Color.argb(150, 0, 0, 0))
         }
         val day = TextView(this).apply {
-            textSize = 23f
+            textSize = 18f
             setTextColor(Color.argb(220, 255, 255, 255))
-            setShadowLayer(8f, 0f, 2f, Color.argb(170, 0, 0, 0))
-            gravity = Gravity.CENTER
         }
-        val timeStack = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            addView(time, LinearLayout.LayoutParams(-1, -2))
-            addView(day, LinearLayout.LayoutParams(-1, 42))
-        }
-        frame.addView(timeStack, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER))
+        clockCard.addView(time, LinearLayout.LayoutParams(-1, -2))
+        clockCard.addView(day, LinearLayout.LayoutParams(-1, -2))
+        top.addView(clockCard, LinearLayout.LayoutParams(0, dp(142), 1.1f).apply { rightMargin = dp(12) })
 
-        val bottom = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(54, 0, 54, 28)
-            gravity = Gravity.BOTTOM
+        val ratesCard = glassCard()
+        ratesCard.addView(cardCaption("КУРСЫ ЦБ РФ"))
+        val rates = cardValue("USD — ₽\nEUR — ₽")
+        ratesCard.addView(rates, LinearLayout.LayoutParams(-1, 0, 1f))
+        top.addView(ratesCard, LinearLayout.LayoutParams(0, dp(142), 1f).apply { rightMargin = dp(12) })
+
+        val weatherCard = glassCard()
+        weatherCard.addView(cardCaption("ПОГОДА · ЧЕЛЯБИНСК"))
+        val weather = cardValue("Загружаем текущие условия…")
+        weatherCard.addView(weather, LinearLayout.LayoutParams(-1, 0, 1f))
+        top.addView(weatherCard, LinearLayout.LayoutParams(0, dp(142), 1f))
+        content.addView(top, LinearLayout.LayoutParams(-1, dp(142)))
+
+        val news = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.TOP
         }
-        val dashboard = TextView(this).apply {
-            text = dataText
-            textSize = 17f
-            setTextColor(Color.WHITE)
-            maxLines = 4
-            setShadowLayer(8f, 0f, 2f, Color.BLACK)
-        }
-        info = dashboard
-        bottom.addView(dashboard, LinearLayout.LayoutParams(-1, -2))
-        bottom.addView(TextView(this).apply {
-            text = "Фото: LoremFlickr  ·  Погода: Open-Meteo  ·  Курсы: Банк России  ·  Новости: РИА Новости / Google News"
-            textSize = 10f
-            setTextColor(Color.argb(190, 255, 255, 255))
-            setPadding(0, 12, 0, 0)
+        val ruCard = glassCard()
+        ruCard.addView(newsHeading("РОССИЯ"))
+        val ru = newsValue("Российская лента загружается…")
+        ruCard.addView(ru, LinearLayout.LayoutParams(-1, 0, 1f))
+        news.addView(ruCard, LinearLayout.LayoutParams(0, dp(510), 1f).apply {
+            rightMargin = dp(12); topMargin = dp(18)
         })
-        frame.addView(bottom, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
+
+        val worldCard = glassCard()
+        worldCard.addView(newsHeading("МИР"))
+        val world = newsValue("Мировая лента загружается…")
+        worldCard.addView(world, LinearLayout.LayoutParams(-1, 0, 1f))
+        news.addView(worldCard, LinearLayout.LayoutParams(0, dp(510), 1f).apply {
+            leftMargin = dp(12); topMargin = dp(18)
+        })
+        content.addView(news, LinearLayout.LayoutParams(-1, dp(528)))
+        content.addView(TextView(this).apply {
+            text = "RFTV  ·  Экран ожидания"
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setTextColor(Color.argb(175, 255, 255, 255))
+            setPadding(0, dp(12), 0, 0)
+        }, LinearLayout.LayoutParams(-1, dp(34)))
+
+        frame.addView(content, FrameLayout.LayoutParams(-1, -1))
         root = frame
         wallpaper = image
         clock = time
         date = day
+        ratesText = rates
+        weatherText = weather
+        russiaText = ru
+        worldText = world
         setContentView(frame)
     }
+
+    private fun glassCard() = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        background = RftvDesignSystem.surface(this@RftvDreamService, Color.argb(72, 226, 239, 255), 28)
+        setPadding(dp(22), dp(16), dp(22), dp(16))
+        elevation = dp(12).toFloat()
+    }
+
+    private fun cardCaption(value: String) = TextView(this).apply {
+        text = value
+        textSize = 11f
+        letterSpacing = 0.15f
+        setTextColor(Color.argb(190, 255, 255, 255))
+    }
+
+    private fun cardValue(value: String) = TextView(this).apply {
+        text = value
+        textSize = 22f
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        setTextColor(Color.WHITE)
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(0, dp(8), 0, 0)
+    }
+
+    private fun newsHeading(value: String) = TextView(this).apply {
+        text = value
+        textSize = 20f
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        letterSpacing = 0.08f
+        setTextColor(Color.WHITE)
+        setPadding(dp(4), dp(2), dp(4), dp(12))
+    }
+
+    private fun newsValue(value: String) = TextView(this).apply {
+        text = value
+        textSize = 17f
+        setTextColor(Color.WHITE)
+        maxLines = 8
+        setLineSpacing(dp(4).toFloat(), 1f)
+        setPadding(dp(6), dp(6), dp(6), dp(6))
+    }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private fun updateClock() {
         val now = Date()
@@ -182,8 +263,10 @@ class RftvDreamService : DreamService() {
                     return@post
                 }
                 if (blurred != null) wallpaper?.setImageBitmap(blurred)
-                dataText = dashboard
-                info?.text = dashboard
+                ratesText?.text = dashboard.rates
+                weatherText?.text = dashboard.weather
+                russiaText?.text = dashboard.russia
+                worldText?.text = dashboard.world
             }
         }
     }
@@ -225,17 +308,12 @@ class RftvDreamService : DreamService() {
         }
     }
 
-    private fun loadDashboard(): String {
+    private fun loadDashboard(): DashboardData {
         val weather = fetchWeather()
         val rates = fetchRates()
-        val russian = fetchRssTitle("https://ria.ru/export/rss2/archive/index.xml")
-        val world = fetchRssTitle("https://news.google.com/rss/headlines/section/topic/WORLD?hl=ru&gl=RU&ceid=RU:ru")
-        return buildString {
-            append("ПОГОДА  ").append(weather).append("     ")
-            append("ВАЛЮТА  ").append(rates).append('\n')
-            append("РОССИЯ  ").append(russian).append('\n')
-            append("МИР  ").append(world)
-        }
+        val russian = fetchRssTitles("https://ria.ru/export/rss2/archive/index.xml")
+        val world = fetchRssTitles("https://news.google.com/rss/headlines/section/topic/WORLD?hl=ru&gl=RU&ceid=RU:ru")
+        return DashboardData(weather, rates, russian, world)
     }
 
     private fun fetchWeather(): String {
@@ -279,28 +357,28 @@ class RftvDreamService : DreamService() {
         }
     }
 
-    private fun fetchRssTitle(feedUrl: String): String {
+    private fun fetchRssTitles(feedUrl: String): String {
         return try {
             val parser = Xml.newPullParser()
             parser.setInput(java.io.StringReader(readHttpText(feedUrl)))
+            val titles = mutableListOf<String>()
             var inItem = false
-            var title = ""
             var event = parser.eventType
-            while (event != XmlPullParser.END_DOCUMENT) {
+            while (event != XmlPullParser.END_DOCUMENT && titles.size < 5) {
                 if (event == XmlPullParser.START_TAG) {
                     if (parser.name == "item") inItem = true
-                    if (inItem && parser.name == "title" && title.isEmpty()) {
-                        title = parser.nextText().trim()
+                    if (inItem && parser.name == "title") {
+                        val title = parser.nextText().trim()
+                        if (title.isNotBlank()) titles.add(title)
                     }
-                } else if (event == XmlPullParser.END_TAG && parser.name == "item" && inItem) {
-                    if (title.isNotEmpty()) return title
+                } else if (event == XmlPullParser.END_TAG && parser.name == "item") {
                     inItem = false
                 }
                 event = parser.next()
             }
-            "нет новостей"
+            if (titles.isEmpty()) "Новостная лента пуста" else titles.joinToString("\\n• ", "• ")
         } catch (_: Exception) {
-            "лента недоступна"
+            "Лента временно недоступна"
         }
     }
 }
