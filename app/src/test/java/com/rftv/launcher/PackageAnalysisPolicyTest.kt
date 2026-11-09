@@ -56,6 +56,32 @@ class PackageAnalysisPolicyTest {
     }
 
     @Test
+    fun ordinaryAppNameContainingSettingsIsNotMarkedCritical() {
+        val report = PackageAnalysisPolicy.analyze(
+            PackageAnalysisPolicy.Signals(
+                packageName = "com.example.settings.helper",
+                label = "Settings helper",
+                isSystemApp = false,
+                enabled = true
+            )
+        )
+        assertEquals(PackageAnalysisPolicy.Severity.INFORMATIONAL, report.severity)
+    }
+
+    @Test
+    fun mediatekTvMiddlewareIsProtected() {
+        val report = PackageAnalysisPolicy.analyze(
+            PackageAnalysisPolicy.Signals(
+                packageName = "com.mediatek.tis",
+                label = "TV Input Service",
+                isSystemApp = true,
+                enabled = true
+            )
+        )
+        assertEquals(PackageAnalysisPolicy.Severity.CRITICAL, report.severity)
+    }
+
+    @Test
     fun exactMatchedProfileProvidesHighConfidenceButStillHasLimitation() {
         val report = PackageAnalysisPolicy.analyze(
             PackageAnalysisPolicy.Signals(
