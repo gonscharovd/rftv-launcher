@@ -18,7 +18,6 @@ import org.json.JSONObject
 import org.xmlpull.v1.XmlPullParser
 import android.util.Xml
 import java.io.File
-import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
@@ -162,65 +161,51 @@ class RftvDreamService : DreamService() {
 
     private fun refreshOnlineContent(hourKey: Long) {
         executor.execute {
-            val imageFile = downloadWallpaper(hourKey) ?: latestCachedWallpaper()
+            val imageFile = activeHomeWallpaperFile()
             val dashboard = loadDashboard()
-            handler.post {
-                if (!dreaming) return@post
-                if (imageFile != null && imageFile.exists()) {
-                    val options = BitmapFactory.Options().apply {
-                        inPreferredConfig = Bitmap.Config.RGB_565
-                    }
-                    val bitmap = BitmapFactory.decodeFile(imageFile.absolutePath, options)
-                    if (bitmap != null) wallpaper?.setImageBitmap(bitmap)
+            val blurred = imageFile?.let { file ->
+                val source = BitmapFactory.decodeFile(file.absolutePath, BitmapFactory.Options().apply {
+                    inPreferredConfig = Bitmap.Config.RGB_565
+                    inSampleSize = 2
+                })
+                source?.let {
+                    val result = try {
+                        GlassBackdrop.createBlurredSnapshot(it, 480, 270, radius = 10, passes = 3)
+                    } catch (_: Exception) { null }
+                    it.recycle()
+                    result
                 }
+            }
+            handler.post {
+                if (!dreaming) {
+                    blurred?.recycle()
+                    return@post
+                }
+                if (blurred != null) wallpaper?.setImageBitmap(blurred)
                 dataText = dashboard
                 info?.text = dashboard
             }
         }
     }
 
-    private fun downloadWallpaper(hourKey: Long): File? {
-        val directory = File(cacheDir, "rftv-screensaver").apply { mkdirs() }
-        val file = File(directory, "landscape-$hourKey.jpg")
-        if (file.exists() && file.length() > 20_000L) return file
-        var connection: HttpURLConnection? = null
-        try {
-            // The lock value changes every hour, producing a different random landscape.
-            val url = "https://loremflickr.com/1920/1080/landscape,nature?lock=$hourKey"
-            connection = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 15_000
-                readTimeout = 25_000
-                instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "RFTV-Launcher/0.2")
-            }
-            connection.connect()
-            if (connection.responseCode !in 200..299) return null
-            val temp = File(directory, file.name + ".part")
-            connection.inputStream.use { input ->
-                FileOutputStream(temp).use { output -> input.copyTo(output) }
-            }
-            if (temp.length() < 20_000L) {
-                temp.delete()
-                return null
-            }
-            if (file.exists()) file.delete()
-            temp.renameTo(file)
-            // Keep only the latest two images to protect the TV's limited storage.
-            directory.listFiles()?.filter { it.name.startsWith("landscape-") && it != file }
-                ?.sortedByDescending { it.lastModified() }?.drop(1)?.forEach { it.delete() }
-            return file
-        } catch (_: Exception) {
-            return null
-        } finally {
-            connection?.disconnect()
+    private fun activeHomeWallpaperFile(): File? {
+        val prefs = getSharedPreferences("rftv_preferences", MODE_PRIVATE)
+        val mode = prefs.getInt("theme_mode", 2)
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        val dark = when (mode) {
+            1 -> true
+            0 -> false
+            else -> hour >= 19 || hour < 7
         }
-    }
-
-    private fun latestCachedWallpaper(): File? {
-        val directory = File(cacheDir, "rftv-screensaver")
-        return directory.listFiles()
-            ?.filter { it.name.startsWith("landscape-") && it.extension.equals("jpg", ignoreCase = true) && it.length() > 20_000L }
-            ?.maxByOrNull { it.lastModified() }
+        val index = prefs.getInt(if (dark) "wallpaper_dark" else "wallpaper_light", 0).coerceAtLeast(0)
+        val directory = File(filesDir, "wallpapers")
+        val full = File(directory, WallpaperImageUrls.cacheFileName(dark, index, false))
+        val preview = File(directory, WallpaperImageUrls.cacheFileName(dark, index, true))
+        return when {
+            full.isFile && full.length() > 10_000L -> full
+            preview.isFile && preview.length() > 5_000L -> preview
+            else -> null
+        }
     }
 
     private fun readHttpText(address: String, charsetName: String = "UTF-8"): String {
