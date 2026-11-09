@@ -42,13 +42,13 @@ internal class TvManagerPackageController(
     private val appContext = context.applicationContext
     private val packageManager = appContext.packageManager
     private val store = TvManagerOperationStore(appContext)
-    private val matchingProfiles by lazy(LazyThreadSafetyMode.NONE) {
+    private val matchingProfiles by lazy {
         TvManagerProfiles.matchingProfiles()
     }
-    private val profileEntries by lazy(LazyThreadSafetyMode.NONE) {
+    private val profileEntries by lazy {
         matchingProfiles.flatMap { it.packages }.associateBy { it.packageId }
     }
-    private val dynamicProtectedPackages by lazy(LazyThreadSafetyMode.NONE) {
+    private val dynamicProtectedPackages by lazy {
         val protected = mutableSetOf<String>()
         try {
             val homeIntent = android.content.Intent(android.content.Intent.ACTION_MAIN)
