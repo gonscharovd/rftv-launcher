@@ -646,6 +646,17 @@ class MainActivity : Activity() {
                 }
                 if (bitmap != null) {
                     wallpaperFailedKeys.remove(tag)
+                    if (target === wallpaperView && page == "home") {
+                        val selectedIndex = if (dark) wallpaperDark else wallpaperLight
+                        val selectedKey = WallpaperImageUrls.selectionKey(dark, selectedIndex)
+                        if (safeIndex != selectedIndex && wallpaperFallbackAttempted.contains(selectedKey)) {
+                            if (dark) wallpaperDark = safeIndex else wallpaperLight = safeIndex
+                            prefs.edit().putInt(if (dark) "wallpaper_dark" else "wallpaper_light", safeIndex).apply()
+                            lastAppliedWallpaperKey = WallpaperImageUrls.selectionKey(dark, safeIndex)
+                            wallpaperFallbackAttempted.remove(selectedKey)
+                            android.util.Log.i("RFTVWallpaper", "Fallback wallpaper selected and persisted: ${lastAppliedWallpaperKey}")
+                        }
+                    }
                     if (!thumbnail && target === wallpaperView && target.drawable == null) {
                         target.alpha = 0f
                         target.setImageBitmap(bitmap)
