@@ -2197,25 +2197,30 @@ class MainActivity : Activity() {
     }
 
     private fun showTvPackages() {
-        val apps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-            .filter { it.packageName != packageName }
-            .sortedBy {
-                (try { packageManager.getApplicationLabel(it).toString() } catch (_: Exception) { it.packageName })
-                    .lowercase(Locale.getDefault())
-            }
+        data class PackageRow(
+            val app: ApplicationInfo,
+            val label: String,
+            val isSystem: Boolean,
+            val disabled: Boolean,
+            val riskLabel: String,
+            val riskColor: Int
+        )
+
+        val generation = ++tvManagerInventoryGeneration
         val matched = TvManagerProfiles.matchingProfiles()
         fun risk(packageId: String): Pair<String, Int> {
             val criticalTokens = listOf("android", "systemui", "settings", "packageinstaller",
                 "inputmethod", "telephony", "networkstack", "launcher", "sberdevices.services")
-            if (criticalTokens.any { packageId.contains(it, true) }) return Pair("КРИТИЧЕСКИЙ", RftvDesignSystem.ColorTokens.RISK_CRITICAL)
+            if (criticalTokens.any { packageId.contains(it, true) }) {
+                return Pair("КРИТИЧЕСКИЙ", RftvDesignSystem.ColorTokens.RISK_CRITICAL)
+            }
             val known = matched.flatMap { it.packages }.firstOrNull { it.packageId == packageId }
             return when (known?.risk) {
                 "Критический", "Высокий" -> Pair("ВЫСОКИЙ РИСК", RftvDesignSystem.ColorTokens.RISK_CRITICAL)
-                "Низкий" -> Pair("НЕ ПРОВЕРЕН", RftvDesignSystem.ColorTokens.RISK_REVIEW)
                 else -> Pair("НЕ ПРОВЕРЕН", RftvDesignSystem.ColorTokens.RISK_REVIEW)
             }
         }
-        showPanel("Установленные пакеты · ${apps.size}") { body ->
+        showPanel("Установленные пакеты") { body ->
             body.addView(infoCard("КЛАССИФИКАЦИЯ",
                 "Красный — критический · жёлтый — не проверен",
                 "Зелёный статус не назначается автоматически. Для него требуется проверенный профиль именно этой модели и прошивки."))
@@ -2231,25 +2236,37 @@ class MainActivity : Activity() {
             body.addView(search, LinearLayout.LayoutParams(-1, dp(52)).apply { bottomMargin = dp(10) })
             val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
             val scroll = ScrollView(this).apply { addView(list) }
+            var rows: List<PackageRow> = emptyList()
+            var loaded = false
+            var scanError: String? = null
             fun render(query: String) {
                 list.removeAllViews()
-                apps.filter {
-                    val label = packageManager.getApplicationLabel(it).toString()
-                    label.contains(query, true) || it.packageName.contains(query, true)
-                }.take(250).forEach { app ->
-                    val label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
-                    val isSystem = app.flags and ApplicationInfo.FLAG_SYSTEM != 0
-                    val state = if (isPackageDisabled(app.packageName, app.enabled)) "Отключено" else "Включено"
-                    val category = if (isSystem) "Системное" else "Пользовательское"
-                    val (riskLabel, riskColor) = risk(app.packageName)
+                if (!loaded) {
+                    list.addView(infoCard("СКАНИРОВАНИЕ", "Читаем полный список пакетов", "Операция выполняется в фоне, интерфейс остаётся доступен."))
+                    return
+                }
+                if (scanError != null) {
+                    list.addView(infoCard("ОШИБКА СКАНИРОВАНИЯ", "Список пакетов недоступен", scanError ?: "PackageManager недоступен"))
+                    return
+                }
+                val filtered = rows.filter {
+                    it.label.contains(query, true) || it.app.packageName.contains(query, true)
+                }
+                list.addView(infoCard("ПАКЕТЫ", "${filtered.size} из ${rows.size}",
+                    "Нажми OK на карточке для подробностей. Список полный, без ограничения по количеству."))
+                if (filtered.isEmpty()) list.addView(infoCard("Ничего не найдено", "Измени запрос", ""))
+                filtered.forEach { item ->
                     val card = controlTile(
-                        label,
-                        "${app.packageName} · $category · $state · $riskLabel · ОК — подробности"
+                        item.label,
+                        "${item.app.packageName} · ${if (item.isSystem) "Системное" else "Пользовательское"} · ${if (item.disabled) "Отключено" else "Включено"} · ${item.riskLabel} · ОК — подробности"
                     ) {
-                        showTvPackageDetails(app)
+                        showTvPackageDetails(item.app)
                     }
                     card.background = roundedGlass(
-                        Color.argb(RftvDesignSystem.GlassAlpha.RISK_CARD, riskColor.red(), riskColor.green(), riskColor.blue()),
+                        Color.argb(
+                            RftvDesignSystem.GlassAlpha.RISK_CARD,
+                            item.riskColor.red(), item.riskColor.green(), item.riskColor.blue()
+                        ),
                         RftvDesignSystem.Radius.CONTROL
                     )
                     list.addView(card, LinearLayout.LayoutParams(-1, dp(66)).apply {
@@ -2265,9 +2282,8 @@ class MainActivity : Activity() {
             render("")
             body.addView(scroll, LinearLayout.LayoutParams(-1, dp(390)))
             body.addView(glassButton("Экспортировать полный список") {
-                val report = apps.joinToString("\n") { app ->
-                    val label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
-                    "${app.packageName}\t$label\t${if (app.flags and ApplicationInfo.FLAG_SYSTEM != 0) "system" else "user"}\t${if (isPackageDisabled(app.packageName, app.enabled)) "disabled" else "enabled"}"
+                val report = rows.joinToString("\n") { item ->
+                    "${item.app.packageName}\t${item.label}\t${if (item.isSystem) "system" else "user"}\t${if (item.disabled) "disabled" else "enabled"}"
                 }
                 val send = Intent(Intent.ACTION_SEND).apply {
                     type = "text/plain"
@@ -2278,6 +2294,40 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(10) })
             body.addView(glassButton("Назад к данным ТВ") { showTvDeviceInfo() },
                 LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
+
+            tvManagerExecutor.execute {
+                try {
+                    val apps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+                        .filter { it.packageName != packageName }
+                    val loadedRows = apps.map { app ->
+                        val label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
+                        val (riskLabel, riskColor) = risk(app.packageName)
+                        PackageRow(
+                            app,
+                            label,
+                            app.flags and ApplicationInfo.FLAG_SYSTEM != 0,
+                            isPackageDisabled(app.packageName, app.enabled),
+                            riskLabel,
+                            riskColor
+                        )
+                    }.sortedBy { it.label.lowercase(Locale.getDefault()) }
+                    runOnUiThread {
+                        if (generation != tvManagerInventoryGeneration ||
+                            page != "panel" || activePanelTitle != "Установленные пакеты") return@runOnUiThread
+                        rows = loadedRows
+                        loaded = true
+                        render(search.text?.toString().orEmpty())
+                    }
+                } catch (error: Exception) {
+                    runOnUiThread {
+                        if (generation != tvManagerInventoryGeneration ||
+                            page != "panel" || activePanelTitle != "Установленные пакеты") return@runOnUiThread
+                        scanError = error.message ?: "PackageManager недоступен"
+                        loaded = true
+                        render(search.text?.toString().orEmpty())
+                    }
+                }
+            }
         }
     }
 
