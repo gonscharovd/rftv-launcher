@@ -687,6 +687,7 @@ class MainActivity : Activity() {
         root.addView(dock, dockParams)
 
         val wallpaperButton = glassButton("Обои  ◀   ▶") { nextWallpaper() }.apply {
+            tag = "rftv-wallpaper-button"
             setOnLongClickListener {
                 retryCurrentWallpaper()
                 true
@@ -799,8 +800,10 @@ class MainActivity : Activity() {
         val previouslyFocusedPackage = currentFocus?.tag as? String
         dockExpanded = expanded
         val params = dock.layoutParams as FrameLayout.LayoutParams
-        params.height = dp(if (expanded) max(270, dockHeightDp + 112) else dockHeightDp)
+        val expandedHeight = if (expanded) max(270, dockHeightDp + 112) else dockHeightDp
+        params.height = dp(expandedHeight)
         dock.layoutParams = params
+        updateWallpaperButtonPosition(expandedHeight)
         buildDockContent()
         dock.animate().alpha(1f).setDuration(RftvDesignSystem.Motion.DOCK_REVEAL_DURATION_MS).start()
         if (expanded) {
@@ -2027,8 +2030,18 @@ class MainActivity : Activity() {
         if (!::dock.isInitialized) return
         val params = dock.layoutParams as FrameLayout.LayoutParams
         params.width = (resources.displayMetrics.widthPixels * dockWidthPercent / 100f).toInt()
-        params.height = dp(dockHeightDp)
+        val actualHeight = if (dockExpanded) max(270, dockHeightDp + 112) else dockHeightDp
+        params.height = dp(actualHeight)
         dock.layoutParams = params
+        updateWallpaperButtonPosition(actualHeight)
+    }
+
+    private fun updateWallpaperButtonPosition(actualDockHeightDp: Int) {
+        if (!::root.isInitialized) return
+        val button = root.findViewWithTag<View>("rftv-wallpaper-button") ?: return
+        val params = button.layoutParams as? FrameLayout.LayoutParams ?: return
+        params.bottomMargin = dp(actualDockHeightDp + RftvDesignSystem.Spacing.HOME_WALLPAPER_DOCK_GAP)
+        button.layoutParams = params
     }
 
     private fun showTvManager() {
