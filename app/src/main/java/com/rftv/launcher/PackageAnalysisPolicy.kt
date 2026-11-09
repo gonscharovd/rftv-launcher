@@ -32,9 +32,39 @@ internal object PackageAnalysisPolicy {
         val limitation: String
     )
 
-    private val criticalPackageTokens = listOf(
-        "android", "systemui", "settings", "packageinstaller", "permissioncontroller",
-        "inputmethod", "networkstack", "sberdevices.services", "bluetooth", "remotecontrol"
+    private val criticalPackageIds = setOf(
+        "android",
+        "com.android.systemui",
+        "com.android.shell",
+        "com.android.phone",
+        "com.android.settings",
+        "com.android.tv.settings",
+        "com.android.packageinstaller",
+        "com.google.android.packageinstaller",
+        "com.android.permissioncontroller",
+        "com.google.android.permissioncontroller",
+        "com.android.networkstack",
+        "com.android.bluetooth",
+        "com.android.ext.services",
+        "com.android.ext.shared",
+        "android.ext.services",
+        "android.ext.shared",
+        "com.android.modulemetadata",
+        "com.google.android.modulemetadata",
+        "com.android.sdksandbox",
+        "com.android.location.fused",
+        "com.mediatek.tis",
+        "com.mediatek.tv.service",
+        "com.mediatek.tv.agent",
+        "com.cltv.mal",
+        "ru.sberdevices.services",
+        "com.sberdevices.services"
+    )
+    private val criticalPackagePrefixes = listOf(
+        "com.android.providers.",
+        "com.google.android.overlay.modules.",
+        "com.android.inputmethod.",
+        "com.google.android.inputmethod."
     )
 
     private val locationPermissions = setOf(
@@ -144,9 +174,5 @@ internal object PackageAnalysisPolicy {
     }
 
     private fun isCriticalIdentity(packageName: String): Boolean =
-        packageName == "android" ||
-            criticalPackageTokens.any { token ->
-                packageName == token || packageName.startsWith("$token.") ||
-                    packageName.substringAfterLast('.') == token || packageName.contains(".$token.")
-            }
+        packageName in criticalPackageIds || criticalPackagePrefixes.any { packageName.startsWith(it) }
 }
