@@ -118,7 +118,20 @@ internal object PackageAnalysisPolicy {
                 "com.android.sharedstoragebackup",
                 "com.android.backupconfirm",
                 "com.android.statementservice",
-                "com.android.providers.downloads.ui"
+                "com.android.providers.downloads.ui",
+                "com.android.media",
+                "com.android.media.module",
+                "com.android.server.media",
+                "com.android.server.wifi",
+                "com.android.dhcp",
+                "com.android.wifi.resources",
+                "com.android.wifi.dialog",
+                "com.android.tv.tuner",
+                "com.google.android.tv.remote.service",
+                "com.google.android.tv.remote",
+                "ru.sberdevices.rcfupdater",
+                "ru.sberdevices.gamepad.service",
+                "com.mediatek.androidbox"
             )
     }
 
