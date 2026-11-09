@@ -22,6 +22,7 @@ internal class TvManagerPackageController(
         val label: String,
         val enabledSetting: Int,
         val isSystemApp: Boolean,
+        val isSuspended: Boolean,
         val isProtected: Boolean,
         val profileMatched: Boolean,
         val verifiedOptional: Boolean,
@@ -97,6 +98,7 @@ internal class TvManagerPackageController(
         } catch (_: Exception) {
             return null
         }
+        val suspended = app.flags and ApplicationInfo.FLAG_SUSPENDED != 0
         val disabled = enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DISABLED ||
             enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER ||
             enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED ||
@@ -138,7 +140,7 @@ internal class TvManagerPackageController(
                 },
                 dependenciesChecked = profileEntry?.dependenciesVerified == true,
                 hasUnresolvedDependencies = profileEntry?.dependenciesVerified != true,
-                currentlyEnabled = !disabled,
+                currentlyEnabled = !disabled && !suspended,
                 originalState = original
             ),
             access,
@@ -157,6 +159,7 @@ internal class TvManagerPackageController(
             label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { packageName },
             enabledSetting = enabledSetting,
             isSystemApp = app.flags and ApplicationInfo.FLAG_SYSTEM != 0,
+            isSuspended = suspended,
             isProtected = protected,
             profileMatched = exactProfile && profileEntry != null,
             verifiedOptional = profileEntry?.verifiedOptional == true,
