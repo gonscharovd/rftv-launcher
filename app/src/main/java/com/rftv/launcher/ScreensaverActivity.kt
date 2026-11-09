@@ -326,7 +326,7 @@ class ScreensaverActivity : Activity() {
             }
             source?.recycle()
             handler.post {
-                if (alive && !isFinishing && blurred != null) wallpaper.setImageBitmap(blurred)
+                if (!isFinishing && blurred != null) wallpaper.setImageBitmap(blurred)
                 else blurred?.recycle()
             }
         }
