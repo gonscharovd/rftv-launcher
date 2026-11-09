@@ -621,6 +621,7 @@ class MainActivity : Activity() {
         }
 
         wallpaperExecutor.execute {
+            var previewShown = false
             try {
                 if (thumbnail) {
                     val preview = fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
@@ -629,13 +630,18 @@ class MainActivity : Activity() {
                     // Show a small image first; the full-resolution file replaces it
                     // when ready. This avoids a blank/gradient home screen on slow CDNs.
                     val preview = fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
-                    if (preview != null) finish(preview, completed = false)
+                    if (preview != null) {
+                        previewShown = true
+                        finish(preview, completed = false)
+                    }
 
                     val full = fetch(fullFile, fullUrl, 24L * 1024L * 1024L, 2)
-                    finish(full, completed = true, failure = full == null && preview == null)
+                    finish(full, completed = true, failure = full == null && !previewShown)
                 }
             } catch (_: Exception) {
-                finish(null, completed = true, failure = true)
+                // A preview is already useful content: a failed full-size request
+                // must not mark the whole wallpaper as unavailable or show an error.
+                finish(null, completed = true, failure = !previewShown)
             }
         }
     }
