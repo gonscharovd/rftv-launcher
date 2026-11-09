@@ -1,33 +1,31 @@
 package com.rftv.launcher
 
-import android.graphics.Bitmap
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNotSame
-import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GlassBackdropTest {
     @Test
-    fun createsDownsampledBlurWithoutRecyclingSource() {
-        val source = Bitmap.createBitmap(64, 36, Bitmap.Config.ARGB_8888)
-        source.eraseColor(0xFFFF0000.toInt())
+    fun boxBlurKeepsDimensionsAndSoftensHighContrastPixels() {
+        val width = 8
+        val height = 8
+        val source = IntArray(width * height) { index ->
+            if ((index % width) < width / 2) 0xFFFF0000.toInt() else 0xFF0000FF.toInt()
+        }
 
-        val result = GlassBackdrop.createBlurredSnapshot(source, 16, 9)
+        val result = GlassBackdrop.blurPixels(source, width, height, radius = 1, passes = 2)
 
-        assertNotNull(result)
-        assertNotSame(source, result)
-        assertEquals(16, result!!.width)
-        assertEquals(9, result.height)
-        assertFalse(source.isRecycled)
-        result.recycle()
-        source.recycle()
+        assertEquals(width * height, result.size)
+        assertNotEquals(source[3 * width + 3], result[3 * width + 3])
+        assertTrue(result.all { (it ushr 24) == 0xFF })
     }
 
     @Test
-    fun rejectsInvalidDimensions() {
-        val source = Bitmap.createBitmap(8, 8, Bitmap.Config.ARGB_8888)
-        assertEquals(null, GlassBackdrop.createBlurredSnapshot(source, 0, 8))
-        source.recycle()
+    fun rejectsMismatchedPixelBuffer() {
+        assertThrows(IllegalArgumentException::class.java) {
+            GlassBackdrop.blurPixels(intArrayOf(0), 2, 2)
+        }
     }
 }
