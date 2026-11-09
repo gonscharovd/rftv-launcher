@@ -17,23 +17,15 @@
 По решению Product Owner визуальная доводка стала текущим приоритетом. Безопасные off-device задачи этапа 3 выполняются крупными согласованными блоками. Это не закрывает этап 2: OTA-приёмка, DPAD/OEM-поведение, DreamService и производительность на Sber SDX-50U4123B остаются NOT VERIFIED. После завершения визуального блока проводится единая OTA-приёмка на ТВ. Любые изменения интерфейса проходят CI и code review.
 
 Подтверждено по GitHub и CI:
-- Стабильный GitHub Release **v0.7.1** опубликован 2026-11-09; по актуальному списку Releases он является latest stable, не draft и не prerelease.
-- PR #7 (Control Center и интерактивная заставка) слит в main.
-- PR #9 (анализ донора Aerial TV) слит в main.
-- PR #10 (Android TV banner и исправления Lint) включён в PR #7.
-- PR #11–#13 исправили Release workflow: явный контекст репозитория, проверка draft по ID и безопасное обновление assets.
-- Main CI run **42516182919** завершился успешно: unit tests, Android Lint, Debug metadata и подписанная Release-сборка.
-- Publisher run **42516320220** завершился успешно: APK/метаданные/подпись проверены, assets сверены с CI artifact, затем draft опубликован как stable Release.
-- APK v0.3.0: package `com.rftv.launcher`, versionCode 3, versionName 0.3.0, minSdk 24, targetSdk 28, размер 711 225 байт; SHA-256 `8c1ebb2d574959badd56f7b88104cea936ff5b48d3b7f6c25cfe754400e0a905`. Сертификат постоянного Release-ключа подтверждён.
-- APK не содержит native libraries и ABI-independent; package/version/SDK/подпись проверены автоматически.
-- GitHub API latest stable возвращает v0.3.0; APK asset и остальные три release assets совпадают с проверенным CI artifact.
-- Тег Release указывает на commit 1a3c913; между ним и build commit a7fe7f7 менялся только `.github/workflows/publish-release.yml`, Android source code совпадает.
-- Физическое тестирование на Sber SDX-50U4123B / StarOS **не проводилось**; подтверждения OTA-установки пользователем нет.
-- В проекте есть unit-тесты дизайн-системы и URL/кэширования обоев; они проходят в CI.
-- TV Manager по-прежнему выполняет read-only инвентаризацию и показывает справочные профили. Привилегированное отключение/восстановление пакетов, журнал операций и rollback не реализованы.
-- В README описаны 20 фотографических обоев Unsplash (10 дневных/10 ночных), выбор и локальный кэш. Отображение/офлайн-режим ещё требуют проверки на ТВ.
-- Системная заставка DreamService зависит от прошивки StarOS и требует физической проверки.
-
+- Стабильный Release **v0.7.2 / versionCode 10** опубликован и установлен владельцем на Sber SDX-50U4123B; SHA-256 APK `bc6a67e5eab67a1ad334ca357065f09bcc69501dcfd4305091ff6dd75544f10e`.
+- Сертификат v0.7.2: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`; тот же постоянный сертификат подтверждён для сборки v0.8.0.
+- PR #34 — согласованный объём RFTV 0.8.0 — открыт в main; merge ожидает полного зелёного CI и review.
+- GitHub Actions run **42616040741** проверил 20/20 Unsplash URL: HTTP 200, image/jpeg, Pillow decode успешен, все 1920×1080. URL-список с этого запуска не менялся; финальный PR HEAD должен повторно пройти этот step.
+- Signed Release job run **42616746096** на commit `ffdefd6f036bcdf52125e925260aeed047cd6fc4` завершился успешно: package/version/SDK/ABI/подпись и checksum проверены. APK 810 568 байт; SHA-256 `add21f924f04ce0fd9e826259a06e43fbcd703de58dddd2ca4ff7383eb97ab52`; сертификат совпадает с v0.7.2.
+- На момент последнего обновления source tests/lint/Debug job окончательного PR HEAD ещё выполнялся; это не считается успешным CI.
+- PR #7 (Control Center и заставка), PR #9 (Aerial TV audit), PR #10 (banner/Lint) и PR #11–#13 (Release workflow) ранее слиты в main.
+- Физическая проверка v0.8.0 на Sber SDX-50U4123B не проводилась. Наличие подписанного CI-артефакта не означает публикацию OTA или тест на телевизоре.
+- Подробные технические решения и ограничения зафиксированы в [V0.8.0_IMPLEMENTATION_AUDIT.md](docs/V0.8.0_IMPLEMENTATION_AUDIT.md).
 ## Правила прохождения этапов
 
 1. Не начинать следующий крупный этап, пока текущий не прошёл автоматические проверки и ревью.
