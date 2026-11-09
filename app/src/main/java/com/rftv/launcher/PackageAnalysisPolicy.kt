@@ -91,6 +91,37 @@ internal object PackageAnalysisPolicy {
         "android.permission.READ_CALENDAR"
     )
 
+    /** Hard deny-list shared by the UI and operation controller. */
+    fun isProtectedPackage(packageName: String): Boolean {
+        val id = packageName.lowercase()
+        return id in criticalPackageIds || criticalPackagePrefixes.any { id.startsWith(it) } ||
+            id in setOf(
+                "com.android.launcher3",
+                "com.google.android.tvlauncher",
+                "com.android.tv.launcher",
+                "com.android.providers.tv",
+                "com.android.providers.media",
+                "com.android.providers.settings",
+                "com.android.inputdevices",
+                "com.android.server.telecom",
+                "com.android.providers.downloads",
+                "com.android.vending",
+                "com.google.android.gms",
+                "com.google.android.gsf",
+                "com.android.dreams.basic",
+                "com.android.dreams.phototable",
+                "com.android.externalstorage",
+                "com.android.documentsui",
+                "com.android.keychain",
+                "com.android.certinstaller",
+                "com.android.defcontainer",
+                "com.android.sharedstoragebackup",
+                "com.android.backupconfirm",
+                "com.android.statementservice",
+                "com.android.providers.downloads.ui"
+            )
+    }
+
     fun analyze(signals: Signals): Report {
         val id = signals.packageName.lowercase()
         val permissions = signals.requestedPermissions.toSet()
