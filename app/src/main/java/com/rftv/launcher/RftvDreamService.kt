@@ -38,6 +38,7 @@ class RftvDreamService : DreamService() {
     private var root: FrameLayout? = null
     private var wallpaper: ImageView? = null
     private var clock: TextView? = null
+    private var date: TextView? = null
     private var info: TextView? = null
     private var lastHourKey = -1L
     private var dataText = "Загружаем погоду, курсы и новости…"
@@ -110,7 +111,19 @@ class RftvDreamService : DreamService() {
             setShadowLayer(20f, 0f, 3f, Color.argb(170, 0, 0, 0))
             gravity = Gravity.CENTER
         }
-        frame.addView(time, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
+        val day = TextView(this).apply {
+            textSize = 23f
+            setTextColor(Color.argb(220, 255, 255, 255))
+            setShadowLayer(8f, 0f, 2f, Color.argb(170, 0, 0, 0))
+            gravity = Gravity.CENTER
+        }
+        val timeStack = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            addView(time, LinearLayout.LayoutParams(-1, -2))
+            addView(day, LinearLayout.LayoutParams(-1, dp(42)))
+        }
+        frame.addView(timeStack, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER))
 
         val bottom = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -136,11 +149,15 @@ class RftvDreamService : DreamService() {
         root = frame
         wallpaper = image
         clock = time
+        date = day
         setContentView(frame)
     }
 
     private fun updateClock() {
-        clock?.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+        val now = Date()
+        clock?.text = SimpleDateFormat("HH:mm", Locale.getDefault()).format(now)
+        date?.text = SimpleDateFormat("EEEE, d MMMM", Locale.getDefault())
+            .format(now).replaceFirstChar { it.uppercase() }
     }
 
     private fun refreshOnlineContent(hourKey: Long) {
