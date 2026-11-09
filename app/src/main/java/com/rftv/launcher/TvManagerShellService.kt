@@ -53,19 +53,41 @@ class TvManagerShellService : ITvManagerShellService.Stub() {
         if (!java.io.File(executable).canExecute()) return null
         return try {
             val process = ProcessBuilder(arguments).redirectErrorStream(true).start()
-            val completed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                process.waitFor(20, TimeUnit.SECONDS)
-            } else {
-                process.waitFor()
-                true
-            }
-            if (!completed) {
+            val output = StringBuilder()
+            val exitCode = java.util.concurrent.atomic.AtomicInteger(Int.MIN_VALUE)
+            val reader = Thread {
+                try {
+                    process.inputStream.bufferedReader().use { stream ->
+                        var line = stream.readLine()
+                        while (line != null) {
+                            synchronized(output) { output.append(line).append('\\n') }
+                            line = stream.readLine()
+                        }
+                    }
+                } catch (_: Exception) {
+                    // The process may close its stream while being terminated.
+                }
+            }.apply { isDaemon = true; start() }
+            val waiter = Thread {
+                try {
+                    exitCode.set(process.waitFor())
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
+            }.apply { isDaemon = true; start() }
+            waiter.join(TimeUnit.SECONDS.toMillis(20))
+            if (waiter.isAlive) {
                 process.destroy()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) process.destroyForcibly()
+                waiter.join(500L)
+                if (waiter.isAlive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    process.destroyForcibly()
+                    waiter.join(500L)
+                }
+                reader.join(500L)
                 return CommandResult(-1, "timeout")
             }
-            val output = process.inputStream.bufferedReader().use { it.readText() }
-            CommandResult(process.exitValue(), output)
+            reader.join(1_000L)
+            CommandResult(exitCode.get(), synchronized(output) { output.toString() })
         } catch (error: Exception) {
             CommandResult(-1, error.message ?: error.javaClass.simpleName)
         }
