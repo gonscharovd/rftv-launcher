@@ -156,7 +156,7 @@ class ScreensaverActivity : Activity() {
         }
         clockCard.addView(clock, LinearLayout.LayoutParams(-1, -2))
         clockCard.addView(date, LinearLayout.LayoutParams(-1, -2))
-        topRow.addView(clockCard, LinearLayout.LayoutParams(0, dp(142), 1.1f).apply {
+        topRow.addView(clockCard, LinearLayout.LayoutParams(0, dp(172), 1.1f).apply {
             rightMargin = dp(12)
         })
 
@@ -189,7 +189,7 @@ class ScreensaverActivity : Activity() {
         russiaScroll.addView(russiaList)
         russiaCard.addView(russiaScroll, LinearLayout.LayoutParams(-1, 0, 1f))
         newsRow.addView(russiaCard, LinearLayout.LayoutParams(0, 0, 1f).apply {
-            height = dp(510)
+            height = dp(480)
             rightMargin = dp(12)
             topMargin = dp(18)
         })
@@ -208,7 +208,7 @@ class ScreensaverActivity : Activity() {
             leftMargin = dp(12)
             topMargin = dp(18)
         })
-        content.addView(newsRow, LinearLayout.LayoutParams(-1, dp(528)))
+        content.addView(newsRow, LinearLayout.LayoutParams(-1, dp(498)))
         content.addView(TextView(this).apply {
             text = "RFTV  ·  Нажмите любую кнопку, чтобы продолжить"
             textSize = 13f
