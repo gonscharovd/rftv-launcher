@@ -1698,6 +1698,18 @@ class MainActivity : Activity() {
             text = "НАСТРОЙКИ"; textSize = RftvDesignSystem.Size.SETTINGS_CAPTION_TEXT_SP; letterSpacing = .14f
             setTextColor(RftvDesignSystem.ColorTokens.TEXT_SECONDARY); setPadding(dp(10), 0, dp(10), dp(18))
         })
+        // The navigation list must scroll independently on compact TV panels;
+        // otherwise the last sections can be clipped on high-density 720p TVs.
+        val navigationScroll = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
+            clipToPadding = false
+            descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+        }
+        val navigationList = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        navigationScroll.addView(navigationList)
+        sidebar.addView(navigationScroll, LinearLayout.LayoutParams(-1, 0, 1f))
         val contentColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(RftvDesignSystem.Spacing.SETTINGS_CONTENT_LEFT_PADDING), dp(4), dp(4), dp(4))
@@ -1885,7 +1897,7 @@ class MainActivity : Activity() {
                 setOnClickListener { renderSection(index) }
             }
             navItems += item
-            sidebar.addView(item, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT)).apply { bottomMargin = dp(5) })
+            navigationList.addView(item, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT)).apply { bottomMargin = dp(5) })
         }
         shell.addView(sidebar, LinearLayout.LayoutParams((resources.displayMetrics.widthPixels * RftvDesignSystem.Size.SETTINGS_SIDEBAR_WIDTH_FRACTION).toInt(), -1))
         shell.addView(contentColumn, LinearLayout.LayoutParams(0, -1, 1f))
