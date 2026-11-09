@@ -82,6 +82,22 @@ class PackageAnalysisPolicyTest {
     }
 
     @Test
+    fun sberInputAndKeyboardComponentsAreProtected() {
+        listOf("ru.sberdevices.app.starkeyboard", "ru.sberdevices.tvinputs", "com.mediatek.tvinput")
+            .forEach { packageId ->
+                val report = PackageAnalysisPolicy.analyze(
+                    PackageAnalysisPolicy.Signals(
+                        packageName = packageId,
+                        label = packageId,
+                        isSystemApp = true,
+                        enabled = true
+                    )
+                )
+                assertEquals(PackageAnalysisPolicy.Severity.CRITICAL, report.severity)
+            }
+    }
+
+    @Test
     fun exactMatchedProfileProvidesHighConfidenceButStillHasLimitation() {
         val report = PackageAnalysisPolicy.analyze(
             PackageAnalysisPolicy.Signals(
