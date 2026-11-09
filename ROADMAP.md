@@ -125,7 +125,7 @@
 
 Работаем строго по порядку: **1 → 2 → 3 → 4 → 5 → 6**. Исправления безопасности и блокирующие OTA-дефекты имеют право приоритета над очередностью.
 
-Текущее действие: реализация v0.8.0 ведётся в feature/0.8.0-home-and-system-ui-redesign. Уже внесены: legacy snapshot blur, Home clock/weather/5-day forecast, одностраничный Dock с каталогом, удаление wallpaper shortcut и expand-on-down, правки Settings, vector-иконки Control Center и единый по структуре dashboard в ручной ScreensaverActivity и системном DreamService. CI ещё выполняется/исправляется; окончательная проверка источников/20 фотообоев, визуальная доводка и интеграционная проверка DPAD остаются открытыми. Физическая приёмка остаётся NOT VERIFIED. Release не публиковать до успешного CI, ревью и проверки подписанного APK.
+Текущее действие: завершение PR #34. В исходниках уже реализованы согласованные изменения Home, фотообоев, адаптивного Dock, каталога, Control Center, Settings и общей data layer ручной/системной заставки. Все 20 фотоисточников прошли предыдущую live HTTP/decode проверку; подписанная Release-сборка versionCode 11 на commit ffdefd6 прошла identity/signature/SHA-256 проверки. Окончательный source CI на актуальном PR HEAD, code review и merge ещё открыты. OTA Release не опубликован. Физическая приёмка v0.8.0 остаётся NOT VERIFIED. Детали — docs/V0.8.0_IMPLEMENTATION_AUDIT.md.
 
 
 ## Донорские проекты и анализ Aerial TV
