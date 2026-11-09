@@ -40,6 +40,7 @@ class ScreensaverActivity : Activity() {
     private lateinit var worldList: LinearLayout
     private lateinit var wallpaper: ImageView
     private var alive = false
+    private var sessionAcquired = false
 
     private val tick = object : Runnable {
         override fun run() {
@@ -62,6 +63,11 @@ class ScreensaverActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        sessionAcquired = ScreensaverSession.tryAcquire()
+        if (!sessionAcquired) {
+            finish()
+            return
+        }
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -93,6 +99,8 @@ class ScreensaverActivity : Activity() {
         alive = false
         handler.removeCallbacksAndMessages(null)
         io.shutdownNow()
+        if (sessionAcquired) ScreensaverSession.release()
+        sessionAcquired = false
         super.onDestroy()
     }
 
