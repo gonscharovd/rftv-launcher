@@ -1587,25 +1587,97 @@ class MainActivity : Activity() {
                 5 -> "ДИАГНОСТИКА УСТРОЙСТВА"; else -> "СИСТЕМА И ОБНОВЛЕНИЯ"
             }
             detail.addView(infoCard(label, section.first, section.second))
-            if (index == 0) {
-                detail.addView(sectionLabel("БЫСТРЫЙ ДОСТУП"))
-                for (target in 1..6) {
-                    val entry = sections[target]
-                    detail.addView(controlTile(entry.first, entry.second) {
-                        renderSection(target); navItems.getOrNull(target)?.requestFocus()
-                    }, LinearLayout.LayoutParams(-1, dp(66)).apply { bottomMargin = dp(8) })
+            when (index) {
+                0 -> {
+                    detail.addView(sectionLabel("БЫСТРЫЙ ДОСТУП"))
+                    for (target in 1..6) {
+                        val entry = sections[target]
+                        detail.addView(controlTile(entry.first, entry.second) {
+                            renderSection(target)
+                            navItems.getOrNull(target)?.requestFocus()
+                        }, LinearLayout.LayoutParams(-1, dp(66)).apply { bottomMargin = dp(8) })
+                    }
                 }
-            } else {
-                detail.addView(controlTile("Открыть раздел", "Перейти к параметрам: ${section.first}") {
-                    settingsHubVisible = false
-                    section.third.invoke()
-                }, LinearLayout.LayoutParams(-1, dp(76)))
-                detail.addView(TextView(this).apply {
-                    text = "Изменения настроек сохраняются автоматически. Навигация поддерживает пульт: стрелки, OK и Back."
-                    textSize = 13f; setTextColor(Color.LTGRAY)
-                    setPadding(dp(4), dp(18), dp(4), dp(8))
-                })
+                1 -> {
+                    detail.addView(sectionLabel("ОБОИ И ОФОРМЛЕНИЕ"))
+                    addWallpaperSettings(detail)
+                }
+                2 -> {
+                    detail.addView(sectionLabel("ШИРИНА DOCK · $dockWidthPercent%"))
+                    detail.addView(settingSlider(65, 100, dockWidthPercent) { value ->
+                        dockWidthPercent = value
+                        prefs.edit().putInt("dock_width", value).apply()
+                        updateDockSize()
+                    })
+                    detail.addView(sectionLabel("ВЫСОТА DOCK · $dockHeightDp dp"))
+                    detail.addView(settingSlider(130, 210, dockHeightDp) { value ->
+                        dockHeightDp = value
+                        prefs.edit().putInt("dock_height", value).apply()
+                        updateDockSize()
+                    })
+                }
+                3 -> {
+                    detail.addView(sectionLabel("АВТОЗАПУСК ПОСЛЕ БЕЗДЕЙСТВИЯ"))
+                    listOf(0, 5, 15, 30, 60).forEach { minutes ->
+                        val label = if (minutes == 0) "Отключено" else "$minutes минут"
+                        detail.addView(controlTile(
+                            if (screensaverTimeoutMinutes == minutes) "✓  $label" else label,
+                            if (screensaverTimeoutMinutes == minutes) "Текущий интервал" else "Запуск через $label"
+                        ) {
+                            screensaverTimeoutMinutes = minutes
+                            prefs.edit().putInt("screensaver_timeout_minutes", minutes).apply()
+                            renderSection(3)
+                        }, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(7) })
+                    }
+                    detail.addView(controlTile("Системные настройки заставки", "Выбор Dream Service") {
+                        openSettings("android.settings.DREAM_SETTINGS")
+                    }, LinearLayout.LayoutParams(-1, dp(64)))
+                }
+                4 -> {
+                    detail.addView(controlTile("Каталог приложений", "Полный список · запуск и управление") {
+                        settingsHubVisible = false
+                        showAppCatalog()
+                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(controlTile("Скрытые приложения", "Восстановить приложения, скрытые из Dock и каталога") {
+                        settingsHubVisible = false
+                        showHiddenAppsPage()
+                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(controlTile("Обновить список приложений", "Повторно прочитать установленные приложения Android") {
+                        loadInstalledApps()
+                        renderSection(4)
+                    }, LinearLayout.LayoutParams(-1, dp(68)))
+                }
+                5 -> {
+                    detail.addView(controlTile("Данные по ТВ", "Характеристики устройства и установленные пакеты") {
+                        settingsHubVisible = false
+                        showTvDeviceInfo()
+                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(controlTile("Очистка ТВ", "Подбор профиля и безопасный предварительный анализ") {
+                        settingsHubVisible = false
+                        showTvCleanup()
+                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(controlTile("Отключённые пакеты", "Состояние и доступность восстановления") {
+                        settingsHubVisible = false
+                        showTvDisabledPackages()
+                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(controlTile("Журнал операций", "История действий TV Manager") {
+                        settingsHubVisible = false
+                        showTvOperationLog()
+                    }, LinearLayout.LayoutParams(-1, dp(68)))
+                }
+                else -> {
+                    detail.addView(controlTile("О системе и обновления", "Версия RFTV · скачать и установить OTA") {
+                        settingsHubVisible = false
+                        showAboutSystem()
+                    }, LinearLayout.LayoutParams(-1, dp(76)))
+                }
             }
+            detail.addView(TextView(this).apply {
+                text = "Настройки сохраняются автоматически. Управление с пульта: стрелки, OK и Back."
+                textSize = 13f
+                setTextColor(Color.LTGRAY)
+                setPadding(dp(4), dp(18), dp(4), dp(8))
+            })
         }
         sections.forEachIndexed { index, section ->
             val item = TextView(this).apply {
