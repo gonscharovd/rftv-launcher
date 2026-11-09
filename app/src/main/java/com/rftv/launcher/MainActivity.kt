@@ -2765,6 +2765,34 @@ class MainActivity : Activity() {
             body.addView(infoCard("НАЙДЕНО ОТКЛЮЧЁННЫХ ПАКЕТОВ",
                 disabled.size.toString(),
                 "Состояние отражает PackageManager. Только пакеты с подтверждённым snapshot RFTV можно восстановить отсюда. Ранее отключённые пользователем пакеты не включаются автоматически."))
+            if (owned.isNotEmpty()) {
+                body.addView(infoCard(
+                    "ИЗМЕНЕНИЯ RFTV",
+                    "${owned.size} сохранённых исходных состояний",
+                    "Можно восстановить все пакеты, которые RFTV изменил и для которых сохранил snapshot. Восстановление выполняется в обратном порядке; сторонние и ранее отключённые пакеты не затрагиваются."
+                ))
+                body.addView(glassButton("Восстановить все изменения RFTV") {
+                    AlertDialog.Builder(this)
+                        .setTitle("Восстановить все пакеты RFTV?")
+                        .setMessage("Будет восстановлено ${owned.size} сохранённых состояний. Пакеты, отключённые до RFTV, не затрагиваются.")
+                        .setNegativeButton("Отмена", null)
+                        .setPositiveButton("Восстановить все") { _, _ ->
+                            tvManagerExecutor.execute {
+                                val results = tvManagerController.restoreAll()
+                                val success = results.count { it.success }
+                                val failed = results.size - success
+                                runOnUiThread {
+                                    Toast.makeText(
+                                        this,
+                                        "Восстановлено: $success · ошибок: $failed",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    showTvDisabledPackages()
+                                }
+                            }
+                        }.show()
+                }, LinearLayout.LayoutParams(-2, dp(48)).apply { bottomMargin = dp(10) })
+            }
             if (disabled.isEmpty()) body.addView(infoCard("Список пуст", "Отключённых пакетов не найдено", ""))
             disabled.forEach { app ->
                 val label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
