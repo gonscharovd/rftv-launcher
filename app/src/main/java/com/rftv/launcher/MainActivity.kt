@@ -1627,6 +1627,7 @@ class MainActivity : Activity() {
                             screensaverTimeoutMinutes = minutes
                             prefs.edit().putInt("screensaver_timeout_minutes", minutes).apply()
                             renderSection(3)
+                            detail.post { requestFirstFocusable(detail) }
                         }, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(7) })
                     }
                     detail.addView(controlTile("Системные настройки заставки", "Выбор Dream Service") {
@@ -1645,9 +1646,16 @@ class MainActivity : Activity() {
                     detail.addView(controlTile("Обновить список приложений", "Повторно прочитать установленные приложения Android") {
                         loadInstalledApps()
                         renderSection(4)
+                        detail.post { requestFirstFocusable(detail) }
                     }, LinearLayout.LayoutParams(-1, dp(68)))
                 }
                 5 -> {
+                    val matchedProfiles = TvManagerProfiles.matchingProfiles()
+                    detail.addView(infoCard(
+                        "АНАЛИЗ УСТРОЙСТВА",
+                        "${Build.MANUFACTURER} ${Build.MODEL}",
+                        "Android ${Build.VERSION.RELEASE} · API ${Build.VERSION.SDK_INT}\nСовпавших проверенных профилей: ${matchedProfiles.size}\nПакеты анализируются без изменения системного состояния."
+                    ))
                     detail.addView(controlTile("Данные по ТВ", "Характеристики устройства и установленные пакеты") {
                         settingsHubVisible = false
                         showTvDeviceInfo()
