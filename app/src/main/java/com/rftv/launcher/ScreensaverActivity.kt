@@ -59,44 +59,63 @@ class ScreensaverActivity : Activity() {
         val root = FrameLayout(this).apply {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(Color.rgb(9, 24, 48), Color.rgb(24, 52, 85), Color.rgb(5, 13, 28))
+                intArrayOf(
+                    RftvDesignSystem.ColorTokens.SCREENSAVER_GRADIENT_START,
+                    RftvDesignSystem.ColorTokens.SCREENSAVER_GRADIENT_MID,
+                    RftvDesignSystem.ColorTokens.SCREENSAVER_GRADIENT_END
+                )
             )
             isFocusableInTouchMode = true
         }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(dp(72), dp(36), dp(72), dp(44))
+            setPadding(
+                dp(RftvDesignSystem.Spacing.SCREENSAVER_HORIZONTAL_PADDING),
+                dp(RftvDesignSystem.Spacing.SCREENSAVER_TOP_PADDING),
+                dp(RftvDesignSystem.Spacing.SCREENSAVER_HORIZONTAL_PADDING),
+                dp(RftvDesignSystem.Spacing.SCREENSAVER_BOTTOM_PADDING)
+            )
         }
         clock = TextView(this).apply {
             text = "00:00"
-            textSize = 104f
+            textSize = RftvDesignSystem.Size.SCREENSAVER_CLOCK_TEXT_SP
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            letterSpacing = -.04f
+            letterSpacing = RftvDesignSystem.Size.CLOCK_LETTER_SPACING
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
         }
         content.addView(clock, LinearLayout.LayoutParams(-1, -2))
         date = TextView(this).apply {
             text = SimpleDateFormat("EEEE, d MMMM", Locale("ru")).format(Date()).replaceFirstChar { it.uppercase() }
-            textSize = 23f
-            setTextColor(Color.argb(220, 255, 255, 255))
+            textSize = RftvDesignSystem.Size.SCREENSAVER_DATE_TEXT_SP
+            setTextColor(RftvDesignSystem.ColorTokens.SCREENSAVER_TEXT_SECONDARY)
             gravity = Gravity.CENTER
         }
         content.addView(date, LinearLayout.LayoutParams(-1, dp(42)))
         details = TextView(this).apply {
             text = "Загружаем погоду, курсы валют и новости…"
-            textSize = 19f
+            textSize = RftvDesignSystem.Size.SCREENSAVER_DETAILS_TEXT_SP
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            setLineSpacing(dp(8).toFloat(), 1f)
-            setPadding(0, dp(34), 0, dp(28))
+            setLineSpacing(dp(RftvDesignSystem.Spacing.SCREENSAVER_LINE_SPACING).toFloat(), 1f)
+            setPadding(
+                dp(24),
+                dp(RftvDesignSystem.Spacing.SCREENSAVER_DETAILS_TOP_PADDING),
+                dp(24),
+                dp(RftvDesignSystem.Spacing.SCREENSAVER_DETAILS_BOTTOM_PADDING)
+            )
+            background = RftvDesignSystem.surface(
+                this@ScreensaverActivity,
+                RftvDesignSystem.ColorTokens.SCREENSAVER_GLASS,
+                RftvDesignSystem.Radius.SCREENSAVER_DETAILS
+            )
         }
         content.addView(details, LinearLayout.LayoutParams(-1, -2))
         content.addView(TextView(this).apply {
             text = "RFTV  ·  Нажмите любую кнопку, чтобы продолжить"
-            textSize = 14f
-            setTextColor(Color.argb(175, 255, 255, 255))
+            textSize = RftvDesignSystem.Size.SCREENSAVER_HINT_TEXT_SP
+            setTextColor(RftvDesignSystem.ColorTokens.SCREENSAVER_TEXT_MUTED)
             gravity = Gravity.CENTER
         }, LinearLayout.LayoutParams(-1, dp(40)))
         root.addView(content, FrameLayout.LayoutParams(-1, -1))
