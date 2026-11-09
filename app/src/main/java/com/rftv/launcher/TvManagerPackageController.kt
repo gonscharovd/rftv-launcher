@@ -71,7 +71,7 @@ internal class TvManagerPackageController(
             }
             android.provider.Settings.Secure.getString(
                 resolver,
-                android.provider.Settings.Secure.SCREENSAVER_COMPONENTS
+                "screensaver_components"
             )?.split(':')
                 ?.mapNotNull { android.content.ComponentName.unflattenFromString(it)?.packageName }
                 ?.let(protected::addAll)
