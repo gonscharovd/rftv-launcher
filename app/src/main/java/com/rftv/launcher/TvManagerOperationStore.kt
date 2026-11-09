@@ -65,7 +65,11 @@ internal class TvManagerOperationStore(context: Context) {
             stored.optString("packageName") == snapshot.packageName &&
             stored.optInt("userId", -1) == snapshot.userId &&
             stored.optInt("originalEnabledSetting", Int.MIN_VALUE) == snapshot.originalEnabledSetting &&
-            stored.optString("deviceFingerprint") == snapshot.deviceFingerprint
+            stored.optBoolean("applicationEnabled", !snapshot.applicationEnabled) == snapshot.applicationEnabled &&
+            stored.optBoolean("originalHidden", !snapshot.originalHidden) == snapshot.originalHidden &&
+            stored.optString("provider") == snapshot.provider &&
+            stored.optString("deviceFingerprint") == snapshot.deviceFingerprint &&
+            stored.optLong("createdAt", Long.MIN_VALUE) == snapshot.createdAt
     }
 
     @Synchronized
