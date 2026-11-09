@@ -1566,6 +1566,17 @@ class MainActivity : Activity() {
         )
         val navItems = mutableListOf<TextView>()
         var selectedIndex = settingsSelectedIndex
+        fun findFirstFocusable(view: View): View? {
+            if (view.isFocusable && view.isEnabled && view.visibility == View.VISIBLE) return view
+            if (view is ViewGroup) {
+                for (childIndex in 0 until view.childCount) {
+                    val found = findFirstFocusable(view.getChildAt(childIndex))
+                    if (found != null) return found
+                }
+            }
+            return null
+        }
+
         fun refreshNavigation() {
             navItems.forEachIndexed { index, item ->
                 val focused = item.hasFocus()
@@ -1686,9 +1697,16 @@ class MainActivity : Activity() {
                 setTextColor(Color.LTGRAY)
                 setPadding(dp(4), dp(18), dp(4), dp(8))
             })
+            val firstRight = findFirstFocusable(detail)
+            if (firstRight != null) {
+                if (firstRight.id == View.NO_ID) firstRight.id = View.generateViewId()
+                navItems.forEach { it.nextFocusRightId = firstRight.id }
+                firstRight.nextFocusLeftId = navItems.getOrNull(index)?.id ?: View.NO_ID
+            }
         }
         sections.forEachIndexed { index, section ->
             val item = TextView(this).apply {
+                id = View.generateViewId()
                 text = section.first; textSize = 16f; typeface = Typeface.DEFAULT_BOLD
                 gravity = Gravity.CENTER_VERTICAL; isFocusable = true; isFocusableInTouchMode = true
                 setPadding(dp(14), 0, dp(10), 0)
