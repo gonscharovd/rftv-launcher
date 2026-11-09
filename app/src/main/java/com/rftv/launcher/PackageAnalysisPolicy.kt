@@ -58,13 +58,21 @@ internal object PackageAnalysisPolicy {
         "com.mediatek.tv.agent",
         "com.cltv.mal",
         "ru.sberdevices.services",
-        "com.sberdevices.services"
+        "com.sberdevices.services",
+        "ru.sberdevices.app.starkeyboard",
+        "ru.sberdevices.tvinputs",
+        "ru.sberdevices.webview",
+        "ru.sberdevices.starlauncher"
     )
     private val criticalPackagePrefixes = listOf(
         "com.android.providers.",
         "com.google.android.overlay.modules.",
         "com.android.inputmethod.",
-        "com.google.android.inputmethod."
+        "com.google.android.inputmethod.",
+        "com.android.tv.",
+        "com.mediatek.",
+        "com.cvte.",
+        "com.droidlogic."
     )
 
     private val locationPermissions = setOf(
