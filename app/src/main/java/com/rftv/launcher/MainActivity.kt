@@ -1493,7 +1493,13 @@ class MainActivity : Activity() {
 
     @Suppress("DEPRECATION")
     private fun verifyDownloadedApk(apk: File) {
-        val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
+        // Android 9 can return signingInfo=null for APK archives even when the
+        // archive is correctly signed. Request both modern and legacy metadata.
+        val flags = if (Build.VERSION.SDK_INT >= 28) {
+            PackageManager.GET_SIGNING_CERTIFICATES or PackageManager.GET_SIGNATURES
+        } else {
+            PackageManager.GET_SIGNATURES
+        }
         val candidate = packageManager.getPackageArchiveInfo(apk.absolutePath, flags)
             ?: throw IllegalStateException("APK повреждён или не содержит корректный Android manifest")
         if (candidate.packageName != packageName) {
@@ -1506,19 +1512,21 @@ class MainActivity : Activity() {
             throw IllegalStateException("versionCode обновления ($candidateCode) должен быть больше установленного ($installedCode)")
         }
 
-        fun certificateDigests(info: android.content.pm.PackageInfo): Set<String> {
-            val signatures = if (Build.VERSION.SDK_INT >= 28) {
-                info.signingInfo?.apkContentsSigners
-            } else {
-                info.signatures
-            } ?: throw IllegalStateException("Не удалось прочитать сертификат APK")
-            if (signatures.isEmpty()) throw IllegalStateException("APK не имеет сертификата подписи")
+        @Suppress("DEPRECATION")
+        fun certificateDigests(info: android.content.pm.PackageInfo, source: String): Set<String> {
+            // Prefer SigningInfo, but fall back to PackageInfo.signatures. Some
+            // Android 9 PackageParser paths populate only the legacy field.
+            val modern = if (Build.VERSION.SDK_INT >= 28) info.signingInfo?.apkContentsSigners else null
+            val signatures = modern?.takeIf { it.isNotEmpty() }
+                ?: info.signatures?.takeIf { it.isNotEmpty() }
+                ?: throw IllegalStateException("Не удалось прочитать сертификат $source (SigningInfo и signatures пусты)")
+            if (signatures.isEmpty()) throw IllegalStateException("$source не имеет сертификата подписи")
             return signatures.map {
                 java.security.MessageDigest.getInstance("SHA-256").digest(it.toByteArray())
                     .joinToString("") { byte -> "%02x".format(byte) }
             }.toSet()
         }
-        if (certificateDigests(candidate) != certificateDigests(installed)) {
+        if (certificateDigests(candidate, "скачанного APK") != certificateDigests(installed, "установленного приложения")) {
             throw IllegalStateException("Сертификат APK не совпадает с установленным приложением. Обновление отменено.")
         }
 
