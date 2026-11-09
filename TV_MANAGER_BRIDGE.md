@@ -2,7 +2,7 @@
 
 ## Status
 
-This document defines the implementation boundary for reversible package management. The current release is still read-only: package inventory and analysis work, but no privileged bridge or package-state mutation is shipped.
+This document defines the implementation boundary for reversible package management. The stable release remains read-only. This feature branch now contains a Shizuku UserService bridge, durable snapshots/journal, a transactional per-package controller, and the first manual cleanup UI. It is not released yet. Automatic cleanup remains intentionally unavailable until a target-specific profile has explicitly validated optional packages and dependencies.
 
 ## Access providers
 
@@ -25,10 +25,10 @@ TV Manager presents two primary actions:
 1. The owner enables Developer options and ADB debugging in the TV settings.
 2. RFTV detects the exact TV model, manufacturer, board, hardware/SoC, Android API, build/firmware fingerprint and ABI.
 3. RFTV finds a matching, reviewed device profile. A profile is valid only for the identifiers and firmware range it explicitly covers.
-4. RFTV checks the privileged provider and probes the exact package-state operation non-destructively.
-5. It previews only profile-listed optional packages, evidence, confidence, dependencies and expected consequences.
-6. After explicit confirmation, it saves and verifies every original state, then disables packages one at a time and verifies each result.
-7. On the first failure or unexpected state, it stops and rolls back the already changed packages in reverse order.
+4. RFTV checks the Shizuku binder, explicit permission and UserService UID. This proves the provider identity, not that the OEM firmware permits every package operation.
+5. RFTV previews only profile-listed packages explicitly marked optional with high confidence and verified dependencies.
+6. Immediately before each owner-approved change, it persists and reads back the original state snapshot, then requests the fixed package-manager operation and verifies the effective state.
+7. On the first failure or unexpected state, it stops and attempts to restore the exact original state.
 
 Developer options and the global ADB debugging toggle are not themselves a grant of shell privileges to an ordinary application. RFTV must show the exact missing step/provider. For Android 9, Shizuku commonly needs to be started from an already authorized computer/ADB host unless the TV is already rooted. Do not claim that enabling a toggle on the TV is enough.
 
@@ -42,7 +42,7 @@ Manual cleanup displays the installed package inventory with a per-package enabl
 - Packages already disabled before RFTV are shown as already disabled and are not adopted into RFTV's restore set.
 - A package that the user manually selects may lack an exact device profile or have low-confidence analysis. Show a strong, package-specific warning and require a separate confirmation before applying it; never silently apply such a selection.
 - If dependencies are unknown, explain that dependent features may stop working. Never present an unknown package as safe.
-- The switch is actionable only when a verified provider can perform the requested operation. Otherwise show the reason and the exact access path needed.
+- The switch is actionable only when the Shizuku UserService is connected with UID 2000 (shell) or 0 (root). This confirms a privileged channel, not the success of a particular OEM package-manager command; the first owner-confirmed operation is verified after execution. Otherwise show the reason and the exact access path needed.
 - Turning a package off first commits and verifies its exact original state snapshot. Only then may the provider execute the operation. Read the effective state back and verify it.
 - Turning it back on restores the captured original enabled setting, not a generic ENABLED state. This includes restoring DEFAULT, DISABLED_USER and DISABLED_UNTIL_USED exactly.
 - If a manual operation fails verification, revert the switch and report the error. Do not display a successful state based on the command exit code alone.
@@ -106,7 +106,11 @@ If a snapshot cannot be saved and read back successfully, no change is allowed.
 
 ## Current implementation in this branch
 
-- Added a pure policy gate for package disable/restore eligibility and rollback decisions.
-- Added unit tests for protected/unknown packages, confidence, exact profile matching, dependencies, missing snapshots, RFTV ownership and rollback conditions.
-- No privileged commands are executed by the policy.
-- Shizuku, Device Owner and external ADB providers, durable snapshots, operation journal, UI preview/confirmation and actual state changes remain to be implemented and tested separately.
+- Added Shizuku API/provider dependencies and a narrow UserService AIDL contract. The service accepts only validated package names, enabled-state enum values and user 0; no arbitrary shell command surface exists.
+- The UserService verifies its process UID (shell/root), rejects RFTV and hard-protected package identities, uses fixed `cmd package` / `pm` argument arrays, and applies a bounded process timeout compatible with API 24+.
+- Added durable, synchronous before-change snapshots and an operation journal in app-private SharedPreferences.
+- Added a package controller that rechecks eligibility, commits the snapshot before mutation, disables with `DISABLED_USER`, reads the effective state back, and attempts exact-state rollback on failure. Restore applies the captured integer state, including DEFAULT.
+- Added a DPAD-operable manual cleanup list with per-package switches, package-specific confirmation, protected-package locks, and restoration only for RFTV-owned snapshots. Previously disabled packages are not adopted.
+- Added automatic-cleanup eligibility flags to profile entries. Donor entries default to unverified, so neither existing Sber donor profile is automatically executable. The current Sber SDX-50U4123B / Android 9 / MT9632 target has no matching profile.
+- Added/extended tests for protected package identities and donor-profile trust defaults.
+- The UI and provider have not yet been validated on physical hardware. OEM-specific Shizuku permissions and command behavior still require a device test; no package has been disabled by this development work.
