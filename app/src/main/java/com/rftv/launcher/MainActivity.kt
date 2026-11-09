@@ -2162,10 +2162,10 @@ class MainActivity : Activity() {
         val uptime = android.os.SystemClock.elapsedRealtime() / 1000L
         val uptimeText = String.format(Locale.getDefault(), "%d дн. %02d:%02d",
             uptime / 86400, (uptime % 86400) / 3600, (uptime % 3600) / 60)
-        val systemApps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-            .filter { it.packageName != packageName && it.flags and ApplicationInfo.FLAG_SYSTEM != 0 }
-        val userApps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-            .filter { it.packageName != packageName && it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
+        val installedApps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+            .filter { it.packageName != packageName }
+        val systemApps = installedApps.filter { it.flags and ApplicationInfo.FLAG_SYSTEM != 0 }
+        val userApps = installedApps.filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
         showPanel("Данные по ТВ") { body ->
             body.addView(infoCard("УСТРОЙСТВО", "${Build.MANUFACTURER} ${Build.MODEL}",
                 "Brand: ${Build.BRAND}\nDevice: ${Build.DEVICE}\nProduct: ${Build.PRODUCT}\nBoard: ${Build.BOARD}\nHardware: ${Build.HARDWARE}"))
