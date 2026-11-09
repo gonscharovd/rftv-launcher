@@ -92,7 +92,7 @@ class ScreensaverActivity : Activity() {
         dashboardFuture = null
         refreshing.set(false)
         handler.removeCallbacksAndMessages(null)
-        super.onPause
+        super.onPause()
     }
 
     override fun onDestroy() {
