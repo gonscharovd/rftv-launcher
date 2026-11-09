@@ -2532,7 +2532,7 @@ class MainActivity : Activity() {
         shell.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         root.addView(panelBackground, FrameLayout.LayoutParams(-1, -1))
         root.addView(shell, FrameLayout.LayoutParams(
-            (resources.displayMetrics.widthPixels * .82f).toInt(),
+            (resources.displayMetrics.widthPixels * RftvDesignSystem.Size.PANEL_WIDTH_FRACTION).toInt(),
             (resources.displayMetrics.heightPixels * .88f).toInt(),
             Gravity.CENTER
         ))
@@ -2548,7 +2548,7 @@ class MainActivity : Activity() {
     private fun infoCard(title: String, subtitle: String, detail: String): View {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = glassPanel(42, 20)
+            background = RftvDesignSystem.cardSurface(this@MainActivity)
             setPadding(dp(RftvDesignSystem.Spacing.CARD_PADDING_HORIZONTAL), dp(RftvDesignSystem.Spacing.CARD_PADDING_VERTICAL), dp(RftvDesignSystem.Spacing.CARD_PADDING_HORIZONTAL), dp(RftvDesignSystem.Spacing.CARD_PADDING_VERTICAL))
         }
         card.addView(TextView(this).apply {
