@@ -2198,7 +2198,10 @@ class MainActivity : Activity() {
     private fun showTvPackages() {
         val apps = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
             .filter { it.packageName != packageName }
-            .sortedBy { packageManager.getApplicationLabel(it).toString().lowercase(Locale.getDefault()) }
+            .sortedBy {
+                (try { packageManager.getApplicationLabel(it).toString() } catch (_: Exception) { it.packageName })
+                    .lowercase(Locale.getDefault())
+            }
         val matched = TvManagerProfiles.matchingProfiles()
         fun risk(packageId: String): Pair<String, Int> {
             val criticalTokens = listOf("android", "systemui", "settings", "packageinstaller",
@@ -2691,7 +2694,12 @@ class MainActivity : Activity() {
                         } else {
                             !protected && owned == null
                         })
-                        contentDescription = if (owned != null) "Восстановить ${app.packageName}" else "Отключить ${app.packageName}"
+                        contentDescription = when {
+                            owned != null -> "Восстановить ${app.packageName}"
+                            disabled -> "Пакет уже отключён до RFTV: ${app.packageName}"
+                            protected -> "Защищённый пакет: ${app.packageName}"
+                            else -> "Отключить ${app.packageName}"
+                        }
                     }
                     toggle.setOnCheckedChangeListener { button, checked ->
                         tvManagerFocusPackage = app.packageName
