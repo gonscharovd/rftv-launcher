@@ -2320,7 +2320,10 @@ class MainActivity : Activity() {
                 receiverCount = packageInfo.receivers?.size ?: 0,
                 activityCount = packageInfo.activities?.size ?: 0,
                 profilePurpose = matchedProfileEntry?.note,
-                profileRisk = matchedProfileEntry?.risk
+                profileRisk = matchedProfileEntry?.risk,
+                isProtected = tvManagerController.preview(
+                    app.packageName, PackageOperationPolicy.Mode.MANUAL
+                )?.isProtected == true
             )
         )
         val analysisSeverity = when (analysis.severity) {
