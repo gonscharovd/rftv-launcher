@@ -6,7 +6,10 @@ import android.app.AlertDialog
 import android.app.PendingIntent
 import android.content.pm.PackageInstaller
 import android.os.Build
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
@@ -72,12 +75,30 @@ class MainActivity : Activity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val wallpaperExecutor = Executors.newSingleThreadExecutor()
+    private val packageRefreshTask = Runnable { refreshInstalledAppsAfterPackageChange() }
+    private val packageChangeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val changedPackage = intent?.data?.schemeSpecificPart
+            if (!PackageChangePolicy.shouldRefresh(
+                    intent?.action,
+                    changedPackage,
+                    packageName,
+                    intent?.getBooleanExtra(Intent.EXTRA_REPLACING, false) == true
+                )) return
+            handler.removeCallbacks(packageRefreshTask)
+            // Package replacement emits multiple broadcasts; coalesce them so
+            // the catalog is rebuilt once after PackageManager settles.
+            handler.postDelayed(packageRefreshTask, 350L)
+        }
+    }
     // One failed URL is not retried on every clock tick; retry is user-initiated.
     private val wallpaperLoadingKeys = ConcurrentHashMap.newKeySet<String>()
     private val wallpaperFailedKeys = ConcurrentHashMap.newKeySet<String>()
     private val installedApps = mutableListOf<TvApp>()
     private var dockExpanded = false
     private var page = "home"
+    private var activePanelTitle = ""
+    private var packageReceiverRegistered = false
     private var themeMode = 2 // 0 light, 1 dark, 2 automatic
     private var wallpaperLight = 0
     private var wallpaperDark = 0
@@ -211,6 +232,43 @@ class MainActivity : Activity() {
 
         loadInstalledApps()
         showHome()
+        registerPackageChangeReceiver()
+    }
+
+    private fun registerPackageChangeReceiver() {
+        if (packageReceiverRegistered) return
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_CHANGED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addAction("android.intent.action.PACKAGE_FULLY_REMOVED")
+            addDataScheme("package")
+        }
+        registerReceiver(packageChangeReceiver, filter)
+        packageReceiverRegistered = true
+    }
+
+    private fun refreshInstalledAppsAfterPackageChange() {
+        val focusedView = currentFocus
+        val previouslyFocusedPackage = focusedView?.tag as? String
+        val wasHome = page == "home"
+        val focusWasInDock = wasHome && focusedView != null &&
+            ::dockContent.isInitialized && isDescendantOf(focusedView, dockContent)
+        loadInstalledApps()
+        if (wasHome && ::dockContent.isInitialized) {
+            buildDockContent()
+            if (focusWasInDock) {
+                dockContent.post {
+                    val target = previouslyFocusedPackage?.let { dockContent.findViewWithTag<View>(it) }
+                    if (target?.requestFocus() != true) focusFirstApp()
+                }
+            }
+        } else if (page == "panel" && activePanelTitle == "Каталог приложений") {
+            showAppCatalog()
+        } else if (page == "panel" && activePanelTitle == "Скрытые приложения") {
+            showHiddenAppsPage()
+        }
     }
 
     override fun onResume() {
@@ -227,6 +285,10 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        if (packageReceiverRegistered) {
+            try { unregisterReceiver(packageChangeReceiver) } catch (_: IllegalArgumentException) { }
+            packageReceiverRegistered = false
+        }
         wallpaperExecutor.shutdownNow()
         super.onDestroy()
     }
@@ -340,7 +402,10 @@ class MainActivity : Activity() {
         val available = installedApps.map { it.packageName }.toSet()
         favoritePackages.removeAll { it !in available || it in hiddenPackages }
         hiddenPackages.retainAll(available)
-        if (favoritePackages.isEmpty()) {
+        if (AppCatalogPolicy.shouldSeedDefaultFavorites(
+                favoritesEmpty = favoritePackages.isEmpty(),
+                initialized = prefs.getBoolean("favorites_initialized", false)
+            )) {
             installedApps.filter { it.packageName !in hiddenPackages }.take(7)
                 .forEach { favoritePackages.add(it.packageName) }
         }
@@ -505,6 +570,7 @@ class MainActivity : Activity() {
 
     private fun showHome() {
         page = "home"
+        activePanelTitle = ""
         dockExpanded = false
         root = FrameLayout(this).apply {
             setBackgroundColor(RftvDesignSystem.ColorTokens.HOME_BACKDROP)
@@ -808,6 +874,7 @@ class MainActivity : Activity() {
         prefs.edit()
             .putString("favorite_packages_order", favoritePackages.joinToString("|"))
             .putStringSet("hidden_packages", hiddenPackages.toSet())
+            .putBoolean("favorites_initialized", true)
             .apply()
     }
 
@@ -2077,6 +2144,7 @@ class MainActivity : Activity() {
 
     private fun showPanel(title: String, content: (LinearLayout) -> Unit) {
         page = "panel"
+        activePanelTitle = title
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
 
