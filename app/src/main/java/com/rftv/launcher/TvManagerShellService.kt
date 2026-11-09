@@ -60,7 +60,7 @@ class TvManagerShellService : ITvManagerShellService.Stub() {
                     process.inputStream.bufferedReader().use { stream ->
                         var line = stream.readLine()
                         while (line != null) {
-                            synchronized(output) { output.append(line).append('\\n') }
+                            synchronized(output) { output.append(line).append('\n') }
                             line = stream.readLine()
                         }
                     }
