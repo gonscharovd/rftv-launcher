@@ -147,6 +147,6 @@ internal object PackageAnalysisPolicy {
         packageName == "android" ||
             criticalPackageTokens.any { token ->
                 packageName == token || packageName.startsWith("$token.") ||
-                    packageName.contains(".$token.")
+                    packageName.substringAfterLast('.') == token || packageName.contains(".$token.")
             }
 }
