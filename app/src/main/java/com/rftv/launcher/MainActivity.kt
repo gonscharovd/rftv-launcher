@@ -2633,9 +2633,13 @@ class MainActivity : Activity() {
                         textSize = 16f
                         setTextColor(Color.WHITE)
                         maxLines = 1
+                        isFocusable = true
+                        isClickable = true
+                        contentDescription = "Подробности пакета $label"
+                        setOnClickListener { showTvPackageDetails(app) }
                     }
                     val detailView = TextView(this).apply {
-                        text = "${app.packageName}\n${if (app.flags and ApplicationInfo.FLAG_SYSTEM != 0) "Системное" else "Пользовательское"} · ${if (disabled) "Отключено" else "Включено"} · ${when { protected -> "Защищено"; owned != null -> "Изменено RFTV"; else -> "Ручной выбор" }}"
+                        text = "${app.packageName}\n${if (app.flags and ApplicationInfo.FLAG_SYSTEM != 0) "Системное" else "Пользовательское"} · ${if (disabled) "Отключено" else "Включено"} · ${when { protected -> "Защищено"; owned != null -> "Изменено RFTV"; preview?.profileMatched == true -> "Есть справочный профиль"; else -> "Нет проверенного профиля" }} · ${if (preview?.decision?.requiresExplicitWarning == true) "Низкая уверенность / зависимости не проверены" else "Подробнее — OK"}"
                         textSize = 11f
                         setTextColor(Color.LTGRAY)
                         maxLines = 2
