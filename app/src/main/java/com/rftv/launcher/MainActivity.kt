@@ -256,6 +256,14 @@ class MainActivity : Activity() {
         }
     }
 
+    private val homeWeatherTask = object : Runnable {
+        override fun run() {
+            if (page != "home" || isFinishing) return
+            refreshHomeWeather()
+            handler.postDelayed(this, 15 * 60_000L)
+        }
+    }
+
     private val clockTask = object : Runnable {
         override fun run() {
             if (page == "home" && ::clockText.isInitialized) {
@@ -338,7 +346,12 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (page == "home") { startClock(); resetIdleScreensaverTimer() }
+        if (page == "home") {
+            startClock()
+            resetIdleScreensaverTimer()
+            handler.removeCallbacks(homeWeatherTask)
+            handler.postDelayed(homeWeatherTask, 15 * 60_000L)
+        }
         if (prefs.getBoolean("ota_install_pending_permission", false)) {
             val apk = pendingOtaApk()
             if (Build.VERSION.SDK_INT < 26 || packageManager.canRequestPackageInstalls()) {
@@ -360,6 +373,7 @@ class MainActivity : Activity() {
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
         handler.removeCallbacks(idleScreensaverTask)
+        handler.removeCallbacks(homeWeatherTask)
     }
 
     override fun onDestroy() {
@@ -869,6 +883,8 @@ class MainActivity : Activity() {
         setContentView(root)
         startClock()
         refreshHomeWeather()
+        handler.removeCallbacks(homeWeatherTask)
+        handler.postDelayed(homeWeatherTask, 15 * 60_000L)
         focusFirstApp()
     }
 
@@ -3351,6 +3367,7 @@ class MainActivity : Activity() {
         activePanelTitle = title
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
+        handler.removeCallbacks(homeWeatherTask)
 
         root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
         addGlassBackdrop(root)
