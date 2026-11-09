@@ -2349,6 +2349,16 @@ class MainActivity : Activity() {
                     "\nUID: ${app.uid}\nУстановлено: $installTime\nОбновлено: $updateTime"
             ))
             body.addView(infoCard(
+                "КОМПОНЕНТЫ",
+                "Служб: ${packageInfo.services?.size ?: 0} · Приёмников: ${packageInfo.receivers?.size ?: 0} · Activity: ${packageInfo.activities?.size ?: 0}",
+                "Это декларации из PackageManager. Они не подтверждают, что компонент сейчас запущен или использует разрешения."
+            ))
+            body.addView(infoCard(
+                "ЗАВИСИМОСТИ",
+                "Полный граф не подтверждён",
+                "PackageManager на этой версии Android не предоставляет надёжный полный список зависимостей между приложениями и OEM-службами. Перед ручным отключением считай зависимости неизвестными; поэтому показывается отдельное предупреждение."
+            ))
+            body.addView(infoCard(
                 "РАЗРЕШЕНИЯ",
                 "${permissions.size} запрошено · $grantedCount выдано · $deniedCount не выдано",
                 "Статус рассчитан по фактической проверке PackageManager. Отсутствие разрешения не означает ошибку приложения."
