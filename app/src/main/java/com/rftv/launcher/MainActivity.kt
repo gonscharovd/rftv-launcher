@@ -2595,7 +2595,7 @@ class MainActivity : Activity() {
                         gravity = android.view.Gravity.CENTER_VERTICAL
                         setPadding(dp(12), dp(8), dp(12), dp(8))
                         background = roundedGlass(
-                            Color.argb(RftvDesignSystem.GlassAlpha.CARD, 255, 255, 255),
+                            Color.argb(RftvDesignSystem.GlassAlpha.CARD_SURFACE, 255, 255, 255),
                             RftvDesignSystem.Radius.CONTROL
                         )
                         isFocusable = false
