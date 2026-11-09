@@ -80,6 +80,8 @@ internal class TvManagerPackageController(
     }
 
     fun preview(packageName: String, mode: PackageOperationPolicy.Mode): Preview? {
+        // The shell bridge intentionally targets only Android's primary user.
+        if (android.os.Process.myUid() / 100000 != 0) return null
         if (!PACKAGE_NAME.matches(packageName) || packageName == appContext.packageName) return null
         val app = try {
             packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
