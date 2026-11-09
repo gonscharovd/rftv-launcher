@@ -204,7 +204,7 @@ internal object RftvDesignSystem {
         const val SETTINGS_BRAND_TEXT_SP = 23f
         const val SETTINGS_CAPTION_TEXT_SP = 10f
         const val SETTINGS_HEADER_TEXT_SP = 28f
-        const val SCREENSAVER_CLOCK_TEXT_SP = 112f
+        const val SCREENSAVER_CLOCK_TEXT_SP = 64f
         const val SCREENSAVER_DATE_TEXT_SP = 23f
         const val SCREENSAVER_DETAILS_TEXT_SP = 19f
         const val SCREENSAVER_HINT_TEXT_SP = 14f
