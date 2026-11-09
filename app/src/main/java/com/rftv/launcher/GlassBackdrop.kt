@@ -31,14 +31,28 @@ internal object GlassBackdrop {
             Paint(Paint.FILTER_BITMAP_FLAG or Paint.DITHER_FLAG)
         )
         val pixels = IntArray(width * height)
-        val scratch = IntArray(width * height)
         output.getPixels(pixels, 0, width, 0, 0, width, height)
+        output.setPixels(blurPixels(pixels, width, height, safeRadius, safePasses), 0, width, 0, 0, width, height)
+        return output
+    }
+
+    internal fun blurPixels(
+        sourcePixels: IntArray,
+        width: Int,
+        height: Int,
+        radius: Int = 7,
+        passes: Int = 3
+    ): IntArray {
+        require(width > 0 && height > 0 && sourcePixels.size == width * height)
+        val safeRadius = radius.coerceIn(1, 24)
+        val safePasses = passes.coerceIn(1, 5)
+        val pixels = sourcePixels.copyOf()
+        val scratch = IntArray(width * height)
         repeat(safePasses) {
             boxBlur(pixels, scratch, width, height, safeRadius, horizontal = true)
             boxBlur(scratch, pixels, width, height, safeRadius, horizontal = false)
         }
-        output.setPixels(pixels, 0, width, 0, 0, width, height)
-        return output
+        return pixels
     }
 
     private fun boxBlur(
