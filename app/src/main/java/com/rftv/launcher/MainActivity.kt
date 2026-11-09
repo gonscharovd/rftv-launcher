@@ -662,14 +662,14 @@ class MainActivity : Activity() {
                 tag = app.packageName
                 isFocusable = true
                 isFocusableInTouchMode = true
-                background = RftvDesignSystem.focusSurface(this@MainActivity, false, 19, restingAlpha = 25, focusedAlpha = 112)
+                background = RftvDesignSystem.focusSurface(this@MainActivity, false, RftvDesignSystem.Radius.DOCK_TILE, restingAlpha = 25, focusedAlpha = 112)
                 setPadding(dp(7), dp(5), dp(7), dp(4))
                 contentDescription = app.label
                 setOnFocusChangeListener { view, focused ->
                     view.background = RftvDesignSystem.focusSurface(
-                        this@MainActivity, focused, 19, restingAlpha = 25, focusedAlpha = 112
+                        this@MainActivity, focused, RftvDesignSystem.Radius.DOCK_TILE, restingAlpha = 25, focusedAlpha = 112
                     )
-                    RftvDesignSystem.applyFocusScale(view, focused, 1.07f)
+                    RftvDesignSystem.applyFocusScale(view, focused, RftvDesignSystem.Size.DOCK_FOCUS_SCALE)
                     view.elevation = if (focused) dp(12).toFloat() else 0f
                 }
                 setOnClickListener { launchApp(app.packageName) }
@@ -688,10 +688,10 @@ class MainActivity : Activity() {
                 maxLines = 1
                 setPadding(0, dp(4), 0, 0)
             }
-            tile.addView(label, LinearLayout.LayoutParams(dp(100), dp(28)))
+            tile.addView(label, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.DOCK_LABEL_WIDTH), dp(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT)))
             row.addView(tile, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.DOCK_TILE_WIDTH), dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)).apply {
-                leftMargin = dp(4)
-                rightMargin = dp(4)
+                leftMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
+                rightMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
             })
         }
         scroll.addView(row)
