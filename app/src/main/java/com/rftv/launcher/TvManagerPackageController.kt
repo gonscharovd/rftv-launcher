@@ -137,6 +137,55 @@ internal class TvManagerPackageController(
         )
     }
 
+    data class BatchResult(
+        val success: Boolean,
+        val appliedCount: Int,
+        val message: String,
+        val rollbackMessages: List<String> = emptyList()
+    )
+
+    fun automaticCandidates(): List<Preview> {
+        return profileEntries.values
+            .filter { it.verifiedOptional && it.confidenceHigh && it.dependenciesVerified }
+            .mapNotNull { preview(it.packageId, PackageOperationPolicy.Mode.AUTOMATIC) }
+            .filter { it.decision.allowed }
+    }
+
+    /** Applies a fully previewed automatic batch; any failure rolls back in reverse order. */
+    fun disableAutomaticBatch(confirmed: Boolean): BatchResult {
+        if (!confirmed) return BatchResult(false, 0, "Не получено подтверждение владельца.")
+        val candidates = automaticCandidates()
+        if (candidates.isEmpty()) {
+            return BatchResult(false, 0, "Нет пакетов, прошедших строгую проверку автоматического режима.")
+        }
+        val applied = mutableListOf<String>()
+        for (candidate in candidates) {
+            val result = disable(
+                candidate.packageName,
+                PackageOperationPolicy.Mode.AUTOMATIC,
+                warningConfirmed = false
+            )
+            if (!result.success) {
+                val rollbackTargets = buildList {
+                    result.snapshot?.packageName?.let(::add)
+                    addAll(applied.asReversed())
+                }
+                val rollback = rollbackTargets.map { packageId ->
+                    val restored = restore(packageId)
+                    "$packageId: ${restored.message}"
+                }
+                return BatchResult(
+                    false,
+                    applied.size,
+                    "Пакет ${candidate.packageName} не прошёл операцию: ${result.message}",
+                    rollback
+                )
+            }
+            applied += candidate.packageName
+        }
+        return BatchResult(true, applied.size, "Автоматическая очистка завершена. Проверено отключённых пакетов: ${applied.size}.")
+    }
+
     fun disable(
         packageName: String,
         mode: PackageOperationPolicy.Mode,
