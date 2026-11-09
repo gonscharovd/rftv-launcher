@@ -20,8 +20,8 @@ android {
         applicationId = "com.rftv.launcher"
         minSdk = 24
         targetSdk = 28
-        versionCode = 10
-        versionName = "0.7.2"
+        versionCode = 11
+        versionName = "0.8.0"
     }
 
     compileOptions {

@@ -20,6 +20,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.IBinder
@@ -50,7 +51,6 @@ import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.max
 import kotlin.math.min
 import rikka.shizuku.Shizuku
 
@@ -58,8 +58,8 @@ import rikka.shizuku.Shizuku
  * RFTV Launcher visual prototype.
  * Target device: Android 9 / API 28 / ARMv7 / low-memory Android TV.
  *
- * Glass is simulated with translucent fills and subtle strokes instead of
- * real-time blur to keep rendering affordable on MediaTek MT9632-class hardware.
+ * Liquid Glass uses a cached, downsampled backdrop snapshot blur on legacy Android.
+ * Blur is generated asynchronously when an overlay opens, never on every frame.
  */
 class MainActivity : Activity() {
 
@@ -75,6 +75,7 @@ class MainActivity : Activity() {
     private lateinit var dockContent: LinearLayout
     private lateinit var clockText: TextView
     private lateinit var dateText: TextView
+    private lateinit var homeWeatherText: TextView
     private lateinit var wallpaperView: ImageView
     private var lastAppliedWallpaperKey: String? = null
     @Volatile private var tvManagerShellService: ITvManagerShellService? = null
@@ -116,6 +117,13 @@ class MainActivity : Activity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val wallpaperExecutor = Executors.newSingleThreadExecutor()
+    private val glassBlurExecutor = Executors.newSingleThreadExecutor()
+    private var glassBackdropBitmap: Bitmap? = null
+    private var glassBackdropCacheKey: String? = null
+    private var glassBackdropLoadingKey: String? = null
+    private var activeGlassBackdropView: ImageView? = null
+    private var activeGlassBackdropKey: String? = null
+    private var homeHeroBackdropView: ImageView? = null
     private val networkExecutor = Executors.newSingleThreadExecutor()
     private val tvManagerExecutor = Executors.newSingleThreadExecutor()
     private val tvManagerController by lazy {
@@ -144,14 +152,18 @@ class MainActivity : Activity() {
     // One failed URL is not retried on every clock tick; retry is user-initiated.
     private val wallpaperLoadingKeys = ConcurrentHashMap.newKeySet<String>()
     private val wallpaperFailedKeys = ConcurrentHashMap.newKeySet<String>()
+    private val wallpaperFallbackAttempted = ConcurrentHashMap.newKeySet<String>()
     private val installedApps = mutableListOf<TvApp>()
-    private var dockExpanded = false
     private var controlCenterReturnFocus: View? = null
     private var page = "home"
     private var activePanelTitle = ""
     private var settingsNavigationActive = false
     private var settingsHubVisible = false
     private var settingsSelectedIndex = 0
+    private var settingsSidebarView: View? = null
+    private var settingsContentColumnView: View? = null
+    private var settingsEntryFocusView: View? = null
+    private val settingsNavViews = mutableListOf<View>()
     private var packageReceiverRegistered = false
     private var themeMode = 2 // 0 light, 1 dark, 2 automatic
     private var wallpaperLight = 0
@@ -247,6 +259,14 @@ class MainActivity : Activity() {
         }
     }
 
+    private val homeWeatherTask = object : Runnable {
+        override fun run() {
+            if (page != "home" || isFinishing) return
+            refreshHomeWeather()
+            handler.postDelayed(this, 15 * 60_000L)
+        }
+    }
+
     private val clockTask = object : Runnable {
         override fun run() {
             if (page == "home" && ::clockText.isInitialized) {
@@ -329,7 +349,12 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (page == "home") { startClock(); resetIdleScreensaverTimer() }
+        if (page == "home") {
+            startClock()
+            resetIdleScreensaverTimer()
+            handler.removeCallbacks(homeWeatherTask)
+            handler.postDelayed(homeWeatherTask, 15 * 60_000L)
+        }
         if (prefs.getBoolean("ota_install_pending_permission", false)) {
             val apk = pendingOtaApk()
             if (Build.VERSION.SDK_INT < 26 || packageManager.canRequestPackageInstalls()) {
@@ -351,6 +376,7 @@ class MainActivity : Activity() {
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
         handler.removeCallbacks(idleScreensaverTask)
+        handler.removeCallbacks(homeWeatherTask)
     }
 
     override fun onDestroy() {
@@ -363,6 +389,9 @@ class MainActivity : Activity() {
             packageReceiverRegistered = false
         }
         wallpaperExecutor.shutdownNow()
+        glassBlurExecutor.shutdownNow()
+        glassBackdropBitmap?.recycle()
+        glassBackdropBitmap = null
         networkExecutor.shutdownNow()
         tvManagerExecutor.shutdownNow()
         super.onDestroy()
@@ -394,6 +423,24 @@ class MainActivity : Activity() {
                 }
             }
 
+            if (page == "panel" && settingsNavigationActive && settingsHubVisible) {
+                val focused = currentFocus
+                if (event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT &&
+                    focused != null && settingsSidebarView?.let { isDescendantOf(focused, it) } == true
+                ) {
+                    if (settingsEntryFocusView?.requestFocus() != true) {
+                        settingsNavViews.getOrNull(settingsSelectedIndex)?.requestFocus()
+                    }
+                    return true
+                }
+                if (event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT &&
+                    focused != null && settingsContentColumnView?.let { isDescendantOf(focused, it) } == true
+                ) {
+                    settingsNavViews.getOrNull(settingsSelectedIndex)?.requestFocus()
+                    return true
+                }
+            }
+
             val direction = when (event.keyCode) {
                 KeyEvent.KEYCODE_DPAD_UP -> View.FOCUS_UP
                 KeyEvent.KEYCODE_DPAD_DOWN -> View.FOCUS_DOWN
@@ -410,15 +457,8 @@ class MainActivity : Activity() {
                         return true
                     }
                     when (event.keyCode) {
-                        KeyEvent.KEYCODE_DPAD_DOWN -> if (!dockExpanded) {
-                            setDockExpanded(true)
-                            return true
-                        }
-                        KeyEvent.KEYCODE_DPAD_UP -> if (dockExpanded) {
-                            setDockExpanded(false)
-                            return true
-                        }
-                    }
+                // Dock is a single row; vertical navigation no longer expands or collapses it.
+            }
                 } else if (page == "panel") {
                     moveFocusWithin(root, direction)
                     return true
@@ -510,6 +550,7 @@ class MainActivity : Activity() {
         if (selectionKey == lastAppliedWallpaperKey) return
 
         lastAppliedWallpaperKey = selectionKey
+        wallpaperFallbackAttempted.remove(selectionKey)
         val colors = palette[index]
         wallpaperView.background = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
@@ -561,11 +602,15 @@ class MainActivity : Activity() {
                     instanceFollowRedirects = true
                     useCaches = true
                     setRequestProperty("User-Agent", "RFTV-Launcher/0.7")
-                    setRequestProperty("Accept", "image/avif,image/webp,image/jpeg,image/*")
+                    setRequestProperty("Accept", "image/jpeg,image/*;q=0.8,*/*;q=0.5")
                 }
                 connection.connect()
                 if (connection.responseCode !in 200..299) {
                     throw IllegalStateException("Wallpaper HTTP ${connection.responseCode}")
+                }
+                val contentType = connection.contentType.orEmpty()
+                if (contentType.isNotBlank() && !contentType.startsWith("image/", ignoreCase = true)) {
+                    throw IllegalStateException("Wallpaper returned non-image content: $contentType")
                 }
                 val part = File(directory, file.name + ".part")
                 tempFile = part
@@ -585,7 +630,10 @@ class MainActivity : Activity() {
                 if (part.length() <= 10_000L) throw IllegalStateException("Wallpaper response is empty")
                 if (file.exists()) file.delete()
                 if (!part.renameTo(file)) throw IllegalStateException("Could not commit wallpaper cache")
-                return decode(file, sampleSize)
+                return decode(file, sampleSize) ?: run {
+                    file.delete()
+                    throw IllegalStateException("Wallpaper bitmap decode failed: $address")
+                }
             } finally {
                 tempFile?.takeIf { it.exists() }?.delete()
                 connection?.disconnect()
@@ -601,6 +649,19 @@ class MainActivity : Activity() {
                 }
                 if (bitmap != null) {
                     wallpaperFailedKeys.remove(tag)
+                    prefs.edit().remove("wallpaper_last_error").apply()
+                    if (target === wallpaperView && page == "home") {
+                        val selectedIndex = if (dark) wallpaperDark else wallpaperLight
+                        val selectedKey = WallpaperImageUrls.selectionKey(dark, selectedIndex)
+                        if (safeIndex != selectedIndex && wallpaperFallbackAttempted.contains(selectedKey)) {
+                            if (dark) wallpaperDark = safeIndex else wallpaperLight = safeIndex
+                            prefs.edit().putInt(if (dark) "wallpaper_dark" else "wallpaper_light", safeIndex).apply()
+                            lastAppliedWallpaperKey = WallpaperImageUrls.selectionKey(dark, safeIndex)
+                            activeGlassBackdropKey = lastAppliedWallpaperKey
+                            wallpaperFallbackAttempted.remove(selectedKey)
+                            android.util.Log.i("RFTVWallpaper", "Fallback wallpaper selected and persisted: ${lastAppliedWallpaperKey}")
+                        }
+                    }
                     if (!thumbnail && target === wallpaperView && target.drawable == null) {
                         target.alpha = 0f
                         target.setImageBitmap(bitmap)
@@ -611,11 +672,20 @@ class MainActivity : Activity() {
                         target.setImageBitmap(bitmap)
                     }
                     target.contentDescription = "${photo.title} — ${photo.author}"
+                    if (target === wallpaperView) refreshGlassBackdrop()
                 } else if (failure) {
                     wallpaperFailedKeys.add(tag)
                     target.contentDescription = "Не удалось загрузить обои: ${photo.title}"
-                    if (target === wallpaperView && page == "home" && target.drawable == null) {
-                        Toast.makeText(this, "Не удалось загрузить фотографию. Проверьте соединение или повторите выбор обоев.", Toast.LENGTH_LONG).show()
+                    if (target === wallpaperView && page == "home") {
+                        val selectedIndex = if (dark) wallpaperDark else wallpaperLight
+                        val selectedKey = WallpaperImageUrls.selectionKey(dark, selectedIndex)
+                        if (wallpaperFallbackAttempted.add(selectedKey)) {
+                            android.util.Log.w("RFTVWallpaper", "Primary wallpaper failed; trying next photo. selected=$selectedKey")
+                            loadPhoto((safeIndex + 1) % photos.size, dark, target)
+                        } else {
+                            android.util.Log.e("RFTVWallpaper", "Primary and fallback wallpapers failed. selected=$selectedKey")
+                            Toast.makeText(this, "Не удалось загрузить фотографии обоев. Ошибка сохранена в журнале.", Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
             }
@@ -644,17 +714,31 @@ class MainActivity : Activity() {
                     }
 
                     if (!previewShown) {
-                        val preview = fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
+                        val preview = try {
+                            fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
+                        } catch (error: Exception) {
+                            android.util.Log.w("RFTVWallpaper", "Wallpaper preview failed for ${photo.imageUrl}", error)
+                            prefs.edit().putString("wallpaper_last_error", error.message ?: error.javaClass.simpleName).apply()
+                            null
+                        }
                         if (preview != null) {
                             previewShown = true
                             finish(preview, completed = false)
                         }
                     }
 
-                    val full = fetch(fullFile, fullUrl, 24L * 1024L * 1024L, 2)
+                    val full = try {
+                        fetch(fullFile, fullUrl, 24L * 1024L * 1024L, 2)
+                    } catch (error: Exception) {
+                        android.util.Log.w("RFTVWallpaper", "Full wallpaper failed for ${photo.imageUrl}", error)
+                        prefs.edit().putString("wallpaper_last_error", error.message ?: error.javaClass.simpleName).apply()
+                        null
+                    }
                     finish(full, completed = true, failure = full == null && !previewShown)
                 }
-            } catch (_: Exception) {
+            } catch (error: Exception) {
+                android.util.Log.w("RFTVWallpaper", "Wallpaper load failed for ${photo.imageUrl}", error)
+                prefs.edit().putString("wallpaper_last_error", error.message ?: error.javaClass.simpleName).apply()
                 // A preview is already useful content: a failed full-size request
                 // must not mark the whole wallpaper as unavailable or show an error.
                 finish(null, completed = true, failure = !previewShown)
@@ -676,12 +760,14 @@ class MainActivity : Activity() {
     }
 
     private fun showHome() {
+        activeGlassBackdropView = null
+        activeGlassBackdropKey = null
+        homeHeroBackdropView = null
         settingsNavigationActive = false
         settingsHubVisible = false
         settingsSelectedIndex = 0
         page = "home"
         activePanelTitle = ""
-        dockExpanded = false
         root = FrameLayout(this).apply {
             setBackgroundColor(RftvDesignSystem.ColorTokens.HOME_BACKDROP)
             clipChildren = true
@@ -729,16 +815,90 @@ class MainActivity : Activity() {
         timeColumn.addView(dateText)
         timeColumn.gravity = Gravity.CENTER
         clockText.textSize = RftvDesignSystem.Size.CLOCK_TEXT_SP
+        clockText.letterSpacing = -0.055f
         clockText.setShadowLayer(RftvDesignSystem.Size.CLOCK_SHADOW_RADIUS, 0f, RftvDesignSystem.Size.CLOCK_SHADOW_DY, RftvDesignSystem.ColorTokens.CLOCK_SHADOW)
+        clockText.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         dateText.textSize = RftvDesignSystem.Size.DATE_TEXT_SP
         dateText.setShadowLayer(RftvDesignSystem.Size.DATE_SHADOW_RADIUS, 0f, RftvDesignSystem.Size.DATE_SHADOW_DY, Color.argb(RftvDesignSystem.GlassAlpha.HOME_DATE_SHADOW, 0, 0, 0))
-        root.addView(timeColumn, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
+
+        val heroFrame = FrameLayout(this).apply {
+            background = RftvDesignSystem.surface(this@MainActivity, Color.argb(64, 238, 246, 255), 34)
+            clipToOutline = true
+            elevation = dp(18).toFloat()
+            isFocusable = true
+            isFocusableInTouchMode = true
+            contentDescription = "Часы и текущая погода. OK — прогноз на пять дней"
+            setOnClickListener { showWeather() }
+        }
+        homeHeroBackdropView = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            alpha = 0.78f
+            isFocusable = false
+            contentDescription = "Размытая фотография под стеклянными часами"
+        }
+        heroFrame.addView(homeHeroBackdropView, FrameLayout.LayoutParams(-1, -1))
+        val heroTint = View(this).apply {
+            background = GradientDrawable().apply {
+                cornerRadius = dp(34).toFloat()
+                setColor(Color.argb(54, 218, 234, 255))
+                setStroke(dp(1), Color.argb(115, 255, 255, 255))
+            }
+            isFocusable = false
+        }
+        heroFrame.addView(heroTint, FrameLayout.LayoutParams(-1, -1))
+        val hero = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setBackgroundColor(Color.TRANSPARENT)
+            setPadding(dp(30), dp(18), dp(30), dp(18))
+            isFocusable = false
+        }
+        heroFrame.setOnFocusChangeListener { view, focused ->
+            heroTint.background = GradientDrawable().apply {
+                cornerRadius = dp(34).toFloat()
+                setColor(Color.argb(if (focused) 88 else 54, 218, 234, 255))
+                setStroke(dp(if (focused) 2 else 1), Color.argb(if (focused) 220 else 115, 255, 255, 255))
+            }
+            RftvDesignSystem.applyFocusScale(view, focused, 1.025f)
+        }
+        hero.addView(timeColumn, LinearLayout.LayoutParams(-2, -2))
+        hero.addView(View(this).apply {
+            setBackgroundColor(Color.argb(90, 255, 255, 255))
+        }, LinearLayout.LayoutParams(dp(1), dp(88)).apply {
+            leftMargin = dp(26)
+            rightMargin = dp(24)
+        })
+        val weatherColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        weatherColumn.addView(TextView(this).apply {
+            text = "СЕЙЧАС"
+            textSize = 11f
+            letterSpacing = 0.16f
+            setTextColor(Color.argb(190, 255, 255, 255))
+        })
+        homeWeatherText = TextView(this).apply {
+            text = "Челябинск\nЗагрузка погоды…"
+            textSize = 21f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setShadowLayer(8f, 0f, 2f, Color.argb(100, 0, 0, 0))
+            setPadding(0, dp(6), 0, 0)
+        }
+        weatherColumn.addView(homeWeatherText)
+        weatherColumn.addView(TextView(this).apply {
+            text = "ПРОГНОЗ НА 5 ДНЕЙ  ›"
+            textSize = 10f
+            letterSpacing = 0.08f
+            setTextColor(Color.argb(205, 255, 255, 255))
+            setPadding(0, dp(8), 0, 0)
+        })
+        hero.addView(weatherColumn, LinearLayout.LayoutParams(-2, -2))
+        heroFrame.addView(hero, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
+        root.addView(heroFrame, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
 
         top.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-        val weather = glassButton("☀   ПОГОДА") { showWeather() }
-        top.addView(weather, LinearLayout.LayoutParams(-2, dp(RftvDesignSystem.Size.TOP_ACTION_HEIGHT)).apply {
-            rightMargin = dp(RftvDesignSystem.Spacing.HOME_ACTION_GAP)
-        })
         top.addView(glassButton("⚙") { showControlCenter() }.apply {
             tag = "rftv-control-center-trigger"
         }, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.TOP_SETTINGS_WIDTH), dp(RftvDesignSystem.Size.TOP_ACTION_HEIGHT)))
@@ -773,21 +933,13 @@ class MainActivity : Activity() {
         }
         root.addView(dock, dockParams)
 
-        val wallpaperButton = glassButton("Обои  ◀   ▶") { nextWallpaper() }.apply {
-            tag = "rftv-wallpaper-button"
-            setOnLongClickListener {
-                retryCurrentWallpaper()
-                true
-            }
-        }
-        val wallpaperParams = FrameLayout.LayoutParams(-2, dp(RftvDesignSystem.Size.HOME_WALLPAPER_BUTTON_HEIGHT), Gravity.BOTTOM or Gravity.END).apply {
-            rightMargin = dp(RftvDesignSystem.Spacing.HOME_WALLPAPER_RIGHT_INSET)
-            bottomMargin = dp(dockHeightDp + RftvDesignSystem.Spacing.HOME_WALLPAPER_DOCK_GAP)
-        }
-        root.addView(wallpaperButton, wallpaperParams)
 
         setContentView(root)
+        refreshGlassBackdrop()
         startClock()
+        refreshHomeWeather()
+        handler.removeCallbacks(homeWeatherTask)
+        handler.postDelayed(homeWeatherTask, 15 * 60_000L)
         focusFirstApp()
     }
 
@@ -802,24 +954,9 @@ class MainActivity : Activity() {
         dockContent.removeAllViews()
         val visibleApps = installedApps.filter { it.packageName !in hiddenPackages }
         val favorites = visibleApps.filter { it.packageName in favoritePackages }
-        // If the user removes every favorite, keep the launcher usable by
-        // showing the complete launchable app list in the first Dock row.
+        // A single adaptive row: favorites first, followed by a dedicated App Library entry.
         val firstRow = favorites.ifEmpty { visibleApps }
         dockContent.addView(buildAppRow(firstRow), LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)))
-        if (dockExpanded) {
-            val firstRowPackages = firstRow.map { it.packageName }.toSet()
-            val allApps = visibleApps.filter { it.packageName !in firstRowPackages }
-            dockContent.addView(buildAppRow(allApps), LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)))
-        }
-        if (firstRow.isEmpty()) {
-            val empty = TextView(this).apply {
-                text = "Приложения появятся здесь после установки"
-                textSize = RftvDesignSystem.Size.EMPTY_DOCK_TEXT_SP
-                gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
-            }
-            dockContent.addView(empty, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.EMPTY_DOCK_HEIGHT)))
-        }
     }
 
     private fun buildAppRow(items: List<TvApp>): HorizontalScrollView {
@@ -832,6 +969,9 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
+        val availableWidthDp = (resources.displayMetrics.widthPixels / resources.displayMetrics.density * dockWidthPercent / 100f).toInt()
+        val tileWidthDp = ((availableWidthDp - 44) / (items.size + 1).coerceAtLeast(1)).coerceIn(82, RftvDesignSystem.Size.DOCK_TILE_WIDTH)
+        val iconSizeDp = (tileWidthDp * 0.56f).toInt().coerceIn(44, RftvDesignSystem.Size.DOCK_ICON)
         items.forEach { app ->
             val tile = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -854,7 +994,7 @@ class MainActivity : Activity() {
                 setImageDrawable(app.icon)
                 scaleType = ImageView.ScaleType.FIT_CENTER
             }
-            tile.addView(icon, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.DOCK_ICON), dp(RftvDesignSystem.Size.DOCK_ICON)))
+            tile.addView(icon, LinearLayout.LayoutParams(dp(iconSizeDp), dp(iconSizeDp)))
             val label = TextView(this).apply {
                 text = app.label
                 textSize = RftvDesignSystem.Size.DOCK_LABEL_TEXT_SP
@@ -864,12 +1004,43 @@ class MainActivity : Activity() {
                 maxLines = 1
                 setPadding(0, dp(RftvDesignSystem.Size.DOCK_LABEL_TOP_PADDING), 0, 0)
             }
-            tile.addView(label, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.DOCK_LABEL_WIDTH), dp(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT)))
-            row.addView(tile, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.DOCK_TILE_WIDTH), dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)).apply {
+            tile.addView(label, LinearLayout.LayoutParams(dp(tileWidthDp - 8), dp(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT)))
+            row.addView(tile, LinearLayout.LayoutParams(dp(tileWidthDp), dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)).apply {
                 leftMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
                 rightMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
             })
         }
+        val catalogTile = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            isFocusable = true
+            isFocusableInTouchMode = true
+            contentDescription = "Все приложения"
+            background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused = false)
+            setPadding(dp(6), dp(5), dp(6), dp(4))
+            setOnFocusChangeListener { view, focused ->
+                view.background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused)
+                RftvDesignSystem.applyFocusScale(view, focused, RftvDesignSystem.Size.DOCK_FOCUS_SCALE)
+            }
+            setOnClickListener { showAppCatalog() }
+        }
+        catalogTile.addView(TextView(this).apply {
+            text = "▦"
+            textSize = 38f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+        }, LinearLayout.LayoutParams(dp(iconSizeDp), dp(iconSizeDp)))
+        catalogTile.addView(TextView(this).apply {
+            text = "Все приложения"
+            textSize = RftvDesignSystem.Size.DOCK_LABEL_TEXT_SP
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            maxLines = 1
+        }, LinearLayout.LayoutParams(dp(tileWidthDp - 8), dp(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT)))
+        row.addView(catalogTile, LinearLayout.LayoutParams(dp(tileWidthDp), dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)).apply {
+            leftMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
+            rightMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
+        })
         scroll.addView(row)
         return scroll
     }
@@ -879,42 +1050,6 @@ class MainActivity : Activity() {
         val rowScroll = dockContent.getChildAt(0) as? HorizontalScrollView ?: return
         val row = rowScroll.getChildAt(0) as? LinearLayout ?: return
         row.getChildAt(0)?.requestFocus()
-    }
-
-    private fun setDockExpanded(expanded: Boolean) {
-        if (!::dock.isInitialized || dockExpanded == expanded) return
-        val previouslyFocusedPackage = currentFocus?.tag as? String
-        dockExpanded = expanded
-        val params = dock.layoutParams as FrameLayout.LayoutParams
-        val expandedHeight = if (expanded) max(270, dockHeightDp + 112) else dockHeightDp
-        params.height = dp(expandedHeight)
-        dock.layoutParams = params
-        updateWallpaperButtonPosition(expandedHeight)
-        buildDockContent()
-        dock.animate().alpha(1f).setDuration(RftvDesignSystem.Motion.DOCK_REVEAL_DURATION_MS).start()
-        if (expanded) {
-            val second = dockContent.getChildAt(1)
-            second?.alpha = 0f
-            second?.animate()?.alpha(1f)?.setDuration(RftvDesignSystem.Motion.SECONDARY_REVEAL_DURATION_MS)?.start()
-        }
-        // Rebuilding rows removes the previously focused View. Restore focus
-        // explicitly so DPAD navigation never leaves the remote without a target.
-        dockContent.post {
-            val target = if (expanded) {
-                val secondRow = dockContent.getChildAt(1) as? HorizontalScrollView
-                val secondItems = secondRow?.getChildAt(0) as? LinearLayout
-                secondItems?.getChildAt(0)
-                    ?: (dockContent.getChildAt(0) as? HorizontalScrollView)
-                        ?.let { it.getChildAt(0) as? LinearLayout }
-                        ?.getChildAt(0)
-            } else {
-                val firstRow = (dockContent.getChildAt(0) as? HorizontalScrollView)
-                    ?.getChildAt(0) as? LinearLayout
-                previouslyFocusedPackage?.let { dockContent.findViewWithTag<View>(it) }
-                    ?: firstRow?.getChildAt(0)
-            }
-            if (target?.requestFocus() != true) focusFirstApp()
-        }
     }
 
     private fun nextWallpaper() {
@@ -946,58 +1081,107 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun weatherDescription(code: Int): String = when (code) {
+        0 -> "Ясно"
+        1 -> "Преимущественно ясно"
+        2 -> "Переменная облачность"
+        3 -> "Облачно"
+        45, 48 -> "Туман"
+        in 51..57 -> "Морось"
+        in 61..67 -> "Дождь"
+        in 71..77 -> "Снег"
+        in 80..82 -> "Ливень"
+        in 85..86 -> "Снегопад"
+        95, 96, 99 -> "Гроза"
+        else -> "Погодные условия"
+    }
+
+    private fun weatherEndpoint(): String =
+        "https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026" +
+            "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m" +
+            "&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=5&timezone=Asia%2FYekaterinburg"
+
+    private fun refreshHomeWeather() {
+        if (!::homeWeatherText.isInitialized) return
+        val cached = prefs.getString("home_weather_summary", null)
+        if (!cached.isNullOrBlank()) homeWeatherText.text = cached
+        networkExecutor.execute {
+            val summary = try {
+                val current = org.json.JSONObject(readHttpText(weatherEndpoint())).getJSONObject("current")
+                val temp = current.getDouble("temperature_2m").toInt()
+                val code = current.getInt("weather_code")
+                "$temp°  ·  ${weatherDescription(code)}\nЧелябинск"
+            } catch (_: Exception) {
+                cached ?: "Челябинск\nПогода временно недоступна"
+            }
+            if (summary != cached && !summary.contains("недоступна")) {
+                prefs.edit().putString("home_weather_summary", summary).apply()
+            }
+            handler.post {
+                if (!isFinishing && page == "home" && ::homeWeatherText.isInitialized) {
+                    homeWeatherText.text = summary
+                }
+            }
+        }
+    }
+
     private fun showWeather() {
-        showPanel("Погода") { body ->
-            val liveWeather = TextView(this).apply {
-                text = "Загружаем текущую погоду для Челябинска…"
-                textSize = 18f
+        showPanel("Погода · прогноз на 5 дней") { body ->
+            val currentCard = TextView(this).apply {
+                text = "Челябинск · загружаем текущие условия…"
+                textSize = 22f
                 setTextColor(Color.WHITE)
-                setPadding(dp(18), dp(16), dp(18), dp(16))
+                setPadding(dp(22), dp(20), dp(22), dp(20))
                 background = RftvDesignSystem.cardSurface(this@MainActivity)
             }
-            body.addView(liveWeather, LinearLayout.LayoutParams(-1, -2))
+            body.addView(currentCard, LinearLayout.LayoutParams(-1, -2))
+            body.addView(sectionLabel("ПРОГНОЗ НА БЛИЖАЙШИЕ 5 ДНЕЙ"))
+            val loading = infoCard("ПРОГНОЗ", "Загрузка…", "Получаем данные Open-Meteo")
+            body.addView(loading)
             networkExecutor.execute {
                 val result = try {
-                    val address = "https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Asia%2FYekaterinburg"
-                    val current = org.json.JSONObject(readHttpText(address))
-                        .getJSONObject("current")
-                    val temp = current.getDouble("temperature_2m").toInt()
-                    val feels = current.getDouble("apparent_temperature").toInt()
-                    val humidity = current.getInt("relative_humidity_2m")
-                    val wind = current.getDouble("wind_speed_10m").toInt()
-                    val code = current.getInt("weather_code")
-                    val condition = when (code) {
-                        0 -> "Ясно"
-                        1, 2 -> "Переменная облачность"
-                        3 -> "Облачно"
-                        45, 48 -> "Туман"
-                        in 51..67 -> "Морось или дождь"
-                        in 71..77 -> "Снег"
-                        in 80..82 -> "Ливень"
-                        in 85..86 -> "Снегопад"
-                        95, 96, 99 -> "Гроза"
-                        else -> "Погодные условия"
+                    val payload = org.json.JSONObject(readHttpText(weatherEndpoint()))
+                    val current = payload.getJSONObject("current")
+                    val daily = payload.getJSONObject("daily")
+                    val dates = daily.getJSONArray("time")
+                    val codes = daily.getJSONArray("weather_code")
+                    val lows = daily.getJSONArray("temperature_2m_min")
+                    val highs = daily.getJSONArray("temperature_2m_max")
+                    val currentSummary = "${current.getDouble("temperature_2m").toInt()}° · ${weatherDescription(current.getInt("weather_code"))}"
+                    val days = (0 until minOf(5, dates.length())).map { index ->
+                        val date = dates.getString(index)
+                        val dayLabel = try {
+                            val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(date)
+                            SimpleDateFormat("EEEE, d MMMM", Locale("ru")).format(parsed ?: Date())
+                                .replaceFirstChar { it.uppercase() }
+                        } catch (_: Exception) { date }
+                        val min = lows.getDouble(index).toInt()
+                        val max = highs.getDouble(index).toInt()
+                        "${dayLabel}|${weatherDescription(codes.getInt(index))}|$min° … $max°"
                     }
-                    "Челябинск · $condition\n\n$temp°C  ·  ощущается как $feels°C\nВлажность $humidity%  ·  ветер $wind км/ч\n\nИсточник: Open-Meteo"
+                    currentSummary to days
                 } catch (_: Exception) {
-                    "Не удалось загрузить погоду. Проверь подключение к интернету."
+                    null
                 }
                 handler.post {
-                    if (!isFinishing && page == "panel" && activePanelTitle == "Погода" && liveWeather.parent != null) {
-                        liveWeather.text = result
+                    if (isFinishing || page != "panel" || activePanelTitle != "Погода · прогноз на 5 дней") return@post
+                    body.removeView(loading)
+                    if (result == null) {
+                        currentCard.text = "Челябинск · погодные данные временно недоступны"
+                        body.addView(infoCard("НЕТ СВЯЗИ", "Прогноз не получен", "Проверь подключение. Выдуманные значения не показываются."))
+                    } else {
+                        currentCard.text = "Челябинск · ${result.first}\nОбновлено: сейчас"
+                        result.second.forEachIndexed { index, line ->
+                            val parts = line.split("|")
+                            body.addView(infoCard(
+                                if (index == 0) "СЕГОДНЯ" else "ДЕНЬ ${index + 1}",
+                                parts.getOrElse(0) { "" },
+                                "${parts.getOrElse(1) { "" }} · ${parts.getOrElse(2) { "" }}"
+                            ))
+                        }
                     }
                 }
             }
-            body.addView(infoCard("КУРСЫ ВАЛЮТ", "Банк России",
-                "На экране ожидания показываются курсы доллара и евро к рублю из официального источника ЦБ РФ."))
-            body.addView(infoCard("НОВОСТИ", "Россия и мир",
-                "На экране ожидания выводятся заголовки RSS-лент. Источники указываются внизу экрана."))
-            body.addView(glassButton("Настроить экран ожидания") {
-                openSettings("android.settings.DREAM_SETTINGS")
-            }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(12) })
-            body.addView(glassButton("Закрыть") { showHome() }, LinearLayout.LayoutParams(-2, dp(48)).apply {
-                topMargin = dp(8)
-            })
         }
     }
 
@@ -1095,10 +1279,11 @@ class MainActivity : Activity() {
 
         val overlay = FrameLayout(this).apply {
             tag = "rftv-control-center"
-            setBackgroundColor(RftvDesignSystem.ColorTokens.CONTROL_CENTER_SCRIM)
+            setBackgroundColor(Color.TRANSPARENT)
             isFocusable = false
             isFocusableInTouchMode = false
         }
+        addGlassBackdrop(overlay)
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = RftvDesignSystem.gradientSurface(
@@ -1192,15 +1377,13 @@ class MainActivity : Activity() {
                 }
                 setOnClickListener { action() }
             }
-            tile.addView(TextView(this).apply {
-                text = icon
-                textSize = RftvDesignSystem.Size.CONTROL_CENTER_ICON_TEXT_SP
-                gravity = Gravity.CENTER
-                setTextColor(RftvDesignSystem.ColorTokens.CONTROL_CENTER_ICON)
-            }, LinearLayout.LayoutParams(
-                dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ICON_WIDTH),
-                dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ICON_WIDTH)
-            ))
+            tile.addView(
+                RftvControlIconView(this@MainActivity, icon),
+                LinearLayout.LayoutParams(
+                    dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ICON_WIDTH),
+                    dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ICON_WIDTH)
+                )
+            )
             val labels = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -1222,34 +1405,34 @@ class MainActivity : Activity() {
             return tile
         }
 
-        val wifi = makeTile("◉", "Wi‑Fi", "Открыть настройки сети") {
+        val wifi = makeTile("wifi", "Wi‑Fi", "Открыть настройки сети") {
             openSettings(Settings.ACTION_WIFI_SETTINGS)
         }
-        val bluetooth = makeTile("ᛒ", "Bluetooth", "Подключение устройств") {
+        val bluetooth = makeTile("bluetooth", "Bluetooth", "Подключение устройств") {
             openBluetoothPairing()
         }
         val themeLabels = arrayOf("Светлая", "Тёмная", "Авто")
-        val theme = makeTile("◐", "Тема", themeLabels[themeMode.coerceIn(0, 2)]) {
+        val theme = makeTile("theme", "Тема", themeLabels[themeMode.coerceIn(0, 2)]) {
             themeMode = (themeMode + 1) % 3
             prefs.edit().putInt("theme_mode", themeMode).apply()
             applyWallpaper()
             showControlCenter()
         }
         val ramInfo = readRamUsage()
-        val ram = makeTile("▥", "RAM · ${ramInfo.first}%", "Используется из ${ramInfo.second}") {
+        val ram = makeTile("memory", "RAM · ${ramInfo.first}%", "Используется из ${ramInfo.second}") {
             System.runFinalization()
             Runtime.getRuntime().gc()
             handler.postDelayed({
                 if (root.findViewWithTag<View>("rftv-control-center") != null) showControlCenter()
             }, 500)
         }
-        val saver = makeTile("◷", "Запуск заставки", "Погода · курсы валют · новости") {
+        val saver = makeTile("clock", "Запуск заставки", "Погода · курсы валют · новости") {
             showScreensaver()
         }
-        val launcherSettings = makeTile("⚙", "Настройки лаунчера", "Оформление · Dock · заставка") {
+        val launcherSettings = makeTile("settings", "Настройки лаунчера", "Оформление · Dock · заставка") {
             showLauncherSettings()
         }
-        val tvSettings = makeTile("▣", "Настройки ТВ", "Системные настройки устройства") {
+        val tvSettings = makeTile("tv", "Настройки ТВ", "Системные настройки устройства") {
             openSettings(Settings.ACTION_SETTINGS)
         }
 
@@ -1285,18 +1468,19 @@ class MainActivity : Activity() {
             })
         }
 
-        addFull(wifi)
-        addFull(bluetooth)
+        content.addView(sectionLabel("ПОДКЛЮЧЕНИЯ"))
+        addPair(wifi, bluetooth)
+        content.addView(sectionLabel("СИСТЕМА"))
         addPair(theme, ram)
-        addFull(saver)
-        addPair(launcherSettings, tvSettings)
+        content.addView(sectionLabel("БЫСТРЫЕ ДЕЙСТВИЯ"))
+        addPair(saver, launcherSettings)
+        addFull(tvSettings)
 
         val focusRows = listOf(
-            listOf(wifi),
-            listOf(bluetooth),
+            listOf(wifi, bluetooth),
             listOf(theme, ram),
-            listOf(saver),
-            listOf(launcherSettings, tvSettings)
+            listOf(saver, launcherSettings),
+            listOf(tvSettings)
         )
         focusRows.flatten().forEach { it.id = View.generateViewId() }
         focusRows.forEachIndexed { rowIndex, row ->
@@ -1314,18 +1498,11 @@ class MainActivity : Activity() {
         card.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         card.alpha = 0f
         card.translationX = dp(18).toFloat()
-        // Keep the Control Center above the Dock instead of drawing over app
-        // labels. Compute available height from the actual Dock dimensions for
-        // consistent spacing on both 720p and 1080p TV screens.
-        val controlCenterTop = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TOP_INSET)
-        val controlCenterBottomClearance = dp(
-            dockHeightDp + RftvDesignSystem.Spacing.DOCK_BOTTOM_INSET + 14
-        )
+        // The Control Center occupies the full available screen height and overlays the Dock.
+        val controlCenterTop = dp(12)
         val controlCenterHeight = (
-            resources.displayMetrics.heightPixels -
-                controlCenterTop -
-                controlCenterBottomClearance
-            ).coerceAtLeast(dp(360))
+            resources.displayMetrics.heightPixels - controlCenterTop - dp(12)
+        ).coerceAtLeast(dp(360))
         overlay.addView(card, FrameLayout.LayoutParams(
             (resources.displayMetrics.widthPixels * RftvDesignSystem.Size.CONTROL_CENTER_WIDTH_FRACTION).toInt(),
             controlCenterHeight,
@@ -1699,7 +1876,8 @@ class MainActivity : Activity() {
         activePanelTitle = "Настройки RFTV"
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
-        root = FrameLayout(this).apply { setBackgroundColor(RftvDesignSystem.ColorTokens.PANEL_SCRIM) }
+        root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
+        addGlassBackdrop(root)
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             background = RftvDesignSystem.settingsShellSurface(this@MainActivity)
@@ -1731,10 +1909,12 @@ class MainActivity : Activity() {
         }
         navigationScroll.addView(navigationList)
         sidebar.addView(navigationScroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        settingsSidebarView = sidebar
         val contentColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(RftvDesignSystem.Spacing.SETTINGS_CONTENT_LEFT_PADDING), dp(4), dp(4), dp(4))
         }
+        settingsContentColumnView = contentColumn
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
         }
@@ -1742,7 +1922,6 @@ class MainActivity : Activity() {
             text = "Настройки"; textSize = RftvDesignSystem.Size.SETTINGS_HEADER_TEXT_SP; typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
         }, LinearLayout.LayoutParams(0, dp(56), 1f))
-        header.addView(glassButton("Закрыть  ✕") { showHome() }, LinearLayout.LayoutParams(-2, dp(46)))
         contentColumn.addView(header)
         val detailScroll = ScrollView(this).apply { clipToPadding = false }
         val detail = LinearLayout(this).apply {
@@ -1760,6 +1939,8 @@ class MainActivity : Activity() {
             Triple("О системе", "Версия и OTA-обновления", { showAboutSystem() })
         )
         val navItems = mutableListOf<TextView>()
+        settingsNavViews.clear()
+        settingsEntryFocusView = null
         var selectedIndex = settingsSelectedIndex
         fun findFirstFocusable(view: View): View? {
             if (view.isFocusable && view.isEnabled && view.visibility == View.VISIBLE) return view
@@ -1891,6 +2072,7 @@ class MainActivity : Activity() {
                 setPadding(dp(4), dp(18), dp(4), dp(8))
             })
             val firstRight = findFirstFocusable(detail)
+            settingsEntryFocusView = firstRight
             if (firstRight != null) {
                 if (firstRight.id == View.NO_ID) firstRight.id = View.generateViewId()
                 navItems.forEach { it.nextFocusRightId = firstRight.id }
@@ -1912,6 +2094,7 @@ class MainActivity : Activity() {
                 setOnClickListener { renderSection(index) }
             }
             navItems += item
+            settingsNavViews += item
             navigationList.addView(item, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT)).apply { bottomMargin = dp(5) })
         }
         shell.addView(sidebar, LinearLayout.LayoutParams((resources.displayMetrics.widthPixels * RftvDesignSystem.Size.SETTINGS_SIDEBAR_WIDTH_FRACTION).toInt(), -1))
@@ -1930,7 +2113,7 @@ class MainActivity : Activity() {
             body.addView(infoCard(
                 "ОФОРМЛЕНИЕ RFTV",
                 "Liquid Glass",
-                "Лёгкие полупрозрачные поверхности, тонкие контуры и выразительный фокус. Тяжёлое постоянное размытие не используется."
+                "Многослойные стеклянные поверхности, настоящее размытие активного фона, тонкие блики и выразительный фокус."
             ))
             addWallpaperSettings(body)
             body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
@@ -2216,18 +2399,8 @@ class MainActivity : Activity() {
         if (!::dock.isInitialized) return
         val params = dock.layoutParams as FrameLayout.LayoutParams
         params.width = (resources.displayMetrics.widthPixels * dockWidthPercent / 100f).toInt()
-        val actualHeight = if (dockExpanded) max(270, dockHeightDp + 112) else dockHeightDp
-        params.height = dp(actualHeight)
+        params.height = dp(dockHeightDp)
         dock.layoutParams = params
-        updateWallpaperButtonPosition(actualHeight)
-    }
-
-    private fun updateWallpaperButtonPosition(actualDockHeightDp: Int) {
-        if (!::root.isInitialized) return
-        val button = root.findViewWithTag<View>("rftv-wallpaper-button") ?: return
-        val params = button.layoutParams as? FrameLayout.LayoutParams ?: return
-        params.bottomMargin = dp(actualDockHeightDp + RftvDesignSystem.Spacing.HOME_WALLPAPER_DOCK_GAP)
-        button.layoutParams = params
     }
 
     private fun showTvManager() {
@@ -3249,14 +3422,14 @@ class MainActivity : Activity() {
         activePanelTitle = title
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
+        handler.removeCallbacks(homeWeatherTask)
 
-        root = FrameLayout(this).apply {
-            setBackgroundColor(RftvDesignSystem.ColorTokens.PANEL_SCRIM)
-        }
+        root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
+        addGlassBackdrop(root)
         val panelBackground = View(this).apply {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(RftvDesignSystem.ColorTokens.PANEL_GRADIENT_START, RftvDesignSystem.ColorTokens.PANEL_GRADIENT_END)
+                intArrayOf(Color.argb(72, 8, 16, 30), Color.argb(116, 8, 16, 30))
             )
         }
         val shell = LinearLayout(this).apply {
@@ -3302,6 +3475,63 @@ class MainActivity : Activity() {
         // only for informational panels without focusable controls.
         body.post {
             if (!requestFirstFocusable(body)) header.getChildAt(1)?.requestFocus()
+        }
+    }
+
+    private fun addGlassBackdrop(container: FrameLayout) {
+        val selectionKey = lastAppliedWallpaperKey ?: return
+        val backdrop = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = "Размытый фон Liquid Glass"
+            isFocusable = false
+        }
+        container.addView(backdrop, 0, FrameLayout.LayoutParams(-1, -1))
+        container.addView(View(this).apply {
+            setBackgroundColor(Color.argb(112, 5, 11, 22))
+            isFocusable = false
+        }, 1, FrameLayout.LayoutParams(-1, -1))
+        activeGlassBackdropView = backdrop
+        activeGlassBackdropKey = selectionKey
+        refreshGlassBackdrop()
+    }
+
+    private fun refreshGlassBackdrop() {
+        val selectionKey = activeGlassBackdropKey ?: lastAppliedWallpaperKey ?: return
+        val overlayBackdrop = activeGlassBackdropView
+        val homeBackdrop = homeHeroBackdropView
+        if (overlayBackdrop == null && homeBackdrop == null) return
+        if (glassBackdropCacheKey == selectionKey && glassBackdropBitmap?.isRecycled == false) {
+            overlayBackdrop?.setImageBitmap(glassBackdropBitmap)
+            homeBackdrop?.setImageBitmap(glassBackdropBitmap)
+            return
+        }
+        if (glassBackdropLoadingKey == selectionKey) return
+        val source = (wallpaperView.drawable as? BitmapDrawable)?.bitmap ?: return
+        if (source.isRecycled) return
+        glassBackdropLoadingKey = selectionKey
+        val width = min(480, (resources.displayMetrics.widthPixels / 2).coerceAtLeast(240))
+        val height = (width * 9f / 16f).toInt().coerceAtLeast(135)
+        glassBlurExecutor.execute {
+            val blurred = try {
+                GlassBackdrop.createBlurredSnapshot(source, width, height, radius = 7, passes = 3)
+            } catch (_: Exception) {
+                null
+            }
+            handler.post {
+                if (glassBackdropLoadingKey == selectionKey) glassBackdropLoadingKey = null
+                if (blurred == null) return@post
+                if (selectionKey != lastAppliedWallpaperKey || isFinishing) {
+                    blurred.recycle()
+                    return@post
+                }
+                glassBackdropBitmap?.takeIf { it !== blurred && !it.isRecycled }?.recycle()
+                glassBackdropBitmap = blurred
+                glassBackdropCacheKey = selectionKey
+                if (activeGlassBackdropKey == selectionKey) {
+                    activeGlassBackdropView?.setImageBitmap(blurred)
+                }
+                homeHeroBackdropView?.setImageBitmap(blurred)
+            }
         }
     }
 

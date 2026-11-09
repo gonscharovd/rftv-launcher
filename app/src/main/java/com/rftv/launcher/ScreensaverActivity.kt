@@ -1,6 +1,8 @@
 package com.rftv.launcher
 
 import android.app.Activity
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -11,26 +13,36 @@ import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
-import java.net.HttpURLConnection
-import java.net.URL
+import java.io.File
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.Executors
-import org.json.JSONObject
-import org.xmlpull.v1.XmlPullParser
-import org.xmlpull.v1.XmlPullParserFactory
+import java.util.concurrent.Future
+import java.util.concurrent.atomic.AtomicBoolean
 
-/** Full-screen interactive RFTV idle screen. Any remote key dismisses it. */
+/** Full-screen dashboard screensaver. Any remote key dismisses it. */
 class ScreensaverActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
-    private val io = Executors.newSingleThreadExecutor()
+    private val io = Executors.newFixedThreadPool(4)
+    private val refreshing = AtomicBoolean(false)
+    private var dashboardFuture: Future<*>? = null
+    private var wallpaperFuture: Future<*>? = null
+    @Volatile private var pendingWallpaperBitmap: Bitmap? = null
     private lateinit var clock: TextView
     private lateinit var date: TextView
-    private lateinit var details: TextView
+    private lateinit var rates: TextView
+    private lateinit var weather: TextView
+    private lateinit var russiaList: LinearLayout
+    private lateinit var worldList: LinearLayout
+    private lateinit var wallpaper: ImageView
     private var alive = false
+    private var sessionAcquired = false
 
     private val tick = object : Runnable {
         override fun run() {
@@ -42,6 +54,7 @@ class ScreensaverActivity : Activity() {
             handler.postDelayed(this, 15_000L)
         }
     }
+
     private val refreshDashboard = object : Runnable {
         override fun run() {
             if (!alive) return
@@ -52,80 +65,25 @@ class ScreensaverActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        sessionAcquired = ScreensaverSession.tryAcquire()
+        if (!sessionAcquired) {
+            finish()
+            return
+        }
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         )
-        val root = FrameLayout(this).apply {
-            background = GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                intArrayOf(
-                    RftvDesignSystem.ColorTokens.SCREENSAVER_GRADIENT_START,
-                    RftvDesignSystem.ColorTokens.SCREENSAVER_GRADIENT_MID,
-                    RftvDesignSystem.ColorTokens.SCREENSAVER_GRADIENT_END
-                )
-            )
-            isFocusableInTouchMode = true
-        }
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(
-                dp(RftvDesignSystem.Spacing.SCREENSAVER_HORIZONTAL_PADDING),
-                dp(RftvDesignSystem.Spacing.SCREENSAVER_TOP_PADDING),
-                dp(RftvDesignSystem.Spacing.SCREENSAVER_HORIZONTAL_PADDING),
-                dp(RftvDesignSystem.Spacing.SCREENSAVER_BOTTOM_PADDING)
-            )
-        }
-        clock = TextView(this).apply {
-            text = "00:00"
-            textSize = RftvDesignSystem.Size.SCREENSAVER_CLOCK_TEXT_SP
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            letterSpacing = RftvDesignSystem.Size.CLOCK_LETTER_SPACING
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-        }
-        content.addView(clock, LinearLayout.LayoutParams(-1, -2))
-        date = TextView(this).apply {
-            text = SimpleDateFormat("EEEE, d MMMM", Locale("ru")).format(Date()).replaceFirstChar { it.uppercase() }
-            textSize = RftvDesignSystem.Size.SCREENSAVER_DATE_TEXT_SP
-            setTextColor(RftvDesignSystem.ColorTokens.SCREENSAVER_TEXT_SECONDARY)
-            gravity = Gravity.CENTER
-        }
-        content.addView(date, LinearLayout.LayoutParams(-1, dp(42)))
-        details = TextView(this).apply {
-            text = "Загружаем погоду, курсы валют и новости…"
-            textSize = RftvDesignSystem.Size.SCREENSAVER_DETAILS_TEXT_SP
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            setLineSpacing(dp(RftvDesignSystem.Spacing.SCREENSAVER_LINE_SPACING).toFloat(), 1f)
-            setPadding(
-                dp(24),
-                dp(RftvDesignSystem.Spacing.SCREENSAVER_DETAILS_TOP_PADDING),
-                dp(24),
-                dp(RftvDesignSystem.Spacing.SCREENSAVER_DETAILS_BOTTOM_PADDING)
-            )
-            background = RftvDesignSystem.surface(
-                this@ScreensaverActivity,
-                RftvDesignSystem.ColorTokens.SCREENSAVER_GLASS,
-                RftvDesignSystem.Radius.SCREENSAVER_DETAILS
-            )
-        }
-        content.addView(details, LinearLayout.LayoutParams(-1, -2))
-        content.addView(TextView(this).apply {
-            text = "RFTV  ·  Нажмите любую кнопку, чтобы продолжить"
-            textSize = RftvDesignSystem.Size.SCREENSAVER_HINT_TEXT_SP
-            setTextColor(RftvDesignSystem.ColorTokens.SCREENSAVER_TEXT_MUTED)
-            gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, dp(40)))
-        root.addView(content, FrameLayout.LayoutParams(-1, -1))
-        setContentView(root)
+        buildScreen()
+        loadCurrentWallpaper()
+        renderDashboard(readCachedDashboard())
     }
 
     override fun onResume() {
         super.onResume()
         alive = true
         tick.run()
+        if (!::wallpaper.isInitialized || (wallpaper.drawable == null && wallpaperFuture?.isDone != false && pendingWallpaperBitmap == null)) loadCurrentWallpaper()
         loadDashboard()
         handler.removeCallbacks(refreshDashboard)
         handler.postDelayed(refreshDashboard, 15 * 60_000L)
@@ -133,6 +91,13 @@ class ScreensaverActivity : Activity() {
 
     override fun onPause() {
         alive = false
+        dashboardFuture?.cancel(true)
+        dashboardFuture = null
+        wallpaperFuture?.cancel(true)
+        wallpaperFuture = null
+        pendingWallpaperBitmap?.takeIf { !it.isRecycled }?.recycle()
+        pendingWallpaperBitmap = null
+        refreshing.set(false)
         handler.removeCallbacksAndMessages(null)
         super.onPause()
     }
@@ -140,7 +105,13 @@ class ScreensaverActivity : Activity() {
     override fun onDestroy() {
         alive = false
         handler.removeCallbacksAndMessages(null)
+        dashboardFuture?.cancel(true)
+        wallpaperFuture?.cancel(true)
+        pendingWallpaperBitmap?.takeIf { !it.isRecycled }?.recycle()
+        pendingWallpaperBitmap = null
         io.shutdownNow()
+        if (sessionAcquired) ScreensaverSession.release()
+        sessionAcquired = false
         super.onDestroy()
     }
 
@@ -152,88 +123,269 @@ class ScreensaverActivity : Activity() {
         return true
     }
 
-    private fun loadDashboard(force: Boolean = false) {
-        val cache = getSharedPreferences("screensaver_cache", MODE_PRIVATE)
-        val cachedText = cache.getString("dashboard", null)
-        val cachedAt = cache.getLong("dashboard_at", 0L)
-        if (!cachedText.isNullOrBlank()) details.text = cachedText
-        if (!force && !cachedText.isNullOrBlank() && System.currentTimeMillis() - cachedAt < 15 * 60_000L) return
-        io.execute {
-            val text = buildString {
-                append("ПОГОДА\n").append(fetchWeather()).append("\n\n")
-                append("КУРСЫ ЦБ РФ\n").append(fetchRates()).append("\n\n")
-                append("НОВОСТИ\n").append(fetchNews())
-            }
-            cache.edit().putString("dashboard", text).putLong("dashboard_at", System.currentTimeMillis()).apply()
-            handler.post { if (alive && !isFinishing) details.text = text }
+    private fun buildScreen() {
+        val screenHeightDp = resources.configuration.screenHeightDp
+        val topCardHeightDp = if (screenHeightDp < 760) 118 else 142
+        val newsCardHeightDp = (screenHeightDp - 116 - topCardHeightDp).coerceIn(220, 620)
+        val root = FrameLayout(this).apply {
+            setBackground(
+                GradientDrawable(
+                    GradientDrawable.Orientation.TL_BR,
+                    intArrayOf(
+                        RftvDesignSystem.ColorTokens.SCREENSAVER_GRADIENT_START,
+                        RftvDesignSystem.ColorTokens.SCREENSAVER_GRADIENT_MID,
+                        RftvDesignSystem.ColorTokens.SCREENSAVER_GRADIENT_END
+                    )
+                )
+            )
+            isFocusableInTouchMode = true
         }
-    }
-    private fun fetchWeather(): String {
-        try {
-            val json = read("https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&forecast_days=3&timezone=Asia%2FYekaterinburg")
-            val obj = JSONObject(json)
-            val now = obj.getJSONObject("current")
-            val daily = obj.getJSONObject("daily")
-            val forecast = (0 until minOf(3, daily.getJSONArray("temperature_2m_min").length())).joinToString(" · ") { index ->
-                daily.getJSONArray("temperature_2m_min").getDouble(index).toInt().toString() + "…" + daily.getJSONArray("temperature_2m_max").getDouble(index).toInt() + "°"
-            }
-            return "Челябинск · " + now.getDouble("temperature_2m").toInt() + "°C, ощущается " + now.getDouble("apparent_temperature").toInt() + "°C\n" +
-                "Влажность " + now.getInt("relative_humidity_2m") + "% · ветер " + now.getDouble("wind_speed_10m").toInt() + " км/ч\nПрогноз на 3 дня: " + forecast
-        } catch (_: Exception) {
-            return try {
-                val current = JSONObject(read("https://wttr.in/Chelyabinsk?format=j1")).getJSONArray("current_condition").getJSONObject(0)
-                val description = current.getJSONArray("weatherDesc").getJSONObject(0).getString("value")
-                current.getString("temp_C") + "°C · " + description + ", ощущается " + current.getString("FeelsLikeC") + "°C\n" +
-                    "Влажность " + current.getString("humidity") + "% · ветер " + current.getString("windspeedKmph") + " км/ч"
-            } catch (_: Exception) { "Погодные данные временно недоступны" }
+        wallpaper = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = "Размытые активные обои главного экрана"
         }
+        root.addView(wallpaper, FrameLayout.LayoutParams(-1, -1))
+        root.addView(View(this).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.argb(105, 3, 8, 18), Color.argb(188, 3, 8, 18))
+            )
+        }, FrameLayout.LayoutParams(-1, -1))
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.TOP
+            setPadding(dp(48), dp(34), dp(48), dp(30))
+        }
+        val topRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val clockCard = glassCard().apply { orientation = LinearLayout.VERTICAL }
+        clock = TextView(this).apply {
+            text = "00:00"
+            textSize = if (screenHeightDp < 760) 52f else RftvDesignSystem.Size.SCREENSAVER_CLOCK_TEXT_SP
+            letterSpacing = -0.045f
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setTextColor(Color.WHITE)
+            setShadowLayer(12f, 0f, 2f, Color.argb(150, 0, 0, 0))
+        }
+        date = TextView(this).apply {
+            textSize = 18f
+            setTextColor(Color.argb(220, 255, 255, 255))
+            setPadding(0, dp(2), 0, 0)
+        }
+        clockCard.addView(clock, LinearLayout.LayoutParams(-1, -2))
+        clockCard.addView(date, LinearLayout.LayoutParams(-1, -2))
+        topRow.addView(clockCard, LinearLayout.LayoutParams(0, dp(topCardHeightDp), 1.1f).apply {
+            rightMargin = dp(12)
+        })
+
+        val ratesCard = glassCard().apply { orientation = LinearLayout.VERTICAL }
+        ratesCard.addView(cardCaption("КУРСЫ ЦБ РФ"))
+        rates = cardValue("USD  — ₽\nEUR  — ₽")
+        ratesCard.addView(rates, LinearLayout.LayoutParams(-1, 0, 1f))
+        topRow.addView(ratesCard, LinearLayout.LayoutParams(0, dp(topCardHeightDp), 1f).apply {
+            rightMargin = dp(12)
+        })
+
+        val weatherCard = glassCard().apply { orientation = LinearLayout.VERTICAL }
+        weatherCard.addView(cardCaption("ПОГОДА · ЧЕЛЯБИНСК"))
+        weather = cardValue("Загрузка текущих условий…")
+        weatherCard.addView(weather, LinearLayout.LayoutParams(-1, 0, 1f))
+        topRow.addView(weatherCard, LinearLayout.LayoutParams(0, dp(topCardHeightDp), 1f))
+        content.addView(topRow, LinearLayout.LayoutParams(-1, dp(topCardHeightDp)))
+
+        val newsRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.TOP
+        }
+        val russiaCard = glassCard().apply { orientation = LinearLayout.VERTICAL }
+        russiaCard.addView(sectionHeading("РОССИЯ"))
+        val russiaScroll = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
+            clipToPadding = false
+        }
+        russiaList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        russiaScroll.addView(russiaList)
+        russiaCard.addView(russiaScroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        newsRow.addView(russiaCard, LinearLayout.LayoutParams(0, 0, 1f).apply {
+            height = dp(newsCardHeightDp)
+            rightMargin = dp(12)
+            topMargin = dp(18)
+        })
+
+        val worldCard = glassCard().apply { orientation = LinearLayout.VERTICAL }
+        worldCard.addView(sectionHeading("МИР"))
+        val worldScroll = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
+            clipToPadding = false
+        }
+        worldList = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        worldScroll.addView(worldList)
+        worldCard.addView(worldScroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        newsRow.addView(worldCard, LinearLayout.LayoutParams(0, 0, 1f).apply {
+            height = dp(newsCardHeightDp)
+            leftMargin = dp(12)
+            topMargin = dp(18)
+        })
+        content.addView(newsRow, LinearLayout.LayoutParams(-1, dp(newsCardHeightDp + 18)))
+        content.addView(TextView(this).apply {
+            text = "RFTV  ·  Нажмите любую кнопку, чтобы продолжить"
+            textSize = 13f
+            setTextColor(Color.argb(175, 255, 255, 255))
+            gravity = Gravity.CENTER
+            setPadding(0, dp(12), 0, 0)
+        }, LinearLayout.LayoutParams(-1, dp(34)))
+        root.addView(content, FrameLayout.LayoutParams(-1, -1))
+        setContentView(root)
     }
-    private fun fetchRates(): String = try {
-        val xml = read("https://www.cbr.ru/scripts/XML_daily.asp", "windows-1251")
-        val parser = XmlPullParserFactory.newInstance().newPullParser()
-        parser.setInput(java.io.StringReader(xml))
-        var code = ""; var value = ""; var usd = "—"; var eur = "—"
-        var event = parser.eventType
-        while (event != XmlPullParser.END_DOCUMENT) {
-            if (event == XmlPullParser.START_TAG) {
-                when (parser.name) {
-                    "CharCode" -> code = parser.nextText()
-                    "Value" -> value = parser.nextText()
+
+    private fun glassCard(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        background = RftvDesignSystem.surface(
+            this@ScreensaverActivity,
+            Color.argb(72, 226, 239, 255),
+            28
+        )
+        setPadding(dp(22), dp(16), dp(22), dp(16))
+        elevation = dp(12).toFloat()
+    }
+
+    private fun cardCaption(value: String) = TextView(this).apply {
+        text = value
+        textSize = 11f
+        letterSpacing = 0.15f
+        setTextColor(Color.argb(190, 255, 255, 255))
+    }
+
+    private fun cardValue(value: String) = TextView(this).apply {
+        text = value
+        textSize = 22f
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        setTextColor(Color.WHITE)
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(0, dp(8), 0, 0)
+    }
+
+    private fun sectionHeading(value: String) = TextView(this).apply {
+        text = value
+        textSize = 20f
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        letterSpacing = 0.08f
+        setTextColor(Color.WHITE)
+        setPadding(dp(4), dp(2), dp(4), dp(12))
+    }
+
+    private fun addNewsItems(target: LinearLayout, items: List<String>, unavailable: String) {
+        target.removeAllViews()
+        val visible = items.filter { it.isNotBlank() }.take(5)
+        if (visible.isEmpty()) {
+            target.addView(newsItem(unavailable))
+            return
+        }
+        visible.forEach { target.addView(newsItem(it)) }
+    }
+
+    private fun newsItem(value: String): TextView = TextView(this).apply {
+        text = value
+        textSize = 16f
+        setTextColor(Color.WHITE)
+        maxLines = 4
+        setLineSpacing(dp(3).toFloat(), 1f)
+        setPadding(dp(16), dp(14), dp(16), dp(14))
+        background = RftvDesignSystem.surface(
+            this@ScreensaverActivity,
+            Color.argb(48, 240, 247, 255),
+            18
+        )
+        val params = LinearLayout.LayoutParams(-1, -2)
+        params.bottomMargin = dp(10)
+        layoutParams = params
+    }
+
+    private fun loadCurrentWallpaper() {
+        val prefs = getSharedPreferences("rftv_preferences", MODE_PRIVATE)
+        val themeMode = prefs.getInt("theme_mode", 2)
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        val dark = when (themeMode) {
+            1 -> true
+            0 -> false
+            else -> hour >= 19 || hour < 7
+        }
+        val index = prefs.getInt(if (dark) "wallpaper_dark" else "wallpaper_light", 0).coerceAtLeast(0)
+        val directory = File(filesDir, "wallpapers")
+        val full = File(directory, WallpaperImageUrls.cacheFileName(dark, index, false))
+        val preview = File(directory, WallpaperImageUrls.cacheFileName(dark, index, true))
+        val selected = when {
+            full.isFile && full.length() > 10_000L -> full
+            preview.isFile && preview.length() > 5_000L -> preview
+            else -> null
+        } ?: return
+
+        wallpaperFuture = io.submit {
+            val source = try {
+                BitmapFactory.decodeFile(selected.absolutePath, BitmapFactory.Options().apply {
+                    inPreferredConfig = Bitmap.Config.RGB_565
+                    inSampleSize = 2
+                })
+            } catch (_: Exception) { null }
+            val blurred = source?.let {
+                try {
+                    GlassBackdrop.createBlurredSnapshot(it, 480, 270, radius = 10, passes = 3)
+                } catch (_: Exception) { null }
+            }
+            source?.recycle()
+            if (Thread.currentThread().isInterrupted) {
+                blurred?.takeIf { !it.isRecycled }?.recycle()
+                return@submit
+            }
+            pendingWallpaperBitmap = blurred
+            handler.post {
+                if (pendingWallpaperBitmap !== blurred) {
+                    blurred?.takeIf { !it.isRecycled }?.recycle()
+                    return@post
                 }
-            } else if (event == XmlPullParser.END_TAG && parser.name == "Valute") {
-                if (code == "USD") usd = value
-                if (code == "EUR") eur = value
+                pendingWallpaperBitmap = null
+                if (alive && !isFinishing && blurred != null) wallpaper.setImageBitmap(blurred)
+                else blurred?.takeIf { !it.isRecycled }?.recycle()
             }
-            event = parser.next()
         }
-        "USD $usd ₽   ·   EUR $eur ₽"
-    } catch (_: Exception) { "Курсы валют временно недоступны" }
+    }
 
-    private fun fetchNews(): String = try {
-        val xml = read("https://ria.ru/export/rss2/archive/index.xml")
-        val parser = XmlPullParserFactory.newInstance().newPullParser()
-        parser.setInput(java.io.StringReader(xml))
-        val titles = mutableListOf<String>()
-        var inside = false; var event = parser.eventType
-        while (event != XmlPullParser.END_DOCUMENT && titles.size < 3) {
-            if (event == XmlPullParser.START_TAG) {
-                if (parser.name == "item") inside = true
-                if (inside && parser.name == "title") titles.add(parser.nextText().trim())
-            } else if (event == XmlPullParser.END_TAG && parser.name == "item") inside = false
-            event = parser.next()
+    private fun readCachedDashboard(): ScreensaverDashboardRepository.Snapshot =
+        ScreensaverDashboardRepository.readCached(this)
+
+    private fun renderDashboard(data: ScreensaverDashboardRepository.Snapshot) {
+        if (!::weather.isInitialized) return
+        weather.text = data.weather.ifBlank { "Погодные данные пока недоступны" }
+        rates.text = data.rates.ifBlank { "Курсы ЦБ РФ пока недоступны" }
+        addNewsItems(russiaList, data.russia, "Российская лента пока недоступна")
+        addNewsItems(worldList, data.world, "Мировая лента пока недоступна")
+    }
+
+    private fun loadDashboard(force: Boolean = false) {
+        if (!refreshing.compareAndSet(false, true)) return
+        if (!force && ScreensaverDashboardRepository.isFresh(this)) {
+            renderDashboard(readCachedDashboard())
+            refreshing.set(false)
+            return
         }
-        if (titles.isEmpty()) "Новостная лента пуста" else titles.joinToString("\n• ", "• ")
-    } catch (_: Exception) { "Новостная лента временно недоступна" }
-
-    private fun read(address: String, charset: String = "UTF-8"): String {
-        val connection = URL(address).openConnection() as HttpURLConnection
-        return try {
-            connection.connectTimeout = 7000
-            connection.readTimeout = 9000
-            connection.setRequestProperty("User-Agent", "RFTV-Launcher")
-            if (connection.responseCode !in 200..299) error("HTTP ${connection.responseCode}")
-            connection.inputStream.bufferedReader(java.nio.charset.Charset.forName(charset)).use { it.readText() }
-        } finally { connection.disconnect() }
+        dashboardFuture = io.submit {
+            try {
+                val next = ScreensaverDashboardRepository.load(this, force)
+                handler.post {
+                    if (alive && !isFinishing) renderDashboard(next)
+                }
+            } catch (interrupted: InterruptedException) {
+                Thread.currentThread().interrupt()
+            } catch (error: Exception) {
+                android.util.Log.w("RFTVScreensaver", "Dashboard refresh failed", error)
+            } finally {
+                refreshing.set(false)
+            }
+        }
     }
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()

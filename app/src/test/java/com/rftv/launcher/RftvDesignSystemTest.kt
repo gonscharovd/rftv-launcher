@@ -64,7 +64,7 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Motion.CONTROL_CENTER_REVEAL_DURATION_MS in 120L..300L)
         assertTrue(RftvDesignSystem.GlassAlpha.CONTROL_CENTER_TILE_RESTING in 0..255)
         assertTrue(RftvDesignSystem.GlassAlpha.CONTROL_CENTER_TILE_FOCUSED in 0..255)
-        assertTrue(RftvDesignSystem.Size.SCREENSAVER_CLOCK_TEXT_SP > RftvDesignSystem.Size.CLOCK_TEXT_SP)
+        assertTrue(RftvDesignSystem.Size.SCREENSAVER_CLOCK_TEXT_SP in 52f..72f)
         assertTrue(RftvDesignSystem.Size.SCREENSAVER_HINT_TEXT_SP in 12f..18f)
     }
 

@@ -8,8 +8,8 @@ import android.view.View
 /**
  * Shared visual language for RFTV.
  *
- * Android 9 / MT9632 profile: translucent fills, thin strokes and short property
- * animations. No real-time blur, RenderEffect or expensive per-frame shaders.
+ * Liquid Glass design system for Android TV. Blur is supplied by a backdrop snapshot
+ * pipeline on legacy Android and native APIs where available; never blur every frame.
  */
 internal object RftvDesignSystem {
     object ColorTokens {
@@ -172,7 +172,7 @@ internal object RftvDesignSystem {
         const val EMPTY_DOCK_TEXT_SP = 14f
         const val EMPTY_DOCK_HEIGHT = 122
         const val HOME_DATE_LEFT_PADDING = 4
-        const val CLOCK_TEXT_SP = 88f
+        const val CLOCK_TEXT_SP = 96f
         const val DATE_TEXT_SP = 18f
         const val PAGE_TITLE_SP = 29f
         const val CONTROL_CENTER_TITLE_SP = 21f
@@ -204,7 +204,7 @@ internal object RftvDesignSystem {
         const val SETTINGS_BRAND_TEXT_SP = 23f
         const val SETTINGS_CAPTION_TEXT_SP = 10f
         const val SETTINGS_HEADER_TEXT_SP = 28f
-        const val SCREENSAVER_CLOCK_TEXT_SP = 104f
+        const val SCREENSAVER_CLOCK_TEXT_SP = 64f
         const val SCREENSAVER_DATE_TEXT_SP = 23f
         const val SCREENSAVER_DETAILS_TEXT_SP = 19f
         const val SCREENSAVER_HINT_TEXT_SP = 14f
