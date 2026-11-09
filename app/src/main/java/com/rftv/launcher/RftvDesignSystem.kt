@@ -248,10 +248,9 @@ internal object RftvDesignSystem {
         GradientDrawable().apply {
             setColor(Color.argb(if (focused) GlassAlpha.DOCK_TILE_FOCUSED else GlassAlpha.DOCK_TILE_RESTING, 255, 255, 255))
             cornerRadius = dp(context, Radius.DOCK_TILE).toFloat()
-            setStroke(
-                dp(context, if (focused) 1 else 0),
-                Color.argb(if (focused) GlassAlpha.DOCK_TILE_STROKE_FOCUSED else GlassAlpha.DOCK_TILE_STROKE_RESTING, 255, 255, 255)
-            )
+            if (focused) {
+                setStroke(dp(context, 1), Color.argb(GlassAlpha.DOCK_TILE_STROKE_FOCUSED, 255, 255, 255))
+            }
         }
 
     fun controlCenterSurface(context: Context): GradientDrawable =
