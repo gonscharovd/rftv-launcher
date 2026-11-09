@@ -655,6 +655,7 @@ class MainActivity : Activity() {
                             if (dark) wallpaperDark = safeIndex else wallpaperLight = safeIndex
                             prefs.edit().putInt(if (dark) "wallpaper_dark" else "wallpaper_light", safeIndex).apply()
                             lastAppliedWallpaperKey = WallpaperImageUrls.selectionKey(dark, safeIndex)
+                            activeGlassBackdropKey = lastAppliedWallpaperKey
                             wallpaperFallbackAttempted.remove(selectedKey)
                             android.util.Log.i("RFTVWallpaper", "Fallback wallpaper selected and persisted: ${lastAppliedWallpaperKey}")
                         }
