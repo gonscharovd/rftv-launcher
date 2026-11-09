@@ -241,9 +241,16 @@ internal class TvManagerPackageController(
         }
         val service = serviceProvider()
             ?: return OperationResult(false, "Привилегированный канал отключился до сохранения snapshot.")
+        val uid = try {
+            service.uid
+        } catch (_: Exception) {
+            return OperationResult(false, "Не удалось повторно проверить UID привилегированного сервиса.")
+        }
+        if (uid != 0 && uid != 2000) {
+            return OperationResult(false, "UID сервиса изменился или не является shell/root.")
+        }
         val originalState = preview.enabledSetting
         val operationId = TvManagerOperationStore.newOperationId()
-        val uid = serviceUidProvider()
         val snapshot = TvManagerOperationStore.Snapshot(
             operationId = operationId,
             packageName = packageName,
@@ -295,7 +302,16 @@ internal class TvManagerPackageController(
     fun restore(packageName: String): OperationResult {
         val snapshot = store.activeSnapshot(packageName)
             ?: return OperationResult(false, "Нет сохранённого исходного состояния, изменённого RFTV.")
-        val uid = serviceUidProvider()
+        val service = serviceProvider()
+            ?: return OperationResult(false, "Привилегированный канал недоступен.", snapshot)
+        val uid = try {
+            service.uid
+        } catch (_: Exception) {
+            return OperationResult(false, "Не удалось проверить UID привилегированного сервиса.", snapshot)
+        }
+        if (uid != 0 && uid != 2000) {
+            return OperationResult(false, "UID сервиса изменился или не является shell/root.", snapshot)
+        }
         val accessMode = when (uid) {
             0 -> PackageOperationPolicy.AccessMode.SHIZUKU_ROOT
             2000 -> PackageOperationPolicy.AccessMode.SHIZUKU_ADB
@@ -317,8 +333,6 @@ internal class TvManagerPackageController(
             )
         )
         if (!decision.allowed) return OperationResult(false, decision.reason, snapshot)
-        val service = serviceProvider()
-            ?: return OperationResult(false, "Привилегированный канал недоступен.", snapshot)
         val result = restoreState(service, snapshot)
         val verified = result && verifyState(packageName, snapshot.originalEnabledSetting)
         if (!verified) {
