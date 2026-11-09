@@ -36,7 +36,8 @@ class PackageAnalysisPolicyTest {
             )
         )
         assertEquals(PackageAnalysisPolicy.Severity.REVIEW, report.severity)
-        assertTrue(report.limitation.contains("не подтверждают"))
+        assertEquals(PackageAnalysisPolicy.Confidence.LOW, report.confidence)
+        assertTrue(report.limitation.contains("не доказывает"))
         assertTrue(report.evidence.any { it.contains("RECORD_AUDIO") })
     }
 
