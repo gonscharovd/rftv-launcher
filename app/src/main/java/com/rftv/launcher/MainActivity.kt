@@ -402,7 +402,10 @@ class MainActivity : Activity() {
         val available = installedApps.map { it.packageName }.toSet()
         favoritePackages.removeAll { it !in available || it in hiddenPackages }
         hiddenPackages.retainAll(available)
-        if (favoritePackages.isEmpty()) {
+        if (AppCatalogPolicy.shouldSeedDefaultFavorites(
+                favoritesEmpty = favoritePackages.isEmpty(),
+                initialized = prefs.getBoolean("favorites_initialized", false)
+            )) {
             installedApps.filter { it.packageName !in hiddenPackages }.take(7)
                 .forEach { favoritePackages.add(it.packageName) }
         }
@@ -871,6 +874,7 @@ class MainActivity : Activity() {
         prefs.edit()
             .putString("favorite_packages_order", favoritePackages.joinToString("|"))
             .putStringSet("hidden_packages", hiddenPackages.toSet())
+            .putBoolean("favorites_initialized", true)
             .apply()
     }
 
