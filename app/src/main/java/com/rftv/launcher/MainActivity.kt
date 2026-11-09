@@ -2257,7 +2257,7 @@ class MainActivity : Activity() {
                 filtered.forEach { item ->
                     val card = controlTile(
                         item.label,
-                        "${item.app.packageName} · ${if (item.isSystem) "Системное" else "Пользовательское"} · ${if (item.disabled) "Отключено" else "Включено"} · ${item.riskLabel} · ОК — подробности"
+                        "${item.app.packageName} · ${if (item.isSystem) "Системное" else "Пользовательское"} · ${if (item.disabled) "Отключено" else "Включено"} · ${item.riskLabel} · ${if (item.isProtected) "Изменение заблокировано" else "Требуется оценка"} · ОК — подробности"
                     ) {
                         showTvPackageDetails(item.app)
                     }
