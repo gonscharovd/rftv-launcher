@@ -16,7 +16,7 @@ internal class TvManagerOperationStore(context: Context) {
         val packageName: String,
         val userId: Int,
         val originalEnabledSetting: Int,
-        val manifestEnabled: Boolean,
+        val applicationEnabled: Boolean,
         val originalHidden: Boolean,
         val provider: String,
         val deviceFingerprint: String,
@@ -169,7 +169,7 @@ internal class TvManagerOperationStore(context: Context) {
         put("packageName", packageName)
         put("userId", userId)
         put("originalEnabledSetting", originalEnabledSetting)
-        put("manifestEnabled", manifestEnabled)
+        put("applicationEnabled", applicationEnabled)
         put("originalHidden", originalHidden)
         put("provider", provider)
         put("deviceFingerprint", deviceFingerprint)
@@ -181,7 +181,7 @@ internal class TvManagerOperationStore(context: Context) {
         packageName = optString("packageName"),
         userId = optInt("userId", -1),
         originalEnabledSetting = optInt("originalEnabledSetting", Int.MIN_VALUE),
-        manifestEnabled = optBoolean("manifestEnabled", true),
+        applicationEnabled = optBoolean("applicationEnabled", true),
         originalHidden = optBoolean("originalHidden", false),
         provider = optString("provider"),
         deviceFingerprint = optString("deviceFingerprint"),
