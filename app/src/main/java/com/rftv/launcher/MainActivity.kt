@@ -79,6 +79,7 @@ class MainActivity : Activity() {
     private var lastAppliedWallpaperKey: String? = null
     @Volatile private var tvManagerShellService: ITvManagerShellService? = null
     @Volatile private var tvManagerShellUid: Int = -1
+    private var tvManagerFocusPackage: String? = null
     private val tvManagerShizukuPermissionListener =
         Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
             if (requestCode == TvManagerShizukuBridge.REQUEST_CODE) {
@@ -2276,7 +2277,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun showTvPackageDetails(app: ApplicationInfo) {
+    private fun showTvPackageDetails(app: ApplicationInfo, returnToManual: Boolean = false) {
         val packageInfo = try {
             packageManager.getPackageInfo(
                 app.packageName,
@@ -2284,7 +2285,7 @@ class MainActivity : Activity() {
                     PackageManager.GET_RECEIVERS or PackageManager.GET_ACTIVITIES
             )
         } catch (_: Exception) {
-            showTvPackages()
+            if (returnToManual) showTvManualCleanup() else showTvPackages()
             return
         }
         val requested = packageInfo.requestedPermissions ?: emptyArray()
@@ -2373,8 +2374,14 @@ class MainActivity : Activity() {
                     })
                 }
             }
-            body.addView(glassButton("Назад к списку пакетов") { showTvPackages() },
-                LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(10) })
+            body.addView(glassButton(if (returnToManual) "Назад к ручной очистке" else "Назад к списку пакетов") {
+                if (returnToManual) {
+                    tvManagerFocusPackage = app.packageName
+                    showTvManualCleanup()
+                } else {
+                    showTvPackages()
+                }
+            }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(10) })
         }
     }
 
@@ -2636,7 +2643,10 @@ class MainActivity : Activity() {
                         isFocusable = true
                         isClickable = true
                         contentDescription = "Подробности пакета $label"
-                        setOnClickListener { showTvPackageDetails(app) }
+                        setOnClickListener {
+                            tvManagerFocusPackage = app.packageName
+                            showTvPackageDetails(app, returnToManual = true)
+                        }
                     }
                     val detailView = TextView(this).apply {
                         text = "${app.packageName}\n${if (app.flags and ApplicationInfo.FLAG_SYSTEM != 0) "Системное" else "Пользовательское"} · ${if (disabled) "Отключено" else "Включено"} · ${when { protected -> "Защищено"; owned != null -> "Изменено RFTV"; preview?.profileMatched == true -> "Есть справочный профиль"; else -> "Нет проверенного профиля" }} · ${if (preview?.decision?.requiresExplicitWarning == true) "Низкая уверенность / зависимости не проверены" else "Подробнее — OK"}"
@@ -2659,6 +2669,7 @@ class MainActivity : Activity() {
                         contentDescription = if (owned != null) "Восстановить ${app.packageName}" else "Отключить ${app.packageName}"
                     }
                     toggle.setOnCheckedChangeListener { button, checked ->
+                        tvManagerFocusPackage = app.packageName
                         button.isEnabled = false
                         if (!checked && !disabled) {
                             val warning = preview?.decision?.reason ?: "Назначение пакета не подтверждено."
@@ -2699,6 +2710,12 @@ class MainActivity : Activity() {
                     }
                     row.addView(toggle)
                     list.addView(row, LinearLayout.LayoutParams(-1, dp(72)).apply { bottomMargin = dp(6) })
+                    if (tvManagerFocusPackage == app.packageName) {
+                        titleView.post {
+                            titleView.requestFocus()
+                            tvManagerFocusPackage = null
+                        }
+                    }
                     if (owned != null && !disabled && channelReady) {
                         list.addView(glassButton("Проверить и вернуть исходное состояние") {
                             AlertDialog.Builder(this)
