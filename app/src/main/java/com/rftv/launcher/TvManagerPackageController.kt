@@ -25,6 +25,10 @@ internal class TvManagerPackageController(
         val isProtected: Boolean,
         val profileMatched: Boolean,
         val verifiedOptional: Boolean,
+        val profileNote: String?,
+        val profileRisk: String?,
+        val confidence: PackageOperationPolicy.Confidence,
+        val dependenciesVerified: Boolean,
         val decision: PackageOperationPolicy.Decision
     )
 
@@ -156,6 +160,14 @@ internal class TvManagerPackageController(
             isProtected = protected,
             profileMatched = exactProfile && profileEntry != null,
             verifiedOptional = profileEntry?.verifiedOptional == true,
+            profileNote = profileEntry?.note,
+            profileRisk = profileEntry?.risk,
+            confidence = if (profileEntry?.confidenceHigh == true) {
+                PackageOperationPolicy.Confidence.HIGH
+            } else {
+                PackageOperationPolicy.Confidence.LOW
+            },
+            dependenciesVerified = profileEntry?.dependenciesVerified == true,
             decision = decision
         )
     }
