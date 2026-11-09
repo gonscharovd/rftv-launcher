@@ -37,6 +37,34 @@ internal class TvManagerPackageController(
     private val appContext = context.applicationContext
     private val packageManager = appContext.packageManager
     private val store = TvManagerOperationStore(appContext)
+    private val matchingProfiles by lazy(LazyThreadSafetyMode.NONE) {
+        TvManagerProfiles.matchingProfiles()
+    }
+    private val profileEntries by lazy(LazyThreadSafetyMode.NONE) {
+        matchingProfiles.flatMap { it.packages }.associateBy { it.packageId }
+    }
+    private val dynamicProtectedPackages by lazy(LazyThreadSafetyMode.NONE) {
+        val protected = mutableSetOf<String>()
+        try {
+            val homeIntent = android.content.Intent(android.content.Intent.ACTION_MAIN)
+                .addCategory(android.content.Intent.CATEGORY_HOME)
+            packageManager.queryIntentActivities(homeIntent, PackageManager.MATCH_DEFAULT_ONLY)
+                .mapNotNullTo(protected) { it.activityInfo?.packageName }
+        } catch (_: Exception) { }
+        try {
+            packageManager.resolveActivity(
+                android.content.Intent(android.provider.Settings.ACTION_SETTINGS),
+                PackageManager.MATCH_DEFAULT_ONLY
+            )?.activityInfo?.packageName?.let { protected += it }
+        } catch (_: Exception) { }
+        try {
+            android.provider.Settings.Secure.getString(
+                appContext.contentResolver,
+                android.provider.Settings.Secure.DEFAULT_INPUT_METHOD
+            )?.let { android.content.ComponentName.unflattenFromString(it)?.packageName?.let(protected::add) }
+        } catch (_: Exception) { }
+        protected
+    }
 
     fun preview(packageName: String, mode: PackageOperationPolicy.Mode): Preview? {
         if (!PACKAGE_NAME.matches(packageName) || packageName == appContext.packageName) return null
@@ -54,10 +82,7 @@ internal class TvManagerPackageController(
             enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER ||
             enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED ||
             (enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT && !app.enabled)
-        val matchedProfiles = TvManagerProfiles.matchingProfiles()
-        val profileEntry = matchedProfiles
-            .flatMap { it.packages }
-            .firstOrNull { it.packageId == packageName }
+        val profileEntry = profileEntries[packageName]
         val exactProfile = profileEntry != null
         val protected = isHardProtected(packageName)
         val uid = serviceUidProvider()
@@ -256,18 +281,9 @@ internal class TvManagerPackageController(
 
     private fun isHardProtected(packageName: String): Boolean {
         val id = packageName.lowercase()
-        if (id == appContext.packageName || PackageAnalysisPolicy.isProtectedPackage(id)) return true
-        val homeIntent = android.content.Intent(android.content.Intent.ACTION_MAIN)
-            .addCategory(android.content.Intent.CATEGORY_HOME)
-        val homePackages = packageManager.queryIntentActivities(homeIntent, PackageManager.MATCH_DEFAULT_ONLY)
-            .mapNotNull { it.activityInfo?.packageName }
-        if (packageName in homePackages) return true
-        val settingsPackage = packageManager.resolveActivity(
-            android.content.Intent(android.provider.Settings.ACTION_SETTINGS),
-            PackageManager.MATCH_DEFAULT_ONLY
-        )?.activityInfo?.packageName
-        if (packageName == settingsPackage) return true
-        return false
+        return id == appContext.packageName ||
+            PackageAnalysisPolicy.isProtectedPackage(id) ||
+            packageName in dynamicProtectedPackages
     }
 
     private companion object {
