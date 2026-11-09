@@ -547,7 +547,7 @@ class MainActivity : Activity() {
         }
         dateText = TextView(this).apply {
             setTextColor(Color.argb(RftvDesignSystem.GlassAlpha.HOME_DATE_TEXT, 255, 255, 255))
-            setPadding(dp(4), 0, 0, 0)
+            setPadding(dp(RftvDesignSystem.Size.HOME_DATE_LEFT_PADDING), 0, 0, 0)
         }
         timeColumn.addView(clockText)
         timeColumn.addView(dateText)
@@ -713,11 +713,11 @@ class MainActivity : Activity() {
         params.height = dp(if (expanded) max(270, dockHeightDp + 112) else dockHeightDp)
         dock.layoutParams = params
         buildDockContent()
-        dock.animate().alpha(1f).setDuration(180).start()
+        dock.animate().alpha(1f).setDuration(RftvDesignSystem.Motion.DOCK_REVEAL_DURATION_MS).start()
         if (expanded) {
             val second = dockContent.getChildAt(1)
             second?.alpha = 0f
-            second?.animate()?.alpha(1f)?.setDuration(220)?.start()
+            second?.animate()?.alpha(1f)?.setDuration(RftvDesignSystem.Motion.SECONDARY_REVEAL_DURATION_MS)?.start()
         }
         // Rebuilding rows removes the previously focused View. Restore focus
         // explicitly so DPAD navigation never leaves the remote without a target.
