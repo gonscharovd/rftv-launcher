@@ -823,13 +823,11 @@ class MainActivity : Activity() {
                 tag = app.packageName
                 isFocusable = true
                 isFocusableInTouchMode = true
-                background = RftvDesignSystem.focusSurface(this@MainActivity, false, RftvDesignSystem.Radius.DOCK_TILE, restingAlpha = RftvDesignSystem.GlassAlpha.DOCK_TILE_RESTING, focusedAlpha = RftvDesignSystem.GlassAlpha.DOCK_TILE_FOCUSED)
+                background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused = false)
                 setPadding(dp(RftvDesignSystem.Size.DOCK_TILE_PADDING_HORIZONTAL), dp(RftvDesignSystem.Size.DOCK_TILE_PADDING_TOP), dp(RftvDesignSystem.Size.DOCK_TILE_PADDING_HORIZONTAL), dp(RftvDesignSystem.Size.DOCK_TILE_PADDING_BOTTOM))
                 contentDescription = app.label
                 setOnFocusChangeListener { view, focused ->
-                    view.background = RftvDesignSystem.focusSurface(
-                        this@MainActivity, focused, RftvDesignSystem.Radius.DOCK_TILE, restingAlpha = RftvDesignSystem.GlassAlpha.DOCK_TILE_RESTING, focusedAlpha = RftvDesignSystem.GlassAlpha.DOCK_TILE_FOCUSED
-                    )
+                    view.background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused)
                     RftvDesignSystem.applyFocusScale(view, focused, RftvDesignSystem.Size.DOCK_FOCUS_SCALE)
                     view.elevation = if (focused) dp(RftvDesignSystem.Elevation.FOCUSED_TILE_DP).toFloat() else 0f
                 }
@@ -845,6 +843,7 @@ class MainActivity : Activity() {
                 text = app.label
                 textSize = RftvDesignSystem.Size.DOCK_LABEL_TEXT_SP
                 setTextColor(Color.WHITE)
+                setShadowLayer(5f, 0f, 1f, 0x99000000.toInt())
                 gravity = Gravity.CENTER
                 maxLines = 1
                 setPadding(0, dp(RftvDesignSystem.Size.DOCK_LABEL_TOP_PADDING), 0, 0)

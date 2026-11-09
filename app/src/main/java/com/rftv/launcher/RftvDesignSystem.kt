@@ -105,8 +105,10 @@ internal object RftvDesignSystem {
         const val HOME_TEXT_SHADOW = 100
         const val HOME_DATE_TEXT = 235
         const val HOME_DATE_SHADOW = 160
-        const val DOCK_TILE_RESTING = 25
-        const val DOCK_TILE_FOCUSED = 112
+        const val DOCK_TILE_RESTING = 12
+        const val DOCK_TILE_FOCUSED = 118
+        const val DOCK_TILE_STROKE_RESTING = 24
+        const val DOCK_TILE_STROKE_FOCUSED = 190
         const val DOCK_SURFACE = 34
         const val CARD_SURFACE = 42
         const val SURFACE_STROKE = 86
@@ -241,6 +243,15 @@ internal object RftvDesignSystem {
         Radius.DOCK,
         Color.argb(GlassAlpha.SURFACE_STROKE, 255, 255, 255)
     )
+
+    fun dockTileSurface(context: Context, focused: Boolean): GradientDrawable =
+        GradientDrawable().apply {
+            setColor(Color.argb(if (focused) GlassAlpha.DOCK_TILE_FOCUSED else GlassAlpha.DOCK_TILE_RESTING, 255, 255, 255))
+            cornerRadius = dp(context, Radius.DOCK_TILE).toFloat()
+            if (focused) {
+                setStroke(dp(context, 1), Color.argb(GlassAlpha.DOCK_TILE_STROKE_FOCUSED, 255, 255, 255))
+            }
+        }
 
     fun controlCenterSurface(context: Context): GradientDrawable =
         surface(context, ColorTokens.CONTROL_CENTER_SURFACE, Radius.BUTTON, GlassAlpha.PANEL_STROKE)
