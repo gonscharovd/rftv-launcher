@@ -361,6 +361,7 @@ class MainActivity : Activity() {
         }
         wallpaperExecutor.shutdownNow()
         networkExecutor.shutdownNow()
+        tvManagerExecutor.shutdownNow()
         super.onDestroy()
     }
 
