@@ -649,6 +649,7 @@ class MainActivity : Activity() {
                 }
                 if (bitmap != null) {
                     wallpaperFailedKeys.remove(tag)
+                    prefs.edit().remove("wallpaper_last_error").apply()
                     if (target === wallpaperView && page == "home") {
                         val selectedIndex = if (dark) wallpaperDark else wallpaperLight
                         val selectedKey = WallpaperImageUrls.selectionKey(dark, selectedIndex)
@@ -675,7 +676,7 @@ class MainActivity : Activity() {
                 } else if (failure) {
                     wallpaperFailedKeys.add(tag)
                     target.contentDescription = "Не удалось загрузить обои: ${photo.title}"
-                    if (target === wallpaperView && page == "home" && target.drawable == null) {
+                    if (target === wallpaperView && page == "home") {
                         val selectedIndex = if (dark) wallpaperDark else wallpaperLight
                         val selectedKey = WallpaperImageUrls.selectionKey(dark, selectedIndex)
                         if (wallpaperFallbackAttempted.add(selectedKey)) {
@@ -713,14 +714,26 @@ class MainActivity : Activity() {
                     }
 
                     if (!previewShown) {
-                        val preview = fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
+                        val preview = try {
+                            fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
+                        } catch (error: Exception) {
+                            android.util.Log.w("RFTVWallpaper", "Wallpaper preview failed for ${photo.imageUrl}", error)
+                            prefs.edit().putString("wallpaper_last_error", error.message ?: error.javaClass.simpleName).apply()
+                            null
+                        }
                         if (preview != null) {
                             previewShown = true
                             finish(preview, completed = false)
                         }
                     }
 
-                    val full = fetch(fullFile, fullUrl, 24L * 1024L * 1024L, 2)
+                    val full = try {
+                        fetch(fullFile, fullUrl, 24L * 1024L * 1024L, 2)
+                    } catch (error: Exception) {
+                        android.util.Log.w("RFTVWallpaper", "Full wallpaper failed for ${photo.imageUrl}", error)
+                        prefs.edit().putString("wallpaper_last_error", error.message ?: error.javaClass.simpleName).apply()
+                        null
+                    }
                     finish(full, completed = true, failure = full == null && !previewShown)
                 }
             } catch (error: Exception) {
