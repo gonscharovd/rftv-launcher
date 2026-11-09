@@ -329,7 +329,7 @@ internal class TvManagerPackageController(
                 mode = accessMode,
                 packageStateChange = uid == 0 || uid == 2000,
                 hidePackage = false,
-                verified = serviceProvider() != null && (uid == 0 || uid == 2000)
+                verified = uid == 0 || uid == 2000
             )
         )
         if (!decision.allowed) return OperationResult(false, decision.reason, snapshot)
