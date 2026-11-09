@@ -56,6 +56,21 @@ class PackageAnalysisPolicyTest {
     }
 
     @Test
+    fun dynamicallyProtectedHomeRoleIsReportedAsCritical() {
+        val report = PackageAnalysisPolicy.analyze(
+            PackageAnalysisPolicy.Signals(
+                packageName = "com.example.home",
+                label = "OEM Home",
+                isSystemApp = true,
+                enabled = true,
+                isProtected = true
+            )
+        )
+        assertEquals(PackageAnalysisPolicy.Severity.CRITICAL, report.severity)
+        assertTrue(report.evidence.any { it.contains("динамически защищён") })
+    }
+
+    @Test
     fun ordinaryAppNameContainingSettingsIsNotMarkedCritical() {
         val report = PackageAnalysisPolicy.analyze(
             PackageAnalysisPolicy.Signals(
