@@ -85,14 +85,19 @@ internal object PackageOperationPolicy {
         return if (mode == Mode.AUTOMATIC) {
             allow("Пакет прошёл строгую проверку профиля; требуется отдельное подтверждение владельца.")
         } else {
+            val requiresWarning = !candidate.exactDeviceProfileMatch ||
+                !candidate.explicitlyVerifiedOptional ||
+                candidate.confidence != Confidence.HIGH ||
+                !candidate.dependenciesChecked ||
+                candidate.hasUnresolvedDependencies
             Decision(
                 true,
-                "Ручное отключение: профиль или анализ не подтверждает безопасность. Проверь назначение и возможные последствия.",
-                requiresExplicitWarning = !candidate.exactDeviceProfileMatch ||
-                    !candidate.explicitlyVerifiedOptional ||
-                    candidate.confidence != Confidence.HIGH ||
-                    !candidate.dependenciesChecked ||
-                    candidate.hasUnresolvedDependencies
+                if (requiresWarning) {
+                    "Ручной выбор не подтверждён профилем или анализом. Назначение и возможные последствия неизвестны."
+                } else {
+                    "Пакет прошёл проверку профиля; ручное изменение всё равно требует подтверждения владельца."
+                },
+                requiresExplicitWarning = requiresWarning
             )
         }
     }
