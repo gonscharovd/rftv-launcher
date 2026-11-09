@@ -20,7 +20,8 @@ internal object PackageAnalysisPolicy {
         val receiverCount: Int = 0,
         val activityCount: Int = 0,
         val profilePurpose: String? = null,
-        val profileRisk: String? = null
+        val profileRisk: String? = null,
+        val isProtected: Boolean = false
     )
 
     data class Report(
@@ -140,8 +141,12 @@ internal object PackageAnalysisPolicy {
         val permissions = signals.requestedPermissions.toSet()
         val evidence = mutableListOf<String>()
 
-        if (isCriticalIdentity(id)) {
-            evidence += "Идентификатор пакета совпадает с защищённой системной категорией."
+        if (isCriticalIdentity(id) || signals.isProtected) {
+            evidence += if (signals.isProtected && !isCriticalIdentity(id)) {
+                "Пакет динамически защищён: он назначен системной ролью HOME, Settings, ввода или активной заставки."
+            } else {
+                "Идентификатор пакета совпадает с защищённой системной категорией."
+            }
             return Report(
                 purpose = "Системный компонент или компонент с потенциально критической зависимостью",
                 category = "Система и безопасность",
