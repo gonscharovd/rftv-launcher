@@ -70,6 +70,11 @@ internal object RftvDesignSystem {
         const val HOME_DATE_SHADOW = 160
         const val DOCK_TILE_RESTING = 25
         const val DOCK_TILE_FOCUSED = 112
+        const val DOCK_SURFACE = 34
+        const val CARD_SURFACE = 42
+        const val SURFACE_STROKE = 86
+        const val PANEL_STROKE = 72
+        const val SELECTED_RESTING_FLOOR = 82
         const val CONTROL_CENTER_SCRIM = 45
         const val THEME_FOCUSED = 120
         const val THEME_SELECTED = 105
@@ -110,6 +115,7 @@ internal object RftvDesignSystem {
         const val DOCK_LABEL_TOP_PADDING = 4
         const val EMPTY_DOCK_TEXT_SP = 14f
         const val EMPTY_DOCK_HEIGHT = 122
+        const val HOME_DATE_LEFT_PADDING = 4
         const val CLOCK_TEXT_SP = 88f
         const val DATE_TEXT_SP = 18f
         const val PAGE_TITLE_SP = 29f
@@ -133,6 +139,8 @@ internal object RftvDesignSystem {
         const val FOCUS_DURATION_MS = 140L
         const val HOME_FADE_DURATION_MS = 220L
         const val SURFACE_FADE_DURATION_MS = 180L
+        const val DOCK_REVEAL_DURATION_MS = 180L
+        const val SECONDARY_REVEAL_DURATION_MS = 220L
     }
 
     fun surface(
@@ -147,16 +155,16 @@ internal object RftvDesignSystem {
     }
 
     fun dockSurface(context: Context): GradientDrawable =
-        surface(context, Color.argb(34, 255, 255, 255), Radius.DOCK)
+        surface(context, Color.argb(GlassAlpha.DOCK_SURFACE, 255, 255, 255), Radius.DOCK, GlassAlpha.SURFACE_STROKE)
 
     fun controlCenterSurface(context: Context): GradientDrawable =
-        surface(context, ColorTokens.CONTROL_CENTER_SURFACE, Radius.BUTTON, 72)
+        surface(context, ColorTokens.CONTROL_CENTER_SURFACE, Radius.BUTTON, GlassAlpha.PANEL_STROKE)
 
     fun panelSurface(context: Context): GradientDrawable =
-        surface(context, ColorTokens.PANEL_SURFACE, Radius.DOCK, 72)
+        surface(context, ColorTokens.PANEL_SURFACE, Radius.DOCK, GlassAlpha.PANEL_STROKE)
 
     fun cardSurface(context: Context): GradientDrawable =
-        surface(context, Color.argb(42, 255, 255, 255), Radius.CARD)
+        surface(context, Color.argb(GlassAlpha.CARD_SURFACE, 255, 255, 255), Radius.CARD, GlassAlpha.SURFACE_STROKE)
 
     fun focusSurface(
         context: Context,
@@ -168,7 +176,7 @@ internal object RftvDesignSystem {
     ): GradientDrawable = surface(
         context,
         Color.argb(
-            if (focused) focusedAlpha else if (selected) maxOf(restingAlpha, 82) else restingAlpha,
+            if (focused) focusedAlpha else if (selected) maxOf(restingAlpha, GlassAlpha.SELECTED_RESTING_FLOOR) else restingAlpha,
             255, 255, 255
         ),
         radiusDp
