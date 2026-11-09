@@ -1306,11 +1306,13 @@ class MainActivity : Activity() {
                         break
                     }
                 }
-                if (apkUrl.isNullOrBlank()) throw IllegalStateException("В стабильном релизе нет app-release.apk")
-                if (digest.isNullOrBlank()) throw IllegalStateException("GitHub не предоставил SHA-256 APK")
+                val verifiedApkUrl = apkUrl?.takeIf { it.isNotBlank() }
+                    ?: throw IllegalStateException("В стабильном релизе нет app-release.apk")
+                val verifiedDigest = digest?.takeIf { it.isNotBlank() }
+                    ?: throw IllegalStateException("GitHub не предоставил SHA-256 APK")
                 prefs.edit()
-                    .putString("ota_url", apkUrl)
-                    .putString("ota_sha256", digest)
+                    .putString("ota_url", verifiedApkUrl)
+                    .putString("ota_sha256", verifiedDigest)
                     .putString("ota_asset_name", assetName)
                     .putString("ota_release_url", releaseUrl)
                     .putString("ota_tag", tag)
@@ -1323,7 +1325,7 @@ class MainActivity : Activity() {
                     }
                     otaStatus = "Найден стабильный релиз $tag · загружаем APK…"
                     statusView.text = otaStatus
-                    downloadOta(apkUrl, digest) { value, message ->
+                    downloadOta(verifiedApkUrl, verifiedDigest) { value, message ->
                         otaProgress = value
                         otaStatus = message
                         statusView.text = message
@@ -1475,7 +1477,7 @@ class MainActivity : Activity() {
                 }
             } finally {
                 connection?.disconnect()
-                otaInProgress = false
+                handler.post { otaInProgress = false }
             }
         }.start()
     }
