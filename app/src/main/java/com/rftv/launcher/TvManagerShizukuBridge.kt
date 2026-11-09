@@ -9,6 +9,8 @@ import rikka.shizuku.Shizuku
 /** Narrow Shizuku integration; it never runs arbitrary shell commands. */
 internal object TvManagerShizukuBridge {
     const val REQUEST_CODE = 7401
+    private const val USER_SERVICE_TAG = "com.rftv.launcher.tvmanager"
+    private const val USER_SERVICE_VERSION = 2
 
     fun isBinderReady(): Boolean = try {
         Shizuku.pingBinder()
@@ -44,9 +46,10 @@ internal object TvManagerShizukuBridge {
         val args = Shizuku.UserServiceArgs(
             ComponentName(context, TvManagerShellService::class.java)
         ).daemon(false)
+            .tag(USER_SERVICE_TAG)
             .processNameSuffix("tvmanager")
             .debuggable(false)
-            .version(1)
+            .version(USER_SERVICE_VERSION)
         Shizuku.bindUserService(args, connection)
         return true
     }
