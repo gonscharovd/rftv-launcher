@@ -42,6 +42,11 @@ jobs:
         with:
           gradle-version: 8.9
 
+      - name: Validate all 20 wallpaper sources over HTTP and decode
+        run: |
+          python3 -m pip install --disable-pip-version-check pillow
+          python3 scripts/check_wallpaper_urls.py
+
       - name: Run unit tests when test sources exist
         shell: bash
         run: |
