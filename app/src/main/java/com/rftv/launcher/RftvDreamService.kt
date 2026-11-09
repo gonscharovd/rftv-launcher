@@ -265,6 +265,7 @@ class RftvDreamService : DreamService() {
         refreshFuture?.cancel(true)
         refreshFuture = executor.submit {
             val dashboard = ScreensaverDashboardRepository.load(this)
+            if (!dreaming || Thread.currentThread().isInterrupted) return@submit
             val imageFile = if (refreshWallpaper) activeHomeWallpaperFile() else null
             val blurred = imageFile?.let { file ->
                 val source = BitmapFactory.decodeFile(file.absolutePath, BitmapFactory.Options().apply {
