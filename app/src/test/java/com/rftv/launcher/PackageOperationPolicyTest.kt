@@ -86,6 +86,16 @@ class PackageOperationPolicyTest {
     }
 
     @Test
+    fun manualModeStillConfirmsReviewedPackagesWithoutFalseUnknownWarning() {
+        val reviewed = PackageOperationPolicy.canDisable(
+            safeCandidate, adbAccess, PackageOperationPolicy.Mode.MANUAL
+        )
+        assertTrue(reviewed.allowed)
+        assertFalse(reviewed.requiresExplicitWarning)
+        assertTrue(reviewed.reason.contains("прошёл проверку профиля"))
+    }
+
+    @Test
     fun manualModeAllowsUserChoiceForUnknownPackagesButKeepsHardProtection() {
         val unknown = safeCandidate.copy(
             exactDeviceProfileMatch = false,
