@@ -1299,15 +1299,13 @@ class MainActivity : Activity() {
                 }
                 setOnClickListener { action() }
             }
-            tile.addView(TextView(this).apply {
-                text = icon
-                textSize = RftvDesignSystem.Size.CONTROL_CENTER_ICON_TEXT_SP
-                gravity = Gravity.CENTER
-                setTextColor(RftvDesignSystem.ColorTokens.CONTROL_CENTER_ICON)
-            }, LinearLayout.LayoutParams(
-                dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ICON_WIDTH),
-                dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ICON_WIDTH)
-            ))
+            tile.addView(
+                RftvControlIconView(this@MainActivity, icon),
+                LinearLayout.LayoutParams(
+                    dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ICON_WIDTH),
+                    dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ICON_WIDTH)
+                )
+            )
             val labels = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -1329,34 +1327,34 @@ class MainActivity : Activity() {
             return tile
         }
 
-        val wifi = makeTile("◉", "Wi‑Fi", "Открыть настройки сети") {
+        val wifi = makeTile("wifi", "Wi‑Fi", "Открыть настройки сети") {
             openSettings(Settings.ACTION_WIFI_SETTINGS)
         }
-        val bluetooth = makeTile("ᛒ", "Bluetooth", "Подключение устройств") {
+        val bluetooth = makeTile("bluetooth", "Bluetooth", "Подключение устройств") {
             openBluetoothPairing()
         }
         val themeLabels = arrayOf("Светлая", "Тёмная", "Авто")
-        val theme = makeTile("◐", "Тема", themeLabels[themeMode.coerceIn(0, 2)]) {
+        val theme = makeTile("theme", "Тема", themeLabels[themeMode.coerceIn(0, 2)]) {
             themeMode = (themeMode + 1) % 3
             prefs.edit().putInt("theme_mode", themeMode).apply()
             applyWallpaper()
             showControlCenter()
         }
         val ramInfo = readRamUsage()
-        val ram = makeTile("▥", "RAM · ${ramInfo.first}%", "Используется из ${ramInfo.second}") {
+        val ram = makeTile("memory", "RAM · ${ramInfo.first}%", "Используется из ${ramInfo.second}") {
             System.runFinalization()
             Runtime.getRuntime().gc()
             handler.postDelayed({
                 if (root.findViewWithTag<View>("rftv-control-center") != null) showControlCenter()
             }, 500)
         }
-        val saver = makeTile("◷", "Запуск заставки", "Погода · курсы валют · новости") {
+        val saver = makeTile("clock", "Запуск заставки", "Погода · курсы валют · новости") {
             showScreensaver()
         }
-        val launcherSettings = makeTile("⚙", "Настройки лаунчера", "Оформление · Dock · заставка") {
+        val launcherSettings = makeTile("settings", "Настройки лаунчера", "Оформление · Dock · заставка") {
             showLauncherSettings()
         }
-        val tvSettings = makeTile("▣", "Настройки ТВ", "Системные настройки устройства") {
+        val tvSettings = makeTile("tv", "Настройки ТВ", "Системные настройки устройства") {
             openSettings(Settings.ACTION_SETTINGS)
         }
 
