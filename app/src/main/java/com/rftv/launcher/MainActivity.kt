@@ -123,6 +123,7 @@ class MainActivity : Activity() {
     private var glassBackdropLoadingKey: String? = null
     private var activeGlassBackdropView: ImageView? = null
     private var activeGlassBackdropKey: String? = null
+    private var homeHeroBackdropView: ImageView? = null
     private val networkExecutor = Executors.newSingleThreadExecutor()
     private val tvManagerExecutor = Executors.newSingleThreadExecutor()
     private val tvManagerController by lazy {
@@ -748,6 +749,7 @@ class MainActivity : Activity() {
     private fun showHome() {
         activeGlassBackdropView = null
         activeGlassBackdropKey = null
+        homeHeroBackdropView = null
         settingsNavigationActive = false
         settingsHubVisible = false
         settingsSelectedIndex = 0
@@ -806,24 +808,45 @@ class MainActivity : Activity() {
         dateText.textSize = RftvDesignSystem.Size.DATE_TEXT_SP
         dateText.setShadowLayer(RftvDesignSystem.Size.DATE_SHADOW_RADIUS, 0f, RftvDesignSystem.Size.DATE_SHADOW_DY, Color.argb(RftvDesignSystem.GlassAlpha.HOME_DATE_SHADOW, 0, 0, 0))
 
-        val hero = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            background = RftvDesignSystem.surface(this@MainActivity, Color.argb(62, 238, 246, 255), 34)
-            setPadding(dp(30), dp(18), dp(30), dp(18))
+        val heroFrame = FrameLayout(this).apply {
+            background = RftvDesignSystem.surface(this@MainActivity, Color.argb(64, 238, 246, 255), 34)
+            clipToOutline = true
             elevation = dp(18).toFloat()
             isFocusable = true
             isFocusableInTouchMode = true
-            setOnClickListener { showWeather() }
-            setOnFocusChangeListener { view, focused ->
-                view.background = RftvDesignSystem.surface(
-                    this@MainActivity,
-                    Color.argb(if (focused) 92 else 62, 238, 246, 255),
-                    34
-                )
-                RftvDesignSystem.applyFocusScale(view, focused, 1.025f)
-            }
             contentDescription = "Часы и текущая погода. OK — прогноз на пять дней"
+            setOnClickListener { showWeather() }
+        }
+        homeHeroBackdropView = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            alpha = 0.78f
+            isFocusable = false
+            contentDescription = "Размытая фотография под стеклянными часами"
+        }
+        heroFrame.addView(homeHeroBackdropView, FrameLayout.LayoutParams(-1, -1))
+        val heroTint = View(this).apply {
+            background = GradientDrawable().apply {
+                cornerRadius = dp(34).toFloat()
+                setColor(Color.argb(54, 218, 234, 255))
+                setStroke(dp(1), Color.argb(115, 255, 255, 255))
+            }
+            isFocusable = false
+        }
+        heroFrame.addView(heroTint, FrameLayout.LayoutParams(-1, -1))
+        val hero = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = ColorDrawable(Color.TRANSPARENT)
+            setPadding(dp(30), dp(18), dp(30), dp(18))
+            isFocusable = false
+        }
+        heroFrame.setOnFocusChangeListener { view, focused ->
+            heroTint.background = GradientDrawable().apply {
+                cornerRadius = dp(34).toFloat()
+                setColor(Color.argb(if (focused) 88 else 54, 218, 234, 255))
+                setStroke(dp(if (focused) 2 else 1), Color.argb(if (focused) 220 else 115, 255, 255, 255))
+            }
+            RftvDesignSystem.applyFocusScale(view, focused, 1.025f)
         }
         hero.addView(timeColumn, LinearLayout.LayoutParams(-2, -2))
         hero.addView(View(this).apply {
@@ -859,7 +882,8 @@ class MainActivity : Activity() {
             setPadding(0, dp(8), 0, 0)
         })
         hero.addView(weatherColumn, LinearLayout.LayoutParams(-2, -2))
-        root.addView(hero, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
+        heroFrame.addView(hero, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
+        root.addView(heroFrame, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
 
         top.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         top.addView(glassButton("⚙") { showControlCenter() }.apply {
@@ -898,6 +922,7 @@ class MainActivity : Activity() {
 
 
         setContentView(root)
+        refreshGlassBackdrop()
         startClock()
         refreshHomeWeather()
         handler.removeCallbacks(homeWeatherTask)
@@ -3458,10 +3483,13 @@ class MainActivity : Activity() {
     }
 
     private fun refreshGlassBackdrop() {
-        val selectionKey = activeGlassBackdropKey ?: return
-        val backdrop = activeGlassBackdropView ?: return
+        val selectionKey = activeGlassBackdropKey ?: lastAppliedWallpaperKey ?: return
+        val overlayBackdrop = activeGlassBackdropView
+        val homeBackdrop = homeHeroBackdropView
+        if (overlayBackdrop == null && homeBackdrop == null) return
         if (glassBackdropCacheKey == selectionKey && glassBackdropBitmap?.isRecycled == false) {
-            backdrop.setImageBitmap(glassBackdropBitmap)
+            overlayBackdrop?.setImageBitmap(glassBackdropBitmap)
+            homeBackdrop?.setImageBitmap(glassBackdropBitmap)
             return
         }
         if (glassBackdropLoadingKey == selectionKey) return
@@ -3489,6 +3517,7 @@ class MainActivity : Activity() {
                 if (activeGlassBackdropKey == selectionKey) {
                     activeGlassBackdropView?.setImageBitmap(blurred)
                 }
+                homeHeroBackdropView?.setImageBitmap(blurred)
             }
         }
     }
