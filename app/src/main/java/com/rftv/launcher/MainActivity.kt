@@ -1586,7 +1586,7 @@ class MainActivity : Activity() {
                     }, LinearLayout.LayoutParams(-1, dp(66)).apply { bottomMargin = dp(8) })
                 }
             } else {
-                detail.addView(controlTile("Открыть раздел", "Перейти к параметрам: \${section.first}") {
+                detail.addView(controlTile("Открыть раздел", "Перейти к параметрам: ${section.first}") {
                     section.third.invoke()
                 }, LinearLayout.LayoutParams(-1, dp(76)))
                 detail.addView(TextView(this).apply {
@@ -2154,8 +2154,8 @@ class MainActivity : Activity() {
             body.addView(infoCard(
                 "АНАЛИЗ RFTV · $analysisSeverity",
                 analysis.purpose,
-                "Категория: \${analysis.category}\\nУверенность: $analysisConfidence\\n\\nФакты:\\n• " +
-                    analysis.evidence.joinToString("\\n• ") + "\\n\\nОграничение: \${analysis.limitation}"
+                "Категория: ${analysis.category}\nУверенность: $analysisConfidence\n\nФакты:\n• " +
+                    analysis.evidence.joinToString("\n• ") + "\n\nОграничение: ${analysis.limitation}"
             ))
             body.addView(infoCard("ИДЕНТИФИКАЦИЯ", appLabel, app.packageName))
             body.addView(infoCard(
