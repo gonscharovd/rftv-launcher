@@ -2282,15 +2282,19 @@ class MainActivity : Activity() {
             render("")
             body.addView(scroll, LinearLayout.LayoutParams(-1, dp(390)))
             body.addView(glassButton("Экспортировать полный список") {
-                val report = rows.joinToString("\n") { item ->
-                    "${item.app.packageName}\t${item.label}\t${if (item.isSystem) "system" else "user"}\t${if (item.disabled) "disabled" else "enabled"}"
+                if (!loaded || scanError != null) {
+                    Toast.makeText(this, scanError ?: "Список пакетов ещё загружается.", Toast.LENGTH_LONG).show()
+                } else {
+                    val report = rows.joinToString("\n") { item ->
+                        "${item.app.packageName}\t${item.label}\t${if (item.isSystem) "system" else "user"}\t${if (item.disabled) "disabled" else "enabled"}"
+                    }
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, "RFTV — список пакетов")
+                        putExtra(Intent.EXTRA_TEXT, report)
+                    }
+                    startActivity(Intent.createChooser(send, "Экспорт пакетов"))
                 }
-                val send = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_SUBJECT, "RFTV — список пакетов")
-                    putExtra(Intent.EXTRA_TEXT, report)
-                }
-                startActivity(Intent.createChooser(send, "Экспорт пакетов"))
             }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(10) })
             body.addView(glassButton("Назад к данным ТВ") { showTvDeviceInfo() },
                 LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
