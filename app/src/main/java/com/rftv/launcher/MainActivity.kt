@@ -87,7 +87,7 @@ class MainActivity : Activity() {
                     bindTvManagerShizukuService()
                 } else {
                     Toast.makeText(this, "Доступ Shizuku не предоставлен", Toast.LENGTH_LONG).show()
-                    if (page == "panel" && activePanelTitle == "ADB и разрешения") showTvAdb()
+                    refreshTvManagerScreen()
                 }
             }
         }
@@ -100,7 +100,7 @@ class MainActivity : Activity() {
                 tvManagerShellService = null
             }
             handler.post {
-                if (page == "panel" && activePanelTitle == "ADB и разрешения") showTvAdb()
+                refreshTvManagerScreen()
             }
         }
 
@@ -2401,6 +2401,18 @@ class MainActivity : Activity() {
     private fun Int.red(): Int = android.graphics.Color.red(this)
     private fun Int.green(): Int = android.graphics.Color.green(this)
     private fun Int.blue(): Int = android.graphics.Color.blue(this)
+
+    private fun refreshTvManagerScreen() {
+        if (page != "panel") return
+        when {
+            activePanelTitle == "ADB и разрешения" -> showTvAdb()
+            activePanelTitle == "Очистка ТВ" -> showTvCleanup()
+            activePanelTitle.startsWith("Ручная очистка") -> showTvManualCleanup()
+            activePanelTitle == "Автоматическая очистка" -> showTvAutomaticCleanup()
+            activePanelTitle == "Отключённые пакеты" -> showTvDisabledPackages()
+            activePanelTitle == "Журнал операций" -> showTvOperationLog()
+        }
+    }
 
     private fun connectTvManagerShizuku() {
         if (!TvManagerShizukuBridge.isBinderReady()) {
