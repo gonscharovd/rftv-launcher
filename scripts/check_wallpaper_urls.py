@@ -18,10 +18,25 @@ MIN_HEIGHT = 500
 
 def main() -> int:
     source = SOURCE.read_text(encoding="utf-8")
-    urls = re.findall(r'"(https://images\.unsplash\.com/[^"]+)"', source)
-    # Wallpaper image URLs are the only images.unsplash.com literals in MainActivity.
-    if len(urls) != 20:
-        print(f"ERROR: expected exactly 20 wallpaper URLs, found {len(urls)}", file=sys.stderr)
+    groups: list[tuple[str, str]] = []
+    for name in ("lightPhotos", "darkPhotos"):
+        match = re.search(
+            rf"private val {name}\s*=\s*listOf\((.*?)^\s*\)",
+            source,
+            flags=re.DOTALL | re.MULTILINE,
+        )
+        if not match:
+            print(f"ERROR: could not find wallpaper group {name}", file=sys.stderr)
+            return 1
+        group_urls = re.findall(r'"(https://images\.unsplash\.com/[^"]+)"', match.group(1))
+        if len(group_urls) != 10:
+            print(f"ERROR: expected 10 URLs in {name}, found {len(group_urls)}", file=sys.stderr)
+            return 1
+        groups.extend((name, url) for url in group_urls)
+
+    urls = [url for _, url in groups]
+    if len(set(urls)) != 20:
+        print("ERROR: wallpaper URLs must be unique across day/night groups", file=sys.stderr)
         return 1
 
     failures = 0
@@ -50,6 +65,7 @@ def main() -> int:
             with Image.open(io.BytesIO(body)) as image:
                 image.verify()
             with Image.open(io.BytesIO(body)) as image:
+                image.load()  # Force full pixel decode, not only header/structure validation.
                 width, height = image.size
                 image_format = image.format
                 if width < MIN_WIDTH or height < MIN_HEIGHT:
@@ -59,7 +75,7 @@ def main() -> int:
 
             redirect_note = " (redirected)" if final_url != url else ""
             print(
-                f"OK {index:02d}/20 HTTP {status} {content_type} "
+                f"OK {index:02d}/20 [{group}] HTTP {status} {content_type} "
                 f"{image_format} {width}x{height} {len(body)} bytes{redirect_note}"
             )
         except Exception as error:  # noqa: BLE001 - report every failed URL.
