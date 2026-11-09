@@ -32,6 +32,8 @@ class ScreensaverActivity : Activity() {
     private val io = Executors.newFixedThreadPool(4)
     private val refreshing = AtomicBoolean(false)
     private var dashboardFuture: Future<*>? = null
+    private var wallpaperFuture: Future<*>? = null
+    @Volatile private var pendingWallpaperBitmap: Bitmap? = null
     private lateinit var clock: TextView
     private lateinit var date: TextView
     private lateinit var rates: TextView
@@ -81,6 +83,7 @@ class ScreensaverActivity : Activity() {
         super.onResume()
         alive = true
         tick.run()
+        if (!::wallpaper.isInitialized || wallpaper.drawable == null) loadCurrentWallpaper()
         loadDashboard()
         handler.removeCallbacks(refreshDashboard)
         handler.postDelayed(refreshDashboard, 15 * 60_000L)
@@ -90,6 +93,10 @@ class ScreensaverActivity : Activity() {
         alive = false
         dashboardFuture?.cancel(true)
         dashboardFuture = null
+        wallpaperFuture?.cancel(true)
+        wallpaperFuture = null
+        pendingWallpaperBitmap?.takeIf { !it.isRecycled }?.recycle()
+        pendingWallpaperBitmap = null
         refreshing.set(false)
         handler.removeCallbacksAndMessages(null)
         super.onPause()
@@ -98,6 +105,10 @@ class ScreensaverActivity : Activity() {
     override fun onDestroy() {
         alive = false
         handler.removeCallbacksAndMessages(null)
+        dashboardFuture?.cancel(true)
+        wallpaperFuture?.cancel(true)
+        pendingWallpaperBitmap?.takeIf { !it.isRecycled }?.recycle()
+        pendingWallpaperBitmap = null
         io.shutdownNow()
         if (sessionAcquired) ScreensaverSession.release()
         sessionAcquired = false
@@ -310,7 +321,7 @@ class ScreensaverActivity : Activity() {
             else -> null
         } ?: return
 
-        io.execute {
+        wallpaperFuture = io.submit {
             val source = try {
                 BitmapFactory.decodeFile(selected.absolutePath, BitmapFactory.Options().apply {
                     inPreferredConfig = Bitmap.Config.RGB_565
@@ -323,9 +334,16 @@ class ScreensaverActivity : Activity() {
                 } catch (_: Exception) { null }
             }
             source?.recycle()
+            if (Thread.currentThread().isInterrupted) {
+                blurred?.takeIf { !it.isRecycled }?.recycle()
+                return@submit
+            }
+            pendingWallpaperBitmap = blurred
             handler.post {
+                if (pendingWallpaperBitmap !== blurred) return@post
+                pendingWallpaperBitmap = null
                 if (!isFinishing && blurred != null) wallpaper.setImageBitmap(blurred)
-                else blurred?.recycle()
+                else blurred?.takeIf { !it.isRecycled }?.recycle()
             }
         }
     }
