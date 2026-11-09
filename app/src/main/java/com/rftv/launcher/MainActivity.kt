@@ -1278,7 +1278,7 @@ class MainActivity : Activity() {
                     setRequestProperty("User-Agent", "RFTV-Launcher")
                 }
                 if (connection.responseCode !in 200..299) {
-                    throw IllegalStateException("GitHub HTTP \${connection.responseCode}")
+                    throw IllegalStateException("GitHub HTTP ${connection.responseCode}")
                 }
                 val release = org.json.JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
                 if (release.optBoolean("draft", true) || release.optBoolean("prerelease", false)) {
@@ -1335,7 +1335,7 @@ class MainActivity : Activity() {
             } catch (e: Exception) {
                 handler.post {
                     otaInProgress = false
-                    otaStatus = "Не удалось начать обновление: \${e.message ?: "ошибка сети"}"
+                    otaStatus = "Не удалось начать обновление: ${e.message ?: "ошибка сети"}"
                     statusView.text = otaStatus
                 }
             } finally {
