@@ -14,7 +14,7 @@ A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direc
 - Control panel with Wi-Fi, Bluetooth, display settings, RAM information, launcher settings and Android settings shortcuts.
 - Dock width and height controls saved locally.
 - TV Cleaner lists user-installed apps and delegates uninstall to Android's confirmation screen.
-- RFTV TV Manager provides a read-only system-package inventory, device fingerprint export, and a reference catalogue with strict API + exact board/hardware + exact device/product matching for two CleanYourTV Sber StarOS reference profiles.
+- RFTV TV Manager provides system-package inventory and analysis, strict full-device profile matching, a Shizuku UserService bridge, manual per-package cleanup, durable original-state snapshots, operation journal, verified restore and reverse-order rollback.
 - Remote-control focus states and large TV-friendly controls.
 - Both the manual idle screen and Android DreamService keep the displayed date synchronized with the clock.
 
@@ -62,7 +62,13 @@ GitHub Actions builds pushes to main and feature/** branches and pull requests t
 
 ## Cleaner safety
 
-The cleaner does not silently remove packages or clear another app's private cache. It lists non-system apps and opens Android's native uninstall confirmation. TV Manager inventory, device fingerprint export, and a reference-only catalogue for two Sber StarOS profiles are implemented. Other manufacturers can be added as individually verified profiles. No package disabling is available yet: privileged ADB / Shizuku bridge, disable / restore actions, action journal, and rollback remain future work. The current Sber SDX-50U4123B target does not match either imported Sber profile because its Android version and hardware platform differ. See [TV_MANAGER.md](TV_MANAGER.md), [TV_MANAGER_BRIDGE.md](TV_MANAGER_BRIDGE.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+The general cleaner does not silently remove packages or clear another app's private cache. It lists non-system apps and opens Android's native uninstall confirmation.
+
+TV Manager has a separate reversible package-management flow through Shizuku. The owner must install/start Shizuku, authorize RFTV, and confirm each manual package change. Every change stores and verifies the original PackageManager enabled state before execution; the result is read back and rollback is attempted on failure. Only RFTV-owned snapshots can be restored. Protected HOME/System UI/Settings/installer/network/media/remote/OEM/SoC packages remain locked. No package uninstall, data clearing or arbitrary shell console is provided.
+
+Automatic cleanup requires a complete exact profile (manufacturer, model, board/hardware, device/product, Android API, build fingerprint and ABI) plus explicitly verified optional packages, high confidence and checked dependencies. Imported CleanYourTV profiles are reference-only and do not match the primary Sber SDX-50U4123B / Android 9 / MT9632 target. Automatic cleanup is therefore unavailable on that device until its own firmware and package inventory are validated.
+
+The Shizuku bridge and cleanup flow have passed automated CI checks, but have not yet been tested on the physical Sber TV. First device validation should be read-only: Shizuku connection/UID, package inventory and package details. See [TV_MANAGER.md](TV_MANAGER.md), [TV_MANAGER_BRIDGE.md](TV_MANAGER_BRIDGE.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Wallpaper credits
 
