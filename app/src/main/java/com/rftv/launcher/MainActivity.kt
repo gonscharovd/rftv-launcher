@@ -527,36 +527,80 @@ class MainActivity : Activity() {
         if (target.tag != tag) target.setImageDrawable(null)
         target.tag = tag
 
-        // Do not enqueue the same failed request every 30 seconds from clockTask.
+        // Failed requests are not restarted by the 30-second clock refresh.
         if (tag in wallpaperFailedKeys) return
         val requestKey = "$tag@${System.identityHashCode(target)}"
         if (!wallpaperLoadingKeys.add(requestKey)) return
 
         val directory = File(filesDir, "wallpapers").apply { mkdirs() }
-        // Picker previews use their own small cache and never downgrade the
-        // full-resolution wallpaper kept for the home screen.
-        val file = File(directory, WallpaperImageUrls.cacheFileName(dark, safeIndex, thumbnail))
-        val imageUrl = if (thumbnail) WallpaperImageUrls.thumbnailUrl(photo.imageUrl) else photo.imageUrl
+        val fullFile = File(directory, WallpaperImageUrls.cacheFileName(dark, safeIndex, false))
+        val previewFile = File(directory, WallpaperImageUrls.cacheFileName(dark, safeIndex, true))
+        val fullUrl = photo.imageUrl
+        val previewUrl = WallpaperImageUrls.thumbnailUrl(photo.imageUrl)
 
-        fun decode(): Bitmap? {
+        fun decode(file: File, sampleSize: Int): Bitmap? {
+            if (!file.exists() || file.length() <= 10_000L) return null
             val options = BitmapFactory.Options().apply {
                 inPreferredConfig = Bitmap.Config.RGB_565
-                inSampleSize = if (thumbnail) 4 else 1
+                inSampleSize = sampleSize
             }
             return BitmapFactory.decodeFile(file.absolutePath, options)
         }
 
-        fun finish(bitmap: Bitmap?) {
+        fun fetch(file: File, address: String, maxBytes: Long, sampleSize: Int): Bitmap? {
+            decode(file, sampleSize)?.let { return it }
+            if (file.exists()) file.delete()
+
+            var connection: HttpURLConnection? = null
+            var tempFile: File? = null
+            try {
+                connection = (URL(address).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 8_000
+                    readTimeout = 12_000
+                    instanceFollowRedirects = true
+                    useCaches = true
+                    setRequestProperty("User-Agent", "RFTV-Launcher/0.7")
+                    setRequestProperty("Accept", "image/avif,image/webp,image/jpeg,image/*")
+                }
+                connection.connect()
+                if (connection.responseCode !in 200..299) {
+                    throw IllegalStateException("Wallpaper HTTP ${connection.responseCode}")
+                }
+                val part = File(directory, file.name + ".part")
+                tempFile = part
+                connection.inputStream.use { input ->
+                    FileOutputStream(part).use { output ->
+                        val buffer = ByteArray(32 * 1024)
+                        var total = 0L
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            total += count
+                            if (total > maxBytes) throw IllegalStateException("Wallpaper exceeds size limit")
+                            output.write(buffer, 0, count)
+                        }
+                    }
+                }
+                if (part.length() <= 10_000L) throw IllegalStateException("Wallpaper response is empty")
+                if (file.exists()) file.delete()
+                if (!part.renameTo(file)) throw IllegalStateException("Could not commit wallpaper cache")
+                return decode(file, sampleSize)
+            } finally {
+                tempFile?.takeIf { it.exists() }?.delete()
+                connection?.disconnect()
+            }
+        }
+
+        fun finish(bitmap: Bitmap?, completed: Boolean, failure: Boolean = false) {
             handler.post {
-                wallpaperLoadingKeys.remove(requestKey)
+                if (completed) wallpaperLoadingKeys.remove(requestKey)
                 if (target.tag != tag) {
                     bitmap?.recycle()
                     return@post
                 }
                 if (bitmap != null) {
                     wallpaperFailedKeys.remove(tag)
-                    if (!thumbnail && target === wallpaperView) {
-                        target.animate().cancel()
+                    if (!thumbnail && target === wallpaperView && target.drawable == null) {
                         target.alpha = 0f
                         target.setImageBitmap(bitmap)
                         target.animate().alpha(1f)
@@ -566,67 +610,38 @@ class MainActivity : Activity() {
                         target.setImageBitmap(bitmap)
                     }
                     target.contentDescription = "${photo.title} — ${photo.author}"
-                } else {
+                } else if (failure) {
                     wallpaperFailedKeys.add(tag)
                     target.contentDescription = "Не удалось загрузить обои: ${photo.title}"
-                    if (target === wallpaperView && page == "home") {
-                        Toast.makeText(this, "Не удалось загрузить фотографию. Удерживай кнопку «Обои» для повтора.", Toast.LENGTH_LONG).show()
+                    if (target === wallpaperView && page == "home" && target.drawable == null) {
+                        Toast.makeText(this, "Не удалось загрузить фотографию. Проверьте соединение или повторите выбор обоев.", Toast.LENGTH_LONG).show()
                     }
                 }
             }
         }
 
         wallpaperExecutor.execute {
-            var connection: HttpURLConnection? = null
-            var temp: File? = null
+            var previewShown = false
             try {
-                if (file.exists() && file.length() > 10_000L) {
-                    val cached = decode()
-                    if (cached != null) {
-                        finish(cached)
-                        return@execute
+                if (thumbnail) {
+                    val preview = fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
+                    finish(preview, completed = true, failure = preview == null)
+                } else {
+                    // Show a small image first; the full-resolution file replaces it
+                    // when ready. This avoids a blank/gradient home screen on slow CDNs.
+                    val preview = fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
+                    if (preview != null) {
+                        previewShown = true
+                        finish(preview, completed = false)
                     }
-                    // A truncated/corrupt cache must not permanently block this wallpaper.
-                    file.delete()
-                }
 
-                connection = (URL(imageUrl).openConnection() as HttpURLConnection).apply {
-                    connectTimeout = 15000
-                    readTimeout = 25000
-                    instanceFollowRedirects = true
-                    setRequestProperty("User-Agent", "RFTV-Launcher/0.1")
+                    val full = fetch(fullFile, fullUrl, 24L * 1024L * 1024L, 2)
+                    finish(full, completed = true, failure = full == null && !previewShown)
                 }
-                connection.connect()
-                if (connection.responseCode !in 200..299) {
-                    throw IllegalStateException("HTTP ${connection.responseCode}")
-                }
-                val tempFile = File(directory, file.name + ".part")
-                temp = tempFile
-                connection.inputStream.use { input ->
-                    FileOutputStream(tempFile).use { output ->
-                        val buffer = ByteArray(16 * 1024)
-                        var total = 0L
-                        while (true) {
-                            val count = input.read(buffer)
-                            if (count < 0) break
-                            total += count
-                            if (total > 24L * 1024L * 1024L) {
-                                throw IllegalStateException("Изображение превышает 24 МБ")
-                            }
-                            output.write(buffer, 0, count)
-                        }
-                    }
-                }
-                if (tempFile.length() <= 10_000L) throw IllegalStateException("Пустой или неполный файл")
-                if (file.exists()) file.delete()
-                if (!tempFile.renameTo(file)) throw IllegalStateException("Не удалось сохранить обои в кеш")
-                val downloaded = decode() ?: throw IllegalStateException("Файл не является читаемым изображением")
-                finish(downloaded)
             } catch (_: Exception) {
-                temp?.delete()
-                finish(null)
-            } finally {
-                connection?.disconnect()
+                // A preview is already useful content: a failed full-size request
+                // must not mark the whole wallpaper as unavailable or show an error.
+                finish(null, completed = true, failure = !previewShown)
             }
         }
     }
@@ -1284,13 +1299,25 @@ class MainActivity : Activity() {
         card.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         card.alpha = 0f
         card.translationX = dp(18).toFloat()
+        // Keep the Control Center above the Dock instead of drawing over app
+        // labels. Compute available height from the actual Dock dimensions for
+        // consistent spacing on both 720p and 1080p TV screens.
+        val controlCenterTop = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TOP_INSET)
+        val controlCenterBottomClearance = dp(
+            dockHeightDp + RftvDesignSystem.Spacing.DOCK_BOTTOM_INSET + 14
+        )
+        val controlCenterHeight = (
+            resources.displayMetrics.heightPixels -
+                controlCenterTop -
+                controlCenterBottomClearance
+            ).coerceAtLeast(dp(360))
         overlay.addView(card, FrameLayout.LayoutParams(
             (resources.displayMetrics.widthPixels * RftvDesignSystem.Size.CONTROL_CENTER_WIDTH_FRACTION).toInt(),
-            (resources.displayMetrics.heightPixels * RftvDesignSystem.Size.CONTROL_CENTER_HEIGHT_FRACTION).toInt(),
+            controlCenterHeight,
             Gravity.TOP or Gravity.RIGHT
         ).apply {
             rightMargin = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_RIGHT_INSET)
-            topMargin = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TOP_INSET)
+            topMargin = controlCenterTop
         })
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
         card.animate()
@@ -1677,6 +1704,18 @@ class MainActivity : Activity() {
             text = "НАСТРОЙКИ"; textSize = RftvDesignSystem.Size.SETTINGS_CAPTION_TEXT_SP; letterSpacing = .14f
             setTextColor(RftvDesignSystem.ColorTokens.TEXT_SECONDARY); setPadding(dp(10), 0, dp(10), dp(18))
         })
+        // The navigation list must scroll independently on compact TV panels;
+        // otherwise the last sections can be clipped on high-density 720p TVs.
+        val navigationScroll = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = false
+            clipToPadding = false
+            descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+        }
+        val navigationList = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        navigationScroll.addView(navigationList)
+        sidebar.addView(navigationScroll, LinearLayout.LayoutParams(-1, 0, 1f))
         val contentColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(RftvDesignSystem.Spacing.SETTINGS_CONTENT_LEFT_PADDING), dp(4), dp(4), dp(4))
@@ -1864,7 +1903,7 @@ class MainActivity : Activity() {
                 setOnClickListener { renderSection(index) }
             }
             navItems += item
-            sidebar.addView(item, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT)).apply { bottomMargin = dp(5) })
+            navigationList.addView(item, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT)).apply { bottomMargin = dp(5) })
         }
         shell.addView(sidebar, LinearLayout.LayoutParams((resources.displayMetrics.widthPixels * RftvDesignSystem.Size.SETTINGS_SIDEBAR_WIDTH_FRACTION).toInt(), -1))
         shell.addView(contentColumn, LinearLayout.LayoutParams(0, -1, 1f))
