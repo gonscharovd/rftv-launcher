@@ -2,7 +2,9 @@
 
 ## Status
 
-This document defines the implementation boundary for reversible package management. The stable release remains read-only. This feature branch now contains a Shizuku UserService bridge, durable snapshots/journal, a transactional per-package controller, and the first manual cleanup UI. It is not released yet. Automatic cleanup remains intentionally unavailable until a target-specific profile has explicitly validated optional packages and dependencies.
+This document defines the implementation boundary for reversible package management. Stable implementation: **RFTV Launcher v0.6.0**, merged into `main` and published as a stable GitHub Release. The release contains a Shizuku UserService bridge, durable snapshots/journal, a transactional per-package controller, manual cleanup UI and automatic batch orchestration. Automatic cleanup remains intentionally unavailable until a target-specific profile has explicitly validated the full device fingerprint, optional packages and dependencies.
+
+The bridge and package-operation flow have passed automated CI, but have not yet been physically tested on Sber SDX-50U4123B / StarOS 1.103.91 / Android 9 / MT9632. The first device test must be read-only.
 
 ## Access providers
 
@@ -114,4 +116,4 @@ If a snapshot cannot be saved and read back successfully, no change is allowed.
 - Added a DPAD-operable manual cleanup list with per-package switches, package-specific confirmation, protected-package locks, a details/return-focus path, per-package restoration and restore-all for RFTV-owned snapshots. Previously disabled packages are not adopted.
 - Added automatic-cleanup eligibility flags to profile entries. Donor entries default to unverified, so neither existing Sber donor profile is automatically executable. The current Sber SDX-50U4123B / Android 9 / MT9632 target has no matching profile.
 - Added/extended tests for protected package identities and donor-profile trust defaults.
-- The UI and provider have not yet been validated on physical hardware. OEM-specific Shizuku permissions and command behavior still require a device test; no package has been disabled by this development work.
+- The UI and provider have not yet been validated on physical hardware. OEM-specific Shizuku permissions and command behavior still require a device test; no package was disabled during development.
