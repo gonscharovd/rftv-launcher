@@ -121,7 +121,7 @@ class RftvDreamService : DreamService() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             addView(time, LinearLayout.LayoutParams(-1, -2))
-            addView(day, LinearLayout.LayoutParams(-1, dp(42)))
+            addView(day, LinearLayout.LayoutParams(-1, 42))
         }
         frame.addView(timeStack, FrameLayout.LayoutParams(-1, -2, Gravity.CENTER))
 
