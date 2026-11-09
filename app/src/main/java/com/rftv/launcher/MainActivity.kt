@@ -2430,9 +2430,10 @@ class MainActivity : Activity() {
         } catch (_: Exception) { "Недоступен" }
 
         showPanel("ADB и разрешения") { body ->
-        val shizukuReady = TvManagerShizukuBridge.isSupportedServer()
-        val shizukuPermission = TvManagerShizukuBridge.hasPermission()
-        val shizukuConnected = tvManagerShellService != null && (tvManagerShellUid == 0 || tvManagerShellUid == 2000)
+            val shizukuReady = TvManagerShizukuBridge.isSupportedServer()
+            val shizukuPermission = TvManagerShizukuBridge.hasPermission()
+            val shizukuConnected = tvManagerShellService != null &&
+                (tvManagerShellUid == 0 || tvManagerShellUid == 2000)
 
             body.addView(infoCard("СИСТЕМНЫЙ СТАТУС ADB",
                 if (adbDebuggingEnabled) "ADB Debugging включён" else "ADB Debugging выключен",
