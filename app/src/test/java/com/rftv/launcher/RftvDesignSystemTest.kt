@@ -23,6 +23,7 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Size.DOCK_TILE_PADDING_BOTTOM > 0)
         assertTrue(RftvDesignSystem.Size.EMPTY_DOCK_HEIGHT > RftvDesignSystem.Size.DOCK_TILE_HEIGHT / 2)
         assertTrue(RftvDesignSystem.Size.EMPTY_DOCK_TEXT_SP in 12f..18f)
+        assertTrue(RftvDesignSystem.Size.HOME_DATE_LEFT_PADDING >= 0)
         assertTrue(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN in 0..8)
     }
 
@@ -35,9 +36,17 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Radius.DOCK_TILE > 0)
         assertTrue(RftvDesignSystem.GlassAlpha.DOCK_TILE_RESTING < RftvDesignSystem.GlassAlpha.DOCK_TILE_FOCUSED)
         assertTrue(RftvDesignSystem.GlassAlpha.DOCK_TILE_FOCUSED <= 255)
+        assertTrue(RftvDesignSystem.GlassAlpha.DOCK_SURFACE in 0..255)
+        assertTrue(RftvDesignSystem.GlassAlpha.CARD_SURFACE in 0..255)
+        assertTrue(RftvDesignSystem.GlassAlpha.DOCK_SURFACE < RftvDesignSystem.GlassAlpha.CARD_SURFACE)
+        assertTrue(RftvDesignSystem.GlassAlpha.SURFACE_STROKE in 0..255)
+        assertTrue(RftvDesignSystem.GlassAlpha.PANEL_STROKE in 0..255)
+        assertTrue(RftvDesignSystem.GlassAlpha.SELECTED_RESTING_FLOOR in 0..255)
         assertTrue(RftvDesignSystem.Size.CLOCK_SHADOW_RADIUS > RftvDesignSystem.Size.DATE_SHADOW_RADIUS)
         assertTrue(RftvDesignSystem.Motion.FOCUS_DURATION_MS in 80L..250L)
         assertTrue(RftvDesignSystem.Motion.HOME_FADE_DURATION_MS > 0L)
+        assertTrue(RftvDesignSystem.Motion.DOCK_REVEAL_DURATION_MS in 100L..250L)
+        assertTrue(RftvDesignSystem.Motion.SECONDARY_REVEAL_DURATION_MS in 100L..300L)
     }
 
     @Test
