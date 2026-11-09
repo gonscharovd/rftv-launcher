@@ -1614,13 +1614,13 @@ class MainActivity : Activity() {
                 setOnClickListener { renderSection(index) }
             }
             navItems += item
-            sidebar.addView(item, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(5) })
+            sidebar.addView(item, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT)).apply { bottomMargin = dp(5) })
         }
-        shell.addView(sidebar, LinearLayout.LayoutParams((resources.displayMetrics.widthPixels * .255f).toInt(), -1))
+        shell.addView(sidebar, LinearLayout.LayoutParams((resources.displayMetrics.widthPixels * RftvDesignSystem.Size.SETTINGS_SIDEBAR_WIDTH_FRACTION).toInt(), -1))
         shell.addView(contentColumn, LinearLayout.LayoutParams(0, -1, 1f))
         root.addView(shell, FrameLayout.LayoutParams(
-            (resources.displayMetrics.widthPixels * .92f).toInt(),
-            (resources.displayMetrics.heightPixels * .88f).toInt(), Gravity.CENTER
+            (resources.displayMetrics.widthPixels * RftvDesignSystem.Size.SETTINGS_PANEL_WIDTH_FRACTION).toInt(),
+            (resources.displayMetrics.heightPixels * RftvDesignSystem.Size.SETTINGS_PANEL_HEIGHT_FRACTION).toInt(), Gravity.CENTER
         ))
         setContentView(root)
         renderSection(0)
