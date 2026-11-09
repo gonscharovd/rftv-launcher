@@ -368,6 +368,7 @@ class ScreensaverActivity : Activity() {
     private fun loadDashboard(force: Boolean = false) {
         if (!refreshing.compareAndSet(false, true)) return
         if (!force && ScreensaverDashboardRepository.isFresh(this)) {
+            renderDashboard(readCachedDashboard())
             refreshing.set(false)
             return
         }
