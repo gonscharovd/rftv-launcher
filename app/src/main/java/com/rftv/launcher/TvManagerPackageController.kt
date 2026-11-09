@@ -321,7 +321,11 @@ internal class TvManagerPackageController(
         return OperationResult(true, "Исходное состояние пакета восстановлено и проверено.")
     }
 
-    fun activeSnapshots(): List<TvManagerOperationStore.Snapshot> = store.activeSnapshots()
+    fun activeSnapshots(): List<TvManagerOperationStore.Snapshot> =
+        store.activeSnapshots().sortedByDescending { it.createdAt }
+
+    fun restoreAll(): List<OperationResult> =
+        activeSnapshots().map { snapshot -> restore(snapshot.packageName) }
 
     fun journal(): List<TvManagerOperationStore.JournalEntry> = store.journal()
 
