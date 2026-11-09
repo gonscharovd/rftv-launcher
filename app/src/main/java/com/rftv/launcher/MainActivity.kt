@@ -2579,7 +2579,7 @@ class MainActivity : Activity() {
                     body.addView(infoCard(
                         candidate.label,
                         candidate.packageName,
-                        "${candidate.decision.reason}\nСистемное приложение: ${candidate.isSystemApp}"
+                        "${candidate.profileNote ?: "Нет подтверждённого описания"}\nРиск профиля: ${candidate.profileRisk ?: "Не оценён"} · Уверенность: ${candidate.confidence}\nЗависимости проверены: ${candidate.dependenciesVerified} · Необязательный пакет: ${candidate.verifiedOptional}\nСистемное приложение: ${candidate.isSystemApp}\n${candidate.decision.reason}"
                     ))
                 }
             }
