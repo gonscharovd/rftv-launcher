@@ -62,7 +62,7 @@ GitHub Actions builds pushes to main and feature/** branches and pull requests t
 
 ## Cleaner safety
 
-The cleaner does not silently remove packages or clear another app's private cache. It lists non-system apps and opens Android's native uninstall confirmation. TV Manager inventory, device fingerprint export, and a reference-only catalogue for two Sber StarOS profiles are implemented. Other manufacturers can be added as individually verified profiles. No package disabling is available yet: privileged ADB / Shizuku bridge, disable / restore actions, action journal, and rollback remain future work. The current Sber SDX-50U4123B target does not match either imported Sber profile because its Android version and hardware platform differ. See [TV_MANAGER.md](TV_MANAGER.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+The cleaner does not silently remove packages or clear another app's private cache. It lists non-system apps and opens Android's native uninstall confirmation. TV Manager inventory, device fingerprint export, and a reference-only catalogue for two Sber StarOS profiles are implemented. Other manufacturers can be added as individually verified profiles. No package disabling is available yet: privileged ADB / Shizuku bridge, disable / restore actions, action journal, and rollback remain future work. The current Sber SDX-50U4123B target does not match either imported Sber profile because its Android version and hardware platform differ. See [TV_MANAGER.md](TV_MANAGER.md), [TV_MANAGER_BRIDGE.md](TV_MANAGER_BRIDGE.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Wallpaper credits
 
