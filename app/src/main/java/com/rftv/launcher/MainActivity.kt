@@ -75,6 +75,7 @@ class MainActivity : Activity() {
     private lateinit var dockContent: LinearLayout
     private lateinit var clockText: TextView
     private lateinit var dateText: TextView
+    private lateinit var homeWeatherText: TextView
     private lateinit var wallpaperView: ImageView
     private var lastAppliedWallpaperKey: String? = null
     @Volatile private var tvManagerShellService: ITvManagerShellService? = null
@@ -726,17 +727,62 @@ class MainActivity : Activity() {
         timeColumn.addView(clockText)
         timeColumn.addView(dateText)
         timeColumn.gravity = Gravity.CENTER
-        clockText.textSize = RftvDesignSystem.Size.CLOCK_TEXT_SP
+        clockText.textSize = 104f
+        clockText.letterSpacing = -0.055f
         clockText.setShadowLayer(RftvDesignSystem.Size.CLOCK_SHADOW_RADIUS, 0f, RftvDesignSystem.Size.CLOCK_SHADOW_DY, RftvDesignSystem.ColorTokens.CLOCK_SHADOW)
+        clockText.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         dateText.textSize = RftvDesignSystem.Size.DATE_TEXT_SP
         dateText.setShadowLayer(RftvDesignSystem.Size.DATE_SHADOW_RADIUS, 0f, RftvDesignSystem.Size.DATE_SHADOW_DY, Color.argb(RftvDesignSystem.GlassAlpha.HOME_DATE_SHADOW, 0, 0, 0))
-        root.addView(timeColumn, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
+
+        val hero = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = RftvDesignSystem.surface(this@MainActivity, Color.argb(62, 238, 246, 255), 34)
+            setPadding(dp(30), dp(18), dp(30), dp(18))
+            elevation = dp(18).toFloat()
+            isFocusable = true
+            isFocusableInTouchMode = true
+            setOnClickListener { showWeather() }
+            setOnFocusChangeListener { view, focused ->
+                view.background = RftvDesignSystem.surface(
+                    this@MainActivity,
+                    Color.argb(if (focused) 92 else 62, 238, 246, 255),
+                    34
+                )
+                RftvDesignSystem.applyFocusScale(view, focused, 1.025f)
+            }
+            contentDescription = "Часы и текущая погода. OK — прогноз на пять дней"
+        }
+        hero.addView(timeColumn, LinearLayout.LayoutParams(-2, -2))
+        hero.addView(View(this).apply {
+            setBackgroundColor(Color.argb(90, 255, 255, 255))
+        }, LinearLayout.LayoutParams(dp(1), dp(88)).apply {
+            leftMargin = dp(26)
+            rightMargin = dp(24)
+        })
+        val weatherColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        weatherColumn.addView(TextView(this).apply {
+            text = "СЕЙЧАС"
+            textSize = 11f
+            letterSpacing = 0.16f
+            setTextColor(Color.argb(190, 255, 255, 255))
+        })
+        homeWeatherText = TextView(this).apply {
+            text = "Челябинск\nЗагрузка погоды…"
+            textSize = 21f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            setShadowLayer(8f, 0f, 2f, Color.argb(100, 0, 0, 0))
+            setPadding(0, dp(6), 0, 0)
+        }
+        weatherColumn.addView(homeWeatherText)
+        hero.addView(weatherColumn, LinearLayout.LayoutParams(-2, -2))
+        root.addView(hero, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
 
         top.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
-        val weather = glassButton("☀   ПОГОДА") { showWeather() }
-        top.addView(weather, LinearLayout.LayoutParams(-2, dp(RftvDesignSystem.Size.TOP_ACTION_HEIGHT)).apply {
-            rightMargin = dp(RftvDesignSystem.Spacing.HOME_ACTION_GAP)
-        })
         top.addView(glassButton("⚙") { showControlCenter() }.apply {
             tag = "rftv-control-center-trigger"
         }, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.TOP_SETTINGS_WIDTH), dp(RftvDesignSystem.Size.TOP_ACTION_HEIGHT)))
@@ -774,6 +820,7 @@ class MainActivity : Activity() {
 
         setContentView(root)
         startClock()
+        refreshHomeWeather()
         focusFirstApp()
     }
 
@@ -915,58 +962,107 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun weatherDescription(code: Int): String = when (code) {
+        0 -> "Ясно"
+        1 -> "Преимущественно ясно"
+        2 -> "Переменная облачность"
+        3 -> "Облачно"
+        45, 48 -> "Туман"
+        in 51..57 -> "Морось"
+        in 61..67 -> "Дождь"
+        in 71..77 -> "Снег"
+        in 80..82 -> "Ливень"
+        in 85..86 -> "Снегопад"
+        95, 96, 99 -> "Гроза"
+        else -> "Погодные условия"
+    }
+
+    private fun weatherEndpoint(): String =
+        "https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026" +
+            "&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m" +
+            "&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=5&timezone=Asia%2FYekaterinburg"
+
+    private fun refreshHomeWeather() {
+        if (!::homeWeatherText.isInitialized) return
+        val cached = prefs.getString("home_weather_summary", null)
+        if (!cached.isNullOrBlank()) homeWeatherText.text = cached
+        networkExecutor.execute {
+            val summary = try {
+                val current = org.json.JSONObject(readHttpText(weatherEndpoint())).getJSONObject("current")
+                val temp = current.getDouble("temperature_2m").toInt()
+                val code = current.getInt("weather_code")
+                "$temp°  ·  ${weatherDescription(code)}\nЧелябинск"
+            } catch (_: Exception) {
+                cached ?: "Челябинск\nПогода временно недоступна"
+            }
+            if (summary != cached && !summary.contains("недоступна")) {
+                prefs.edit().putString("home_weather_summary", summary).apply()
+            }
+            handler.post {
+                if (!isFinishing && page == "home" && ::homeWeatherText.isInitialized) {
+                    homeWeatherText.text = summary
+                }
+            }
+        }
+    }
+
     private fun showWeather() {
-        showPanel("Погода") { body ->
-            val liveWeather = TextView(this).apply {
-                text = "Загружаем текущую погоду для Челябинска…"
-                textSize = 18f
+        showPanel("Погода · прогноз на 5 дней") { body ->
+            val currentCard = TextView(this).apply {
+                text = "Челябинск · загружаем текущие условия…"
+                textSize = 22f
                 setTextColor(Color.WHITE)
-                setPadding(dp(18), dp(16), dp(18), dp(16))
+                setPadding(dp(22), dp(20), dp(22), dp(20))
                 background = RftvDesignSystem.cardSurface(this@MainActivity)
             }
-            body.addView(liveWeather, LinearLayout.LayoutParams(-1, -2))
+            body.addView(currentCard, LinearLayout.LayoutParams(-1, -2))
+            body.addView(sectionLabel("ПРОГНОЗ НА БЛИЖАЙШИЕ 5 ДНЕЙ"))
+            val loading = infoCard("ПРОГНОЗ", "Загрузка…", "Получаем данные Open-Meteo")
+            body.addView(loading)
             networkExecutor.execute {
                 val result = try {
-                    val address = "https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Asia%2FYekaterinburg"
-                    val current = org.json.JSONObject(readHttpText(address))
-                        .getJSONObject("current")
-                    val temp = current.getDouble("temperature_2m").toInt()
-                    val feels = current.getDouble("apparent_temperature").toInt()
-                    val humidity = current.getInt("relative_humidity_2m")
-                    val wind = current.getDouble("wind_speed_10m").toInt()
-                    val code = current.getInt("weather_code")
-                    val condition = when (code) {
-                        0 -> "Ясно"
-                        1, 2 -> "Переменная облачность"
-                        3 -> "Облачно"
-                        45, 48 -> "Туман"
-                        in 51..67 -> "Морось или дождь"
-                        in 71..77 -> "Снег"
-                        in 80..82 -> "Ливень"
-                        in 85..86 -> "Снегопад"
-                        95, 96, 99 -> "Гроза"
-                        else -> "Погодные условия"
+                    val payload = org.json.JSONObject(readHttpText(weatherEndpoint()))
+                    val current = payload.getJSONObject("current")
+                    val daily = payload.getJSONObject("daily")
+                    val dates = daily.getJSONArray("time")
+                    val codes = daily.getJSONArray("weather_code")
+                    val lows = daily.getJSONArray("temperature_2m_min")
+                    val highs = daily.getJSONArray("temperature_2m_max")
+                    val currentSummary = "${current.getDouble("temperature_2m").toInt()}° · ${weatherDescription(current.getInt("weather_code"))}"
+                    val days = (0 until minOf(5, dates.length())).map { index ->
+                        val date = dates.getString(index)
+                        val dayLabel = try {
+                            val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(date)
+                            SimpleDateFormat("EEEE, d MMMM", Locale("ru")).format(parsed ?: Date())
+                                .replaceFirstChar { it.uppercase() }
+                        } catch (_: Exception) { date }
+                        val min = lows.getDouble(index).toInt()
+                        val max = highs.getDouble(index).toInt()
+                        "${dayLabel}|${weatherDescription(codes.getInt(index))}|$min° … $max°"
                     }
-                    "Челябинск · $condition\n\n$temp°C  ·  ощущается как $feels°C\nВлажность $humidity%  ·  ветер $wind км/ч\n\nИсточник: Open-Meteo"
+                    currentSummary to days
                 } catch (_: Exception) {
-                    "Не удалось загрузить погоду. Проверь подключение к интернету."
+                    null
                 }
                 handler.post {
-                    if (!isFinishing && page == "panel" && activePanelTitle == "Погода" && liveWeather.parent != null) {
-                        liveWeather.text = result
+                    if (isFinishing || page != "panel" || activePanelTitle != "Погода · прогноз на 5 дней") return@post
+                    body.removeView(loading)
+                    if (result == null) {
+                        currentCard.text = "Челябинск · погодные данные временно недоступны"
+                        body.addView(infoCard("НЕТ СВЯЗИ", "Прогноз не получен", "Проверь подключение. Выдуманные значения не показываются."))
+                    } else {
+                        currentCard.text = "Челябинск · ${result.first}\nОбновлено: сейчас"
+                        result.second.forEachIndexed { index, line ->
+                            val parts = line.split("|")
+                            body.addView(infoCard(
+                                if (index == 0) "СЕГОДНЯ" else "ДЕНЬ ${index + 1}",
+                                parts.getOrElse(0) { "" },
+                                "${parts.getOrElse(1) { "" }} · ${parts.getOrElse(2) { "" }}"
+                            ))
+                        }
                     }
                 }
             }
-            body.addView(infoCard("КУРСЫ ВАЛЮТ", "Банк России",
-                "На экране ожидания показываются курсы доллара и евро к рублю из официального источника ЦБ РФ."))
-            body.addView(infoCard("НОВОСТИ", "Россия и мир",
-                "На экране ожидания выводятся заголовки RSS-лент. Источники указываются внизу экрана."))
-            body.addView(glassButton("Настроить экран ожидания") {
-                openSettings("android.settings.DREAM_SETTINGS")
-            }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(12) })
-            body.addView(glassButton("Закрыть") { showHome() }, LinearLayout.LayoutParams(-2, dp(48)).apply {
-                topMargin = dp(8)
-            })
         }
     }
 
