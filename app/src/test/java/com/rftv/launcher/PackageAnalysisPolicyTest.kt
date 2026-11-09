@@ -98,6 +98,20 @@ class PackageAnalysisPolicyTest {
     }
 
     @Test
+    fun hardProtectedIdentityAndPlatformPrefixesAreDeniedForOperations() {
+        listOf(
+            "com.android.systemui",
+            "com.android.settings",
+            "com.android.providers.tv",
+            "com.android.tv.settings",
+            "com.mediatek.tv.service",
+            "com.cvte.platform.service",
+            "ru.sberdevices.starlauncher"
+        ).forEach { assertTrue("Expected protected package: $it", PackageAnalysisPolicy.isProtectedPackage(it)) }
+        assertTrue(!PackageAnalysisPolicy.isProtectedPackage("com.example.settings.helper"))
+    }
+
+    @Test
     fun exactMatchedProfileProvidesHighConfidenceButStillHasLimitation() {
         val report = PackageAnalysisPolicy.analyze(
             PackageAnalysisPolicy.Signals(
