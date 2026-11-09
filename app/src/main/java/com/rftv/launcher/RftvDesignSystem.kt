@@ -68,6 +68,8 @@ internal object RftvDesignSystem {
         const val HOME_TEXT_SHADOW = 100
         const val HOME_DATE_TEXT = 235
         const val HOME_DATE_SHADOW = 160
+        const val DOCK_TILE_RESTING = 25
+        const val DOCK_TILE_FOCUSED = 112
         const val CONTROL_CENTER_SCRIM = 45
         const val THEME_FOCUSED = 120
         const val THEME_SELECTED = 105
@@ -97,6 +99,17 @@ internal object RftvDesignSystem {
         const val DOCK_LABEL_WIDTH = 100
         const val DOCK_LABEL_HEIGHT = 28
         const val DOCK_FOCUS_SCALE = 1.07f
+        const val CLOCK_LETTER_SPACING = -0.045f
+        const val CLOCK_SHADOW_RADIUS = 22f
+        const val CLOCK_SHADOW_DY = 4f
+        const val DATE_SHADOW_RADIUS = 10f
+        const val DATE_SHADOW_DY = 2f
+        const val DOCK_TILE_PADDING_HORIZONTAL = 7
+        const val DOCK_TILE_PADDING_TOP = 5
+        const val DOCK_TILE_PADDING_BOTTOM = 4
+        const val DOCK_LABEL_TOP_PADDING = 4
+        const val EMPTY_DOCK_TEXT_SP = 14f
+        const val EMPTY_DOCK_HEIGHT = 122
         const val CLOCK_TEXT_SP = 88f
         const val DATE_TEXT_SP = 18f
         const val PAGE_TITLE_SP = 29f
