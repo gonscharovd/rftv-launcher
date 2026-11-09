@@ -156,6 +156,10 @@ class MainActivity : Activity() {
     private var settingsNavigationActive = false
     private var settingsHubVisible = false
     private var settingsSelectedIndex = 0
+    private var settingsSidebarView: View? = null
+    private var settingsContentColumnView: View? = null
+    private var settingsEntryFocusView: View? = null
+    private val settingsNavViews = mutableListOf<View>()
     private var packageReceiverRegistered = false
     private var themeMode = 2 // 0 light, 1 dark, 2 automatic
     private var wallpaperLight = 0
@@ -397,6 +401,24 @@ class MainActivity : Activity() {
                 if (page == "panel") {
                     if (settingsNavigationActive && !settingsHubVisible) showLauncherSettings()
                     else showHome()
+                    return true
+                }
+            }
+
+            if (page == "panel" && settingsNavigationActive && settingsHubVisible) {
+                val focused = currentFocus
+                if (event.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT &&
+                    focused != null && settingsSidebarView?.let { isDescendantOf(focused, it) } == true
+                ) {
+                    if (settingsEntryFocusView?.requestFocus() != true) {
+                        settingsNavViews.getOrNull(settingsSelectedIndex)?.requestFocus()
+                    }
+                    return true
+                }
+                if (event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT &&
+                    focused != null && settingsContentColumnView?.let { isDescendantOf(focused, it) } == true
+                ) {
+                    settingsNavViews.getOrNull(settingsSelectedIndex)?.requestFocus()
                     return true
                 }
             }
@@ -1791,10 +1813,12 @@ class MainActivity : Activity() {
         }
         navigationScroll.addView(navigationList)
         sidebar.addView(navigationScroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        settingsSidebarView = sidebar
         val contentColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(RftvDesignSystem.Spacing.SETTINGS_CONTENT_LEFT_PADDING), dp(4), dp(4), dp(4))
         }
+        settingsContentColumnView = contentColumn
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
         }
@@ -1819,6 +1843,8 @@ class MainActivity : Activity() {
             Triple("О системе", "Версия и OTA-обновления", { showAboutSystem() })
         )
         val navItems = mutableListOf<TextView>()
+        settingsNavViews.clear()
+        settingsEntryFocusView = null
         var selectedIndex = settingsSelectedIndex
         fun findFirstFocusable(view: View): View? {
             if (view.isFocusable && view.isEnabled && view.visibility == View.VISIBLE) return view
@@ -1950,6 +1976,7 @@ class MainActivity : Activity() {
                 setPadding(dp(4), dp(18), dp(4), dp(8))
             })
             val firstRight = findFirstFocusable(detail)
+            settingsEntryFocusView = firstRight
             if (firstRight != null) {
                 if (firstRight.id == View.NO_ID) firstRight.id = View.generateViewId()
                 navItems.forEach { it.nextFocusRightId = firstRight.id }
@@ -1971,6 +1998,7 @@ class MainActivity : Activity() {
                 setOnClickListener { renderSection(index) }
             }
             navItems += item
+            settingsNavViews += item
             navigationList.addView(item, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT)).apply { bottomMargin = dp(5) })
         }
         shell.addView(sidebar, LinearLayout.LayoutParams((resources.displayMetrics.widthPixels * RftvDesignSystem.Size.SETTINGS_SIDEBAR_WIDTH_FRACTION).toInt(), -1))
