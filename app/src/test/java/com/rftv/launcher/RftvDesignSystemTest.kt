@@ -18,6 +18,11 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Size.HOME_WALLPAPER_BUTTON_HEIGHT in 40..56)
         assertTrue(RftvDesignSystem.Size.DOCK_LABEL_WIDTH < RftvDesignSystem.Size.DOCK_TILE_WIDTH)
         assertTrue(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT in 24..36)
+        assertTrue(RftvDesignSystem.Size.DOCK_TILE_PADDING_HORIZONTAL > 0)
+        assertTrue(RftvDesignSystem.Size.DOCK_TILE_PADDING_TOP > 0)
+        assertTrue(RftvDesignSystem.Size.DOCK_TILE_PADDING_BOTTOM > 0)
+        assertTrue(RftvDesignSystem.Size.EMPTY_DOCK_HEIGHT > RftvDesignSystem.Size.DOCK_TILE_HEIGHT / 2)
+        assertTrue(RftvDesignSystem.Size.EMPTY_DOCK_TEXT_SP in 12f..18f)
         assertTrue(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN in 0..8)
     }
 
@@ -28,6 +33,9 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Size.DOCK_FOCUS_SCALE > 1f)
         assertTrue(RftvDesignSystem.Size.DOCK_FOCUS_SCALE <= 1.1f)
         assertTrue(RftvDesignSystem.Radius.DOCK_TILE > 0)
+        assertTrue(RftvDesignSystem.GlassAlpha.DOCK_TILE_RESTING < RftvDesignSystem.GlassAlpha.DOCK_TILE_FOCUSED)
+        assertTrue(RftvDesignSystem.GlassAlpha.DOCK_TILE_FOCUSED <= 255)
+        assertTrue(RftvDesignSystem.Size.CLOCK_SHADOW_RADIUS > RftvDesignSystem.Size.DATE_SHADOW_RADIUS)
         assertTrue(RftvDesignSystem.Motion.FOCUS_DURATION_MS in 80L..250L)
         assertTrue(RftvDesignSystem.Motion.HOME_FADE_DURATION_MS > 0L)
     }
