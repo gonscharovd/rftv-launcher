@@ -119,7 +119,7 @@ internal object PackageAnalysisPolicy {
             evidence += "В проверенном списке нет разрешений на геолокацию, запись аудио/видео или чтение личных данных."
         }
 
-        val privacyCombination = sensitive.isNotEmpty() && "android.permission.INTERNET" in permissions
+        val sensitiveWithNetwork = sensitive.isNotEmpty() && "android.permission.INTERNET" in permissions
         return Report(
             purpose = when {
                 category == "Главный экран" -> "Компонент домашнего экрана или запуска приложений"
@@ -133,11 +133,11 @@ internal object PackageAnalysisPolicy {
                 else -> "Пользовательское приложение; точная роль не подтверждена только метаданными"
             },
             category = category,
-            severity = if (privacyCombination) Severity.REVIEW else Severity.INFORMATIONAL,
-            confidence = if (privacyCombination) Confidence.MEDIUM else Confidence.LOW,
+            severity = if (sensitiveWithNetwork) Severity.REVIEW else Severity.INFORMATIONAL,
+            confidence = Confidence.LOW,
             evidence = evidence,
-            limitation = if (privacyCombination)
-                "Запрошенные разрешения и доступ к сети не подтверждают фактическое использование микрофона/камеры/геолокации или передачу данных. Нужны дополнительные наблюдения."
+            limitation = if (sensitiveWithNetwork)
+                "Низкая уверенность: PackageManager показывает только декларации разрешений. Это не доказывает использование микрофона/камеры/геолокации или передачу данных; AppOps history и сетевой трафик здесь недоступны."
             else
                 "Назначение выведено из доступных метаданных и имени пакета; это не анализ сетевого трафика или поведения приложения."
         )
