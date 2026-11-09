@@ -20,8 +20,8 @@ class TvManagerShellService : ITvManagerShellService.Stub() {
         if (Process.myUid() != 0 && Process.myUid() != 2000) {
             return "ERROR: неподдерживаемый UID привилегированного процесса"
         }
-        if (!PACKAGE_NAME.matches(packageName) || packageName == OWN_PACKAGE) {
-            return "ERROR: недопустимый идентификатор пакета"
+        if (!PACKAGE_NAME.matches(packageName) || isHardProtected(packageName)) {
+            return "ERROR: пакет запрещён политикой защиты TV Manager"
         }
         if (userId != 0) return "ERROR: поддерживается только основной пользователь Android (0)"
         val command = when (enabledState) {
@@ -53,7 +53,6 @@ class TvManagerShellService : ITvManagerShellService.Stub() {
         if (!java.io.File(executable).canExecute()) return null
         return try {
             val process = ProcessBuilder(arguments).redirectErrorStream(true).start()
-            val output = process.inputStream.bufferedReader().use { it.readText() }
             val completed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 process.waitFor(20, TimeUnit.SECONDS)
             } else {
@@ -62,12 +61,26 @@ class TvManagerShellService : ITvManagerShellService.Stub() {
             }
             if (!completed) {
                 process.destroy()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) process.destroyForcibly()
                 return CommandResult(-1, "timeout")
             }
+            val output = process.inputStream.bufferedReader().use { it.readText() }
             CommandResult(process.exitValue(), output)
         } catch (error: Exception) {
             CommandResult(-1, error.message ?: error.javaClass.simpleName)
         }
+    }
+
+    private fun isHardProtected(packageName: String): Boolean {
+        val id = packageName.lowercase()
+        if (id == OWN_PACKAGE) return true
+        if (PackageAnalysisPolicy.isProtectedPackage(id)) return true
+        return id.startsWith("com.android.providers.") ||
+            id.startsWith("com.android.inputmethod.") ||
+            id.startsWith("com.google.android.inputmethod.") ||
+            id.startsWith("com.mediatek.") ||
+            id.startsWith("com.cvte.") ||
+            id.startsWith("com.droidlogic.")
     }
 
     private companion object {
