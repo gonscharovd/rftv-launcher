@@ -524,7 +524,8 @@ class MainActivity : Activity() {
         val photo = photos[safeIndex]
         val tag = WallpaperImageUrls.cacheKey(dark, safeIndex, thumbnail)
         if (target.tag == tag && target.drawable != null) return
-        if (target.tag != tag) target.setImageDrawable(null)
+        // Keep the currently visible wallpaper until the next cached/downloaded
+        // image is ready. This avoids a blank frame when the user changes photos.
         target.tag = tag
 
         // Failed requests are not restarted by the 30-second clock refresh.
@@ -627,12 +628,27 @@ class MainActivity : Activity() {
                     val preview = fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
                     finish(preview, completed = true, failure = preview == null)
                 } else {
-                    // Show a small image first; the full-resolution file replaces it
-                    // when ready. This avoids a blank/gradient home screen on slow CDNs.
-                    val preview = fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
-                    if (preview != null) {
+                    // Paint any cached preview immediately, then prefer a cached
+                    // full image before making another network request. In particular,
+                    // never download a preview when the full wallpaper is already cached.
+                    val cachedPreview = decode(previewFile, 1)
+                    if (cachedPreview != null) {
                         previewShown = true
-                        finish(preview, completed = false)
+                        finish(cachedPreview, completed = false)
+                    }
+
+                    val cachedFull = decode(fullFile, 2)
+                    if (cachedFull != null) {
+                        finish(cachedFull, completed = true)
+                        return@execute
+                    }
+
+                    if (!previewShown) {
+                        val preview = fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
+                        if (preview != null) {
+                            previewShown = true
+                            finish(preview, completed = false)
+                        }
                     }
 
                     val full = fetch(fullFile, fullUrl, 24L * 1024L * 1024L, 2)
@@ -653,7 +669,7 @@ class MainActivity : Activity() {
         val key = "${if (dark) "night" else "day"}-${index.coerceIn(0, 9)}"
         wallpaperFailedKeys.remove(key)
         wallpaperView.tag = null
-        wallpaperView.setImageDrawable(null)
+        // Keep the last good image visible while retrying the selected wallpaper.
         lastAppliedWallpaperKey = null
         Toast.makeText(this, "Повторная загрузка обоев…", Toast.LENGTH_SHORT).show()
         applyWallpaper()
