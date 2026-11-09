@@ -245,14 +245,19 @@ class MainActivity : Activity() {
     }
 
     private fun refreshInstalledAppsAfterPackageChange() {
-        val previouslyFocusedPackage = currentFocus?.tag as? String
+        val focusedView = currentFocus
+        val previouslyFocusedPackage = focusedView?.tag as? String
         val wasHome = page == "home"
+        val focusWasInDock = wasHome && focusedView != null &&
+            ::dockContent.isInitialized && isDescendantOf(focusedView, dockContent)
         loadInstalledApps()
         if (wasHome && ::dockContent.isInitialized) {
             buildDockContent()
-            dockContent.post {
-                val target = previouslyFocusedPackage?.let { dockContent.findViewWithTag<View>(it) }
-                if (target?.requestFocus() != true) focusFirstApp()
+            if (focusWasInDock) {
+                dockContent.post {
+                    val target = previouslyFocusedPackage?.let { dockContent.findViewWithTag<View>(it) }
+                    if (target?.requestFocus() != true) focusFirstApp()
+                }
             }
         } else if (page == "panel" && activePanelTitle == "Каталог приложений") {
             showAppCatalog()
