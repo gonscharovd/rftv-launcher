@@ -133,7 +133,7 @@
 
 Работаем строго по порядку: **1 → 2 → 3 → 4 → 5 → 6**. Исправления безопасности и блокирующие OTA-дефекты имеют право приоритета над очередностью.
 
-Текущее действие: реализация v0.8.0 ведётся в feature/0.8.0-home-and-system-ui-redesign. Уже внесены: legacy snapshot blur, Home clock/weather/5-day forecast, одностраничный Dock с каталогом, удаление wallpaper shortcut и expand-on-down, правки Settings и новая ручная ScreensaverActivity. CI ещё выполняется/исправляется; системный DreamService, окончательная проверка источников/20 фотообоев, визуальная доводка и интеграционная проверка DPAD остаются открытыми. Физическая приёмка остаётся NOT VERIFIED. Release не публиковать до успешного CI, ревью и проверки подписанного APK.
+Текущее действие: реализация v0.8.0 ведётся в feature/0.8.0-home-and-system-ui-redesign. Уже внесены: legacy snapshot blur, Home clock/weather/5-day forecast, одностраничный Dock с каталогом, удаление wallpaper shortcut и expand-on-down, правки Settings, vector-иконки Control Center и единый по структуре dashboard в ручной ScreensaverActivity и системном DreamService. CI ещё выполняется/исправляется; окончательная проверка источников/20 фотообоев, визуальная доводка и интеграционная проверка DPAD остаются открытыми. Физическая приёмка остаётся NOT VERIFIED. Release не публиковать до успешного CI, ревью и проверки подписанного APK.
 
 
 ## Донорские проекты и анализ Aerial TV
