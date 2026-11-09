@@ -99,6 +99,8 @@ class MainActivity : Activity() {
     private var dockExpanded = false
     private var page = "home"
     private var activePanelTitle = ""
+    private var settingsNavigationActive = false
+    private var settingsHubVisible = false
     private var packageReceiverRegistered = false
     private var themeMode = 2 // 0 light, 1 dark, 2 automatic
     private var wallpaperLight = 0
@@ -329,7 +331,8 @@ class MainActivity : Activity() {
                     return true
                 }
                 if (page == "panel") {
-                    showHome()
+                    if (settingsNavigationActive && !settingsHubVisible) showLauncherSettings()
+                    else showHome()
                     return true
                 }
             }
@@ -585,6 +588,8 @@ class MainActivity : Activity() {
     }
 
     private fun showHome() {
+        settingsNavigationActive = false
+        settingsHubVisible = false
         page = "home"
         activePanelTitle = ""
         dockExpanded = false
@@ -1503,6 +1508,8 @@ class MainActivity : Activity() {
     }
 
     private fun showLauncherSettings() {
+        settingsNavigationActive = true
+        settingsHubVisible = true
         page = "panel"
         activePanelTitle = "Настройки RFTV"
         handler.removeCallbacks(clockTask)
@@ -1587,6 +1594,7 @@ class MainActivity : Activity() {
                 }
             } else {
                 detail.addView(controlTile("Открыть раздел", "Перейти к параметрам: ${section.first}") {
+                    settingsHubVisible = false
                     section.third.invoke()
                 }, LinearLayout.LayoutParams(-1, dp(76)))
                 detail.addView(TextView(this).apply {
