@@ -51,7 +51,6 @@ import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.max
 import kotlin.math.min
 import rikka.shizuku.Shizuku
 
@@ -150,7 +149,6 @@ class MainActivity : Activity() {
     private val wallpaperLoadingKeys = ConcurrentHashMap.newKeySet<String>()
     private val wallpaperFailedKeys = ConcurrentHashMap.newKeySet<String>()
     private val installedApps = mutableListOf<TvApp>()
-    private var dockExpanded = false
     private var controlCenterReturnFocus: View? = null
     private var page = "home"
     private var activePanelTitle = ""
@@ -682,7 +680,6 @@ class MainActivity : Activity() {
         settingsSelectedIndex = 0
         page = "home"
         activePanelTitle = ""
-        dockExpanded = false
         root = FrameLayout(this).apply {
             setBackgroundColor(RftvDesignSystem.ColorTokens.HOME_BACKDROP)
             clipChildren = true
@@ -774,18 +771,6 @@ class MainActivity : Activity() {
         }
         root.addView(dock, dockParams)
 
-        val wallpaperButton = glassButton("Обои  ◀   ▶") { nextWallpaper() }.apply {
-            tag = "rftv-wallpaper-button"
-            setOnLongClickListener {
-                retryCurrentWallpaper()
-                true
-            }
-        }
-        val wallpaperParams = FrameLayout.LayoutParams(-2, dp(RftvDesignSystem.Size.HOME_WALLPAPER_BUTTON_HEIGHT), Gravity.BOTTOM or Gravity.END).apply {
-            rightMargin = dp(RftvDesignSystem.Spacing.HOME_WALLPAPER_RIGHT_INSET)
-            bottomMargin = dp(dockHeightDp + RftvDesignSystem.Spacing.HOME_WALLPAPER_DOCK_GAP)
-        }
-        root.addView(wallpaperButton, wallpaperParams)
 
         setContentView(root)
         startClock()
@@ -803,24 +788,9 @@ class MainActivity : Activity() {
         dockContent.removeAllViews()
         val visibleApps = installedApps.filter { it.packageName !in hiddenPackages }
         val favorites = visibleApps.filter { it.packageName in favoritePackages }
-        // If the user removes every favorite, keep the launcher usable by
-        // showing the complete launchable app list in the first Dock row.
+        // A single adaptive row: favorites first, followed by a dedicated App Library entry.
         val firstRow = favorites.ifEmpty { visibleApps }
         dockContent.addView(buildAppRow(firstRow), LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)))
-        if (dockExpanded) {
-            val firstRowPackages = firstRow.map { it.packageName }.toSet()
-            val allApps = visibleApps.filter { it.packageName !in firstRowPackages }
-            dockContent.addView(buildAppRow(allApps), LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)))
-        }
-        if (firstRow.isEmpty()) {
-            val empty = TextView(this).apply {
-                text = "Приложения появятся здесь после установки"
-                textSize = RftvDesignSystem.Size.EMPTY_DOCK_TEXT_SP
-                gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
-            }
-            dockContent.addView(empty, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.EMPTY_DOCK_HEIGHT)))
-        }
     }
 
     private fun buildAppRow(items: List<TvApp>): HorizontalScrollView {
@@ -833,6 +803,9 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
+        val availableWidthDp = (resources.displayMetrics.widthPixels / resources.displayMetrics.density * dockWidthPercent / 100f).toInt()
+        val tileWidthDp = ((availableWidthDp - 44) / (items.size + 1).coerceAtLeast(1)).coerceIn(82, RftvDesignSystem.Size.DOCK_TILE_WIDTH)
+        val iconSizeDp = (tileWidthDp * 0.56f).toInt().coerceIn(44, RftvDesignSystem.Size.DOCK_ICON)
         items.forEach { app ->
             val tile = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -855,7 +828,7 @@ class MainActivity : Activity() {
                 setImageDrawable(app.icon)
                 scaleType = ImageView.ScaleType.FIT_CENTER
             }
-            tile.addView(icon, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.DOCK_ICON), dp(RftvDesignSystem.Size.DOCK_ICON)))
+            tile.addView(icon, LinearLayout.LayoutParams(dp(iconSizeDp), dp(iconSizeDp)))
             val label = TextView(this).apply {
                 text = app.label
                 textSize = RftvDesignSystem.Size.DOCK_LABEL_TEXT_SP
@@ -865,12 +838,43 @@ class MainActivity : Activity() {
                 maxLines = 1
                 setPadding(0, dp(RftvDesignSystem.Size.DOCK_LABEL_TOP_PADDING), 0, 0)
             }
-            tile.addView(label, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.DOCK_LABEL_WIDTH), dp(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT)))
-            row.addView(tile, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.DOCK_TILE_WIDTH), dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)).apply {
+            tile.addView(label, LinearLayout.LayoutParams(dp(tileWidthDp - 8), dp(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT)))
+            row.addView(tile, LinearLayout.LayoutParams(dp(tileWidthDp), dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)).apply {
                 leftMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
                 rightMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
             })
         }
+        val catalogTile = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            isFocusable = true
+            isFocusableInTouchMode = true
+            contentDescription = "Все приложения"
+            background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused = false)
+            setPadding(dp(6), dp(5), dp(6), dp(4))
+            setOnFocusChangeListener { view, focused ->
+                view.background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused)
+                RftvDesignSystem.applyFocusScale(view, focused, RftvDesignSystem.Size.DOCK_FOCUS_SCALE)
+            }
+            setOnClickListener { showAppCatalog() }
+        }
+        catalogTile.addView(TextView(this).apply {
+            text = "▦"
+            textSize = 38f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+        }, LinearLayout.LayoutParams(dp(iconSizeDp), dp(iconSizeDp)))
+        catalogTile.addView(TextView(this).apply {
+            text = "Все приложения"
+            textSize = RftvDesignSystem.Size.DOCK_LABEL_TEXT_SP
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            maxLines = 1
+        }, LinearLayout.LayoutParams(dp(tileWidthDp - 8), dp(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT)))
+        row.addView(catalogTile, LinearLayout.LayoutParams(dp(tileWidthDp), dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)).apply {
+            leftMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
+            rightMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
+        })
         scroll.addView(row)
         return scroll
     }
@@ -880,42 +884,6 @@ class MainActivity : Activity() {
         val rowScroll = dockContent.getChildAt(0) as? HorizontalScrollView ?: return
         val row = rowScroll.getChildAt(0) as? LinearLayout ?: return
         row.getChildAt(0)?.requestFocus()
-    }
-
-    private fun setDockExpanded(expanded: Boolean) {
-        if (!::dock.isInitialized || dockExpanded == expanded) return
-        val previouslyFocusedPackage = currentFocus?.tag as? String
-        dockExpanded = expanded
-        val params = dock.layoutParams as FrameLayout.LayoutParams
-        val expandedHeight = if (expanded) max(270, dockHeightDp + 112) else dockHeightDp
-        params.height = dp(expandedHeight)
-        dock.layoutParams = params
-        updateWallpaperButtonPosition(expandedHeight)
-        buildDockContent()
-        dock.animate().alpha(1f).setDuration(RftvDesignSystem.Motion.DOCK_REVEAL_DURATION_MS).start()
-        if (expanded) {
-            val second = dockContent.getChildAt(1)
-            second?.alpha = 0f
-            second?.animate()?.alpha(1f)?.setDuration(RftvDesignSystem.Motion.SECONDARY_REVEAL_DURATION_MS)?.start()
-        }
-        // Rebuilding rows removes the previously focused View. Restore focus
-        // explicitly so DPAD navigation never leaves the remote without a target.
-        dockContent.post {
-            val target = if (expanded) {
-                val secondRow = dockContent.getChildAt(1) as? HorizontalScrollView
-                val secondItems = secondRow?.getChildAt(0) as? LinearLayout
-                secondItems?.getChildAt(0)
-                    ?: (dockContent.getChildAt(0) as? HorizontalScrollView)
-                        ?.let { it.getChildAt(0) as? LinearLayout }
-                        ?.getChildAt(0)
-            } else {
-                val firstRow = (dockContent.getChildAt(0) as? HorizontalScrollView)
-                    ?.getChildAt(0) as? LinearLayout
-                previouslyFocusedPackage?.let { dockContent.findViewWithTag<View>(it) }
-                    ?: firstRow?.getChildAt(0)
-            }
-            if (target?.requestFocus() != true) focusFirstApp()
-        }
     }
 
     private fun nextWallpaper() {
@@ -1316,18 +1284,11 @@ class MainActivity : Activity() {
         card.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         card.alpha = 0f
         card.translationX = dp(18).toFloat()
-        // Keep the Control Center above the Dock instead of drawing over app
-        // labels. Compute available height from the actual Dock dimensions for
-        // consistent spacing on both 720p and 1080p TV screens.
-        val controlCenterTop = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TOP_INSET)
-        val controlCenterBottomClearance = dp(
-            dockHeightDp + RftvDesignSystem.Spacing.DOCK_BOTTOM_INSET + 14
-        )
+        // The Control Center occupies the full available screen height and overlays the Dock.
+        val controlCenterTop = dp(12)
         val controlCenterHeight = (
-            resources.displayMetrics.heightPixels -
-                controlCenterTop -
-                controlCenterBottomClearance
-            ).coerceAtLeast(dp(360))
+            resources.displayMetrics.heightPixels - controlCenterTop - dp(12)
+        ).coerceAtLeast(dp(360))
         overlay.addView(card, FrameLayout.LayoutParams(
             (resources.displayMetrics.widthPixels * RftvDesignSystem.Size.CONTROL_CENTER_WIDTH_FRACTION).toInt(),
             controlCenterHeight,
@@ -2218,18 +2179,8 @@ class MainActivity : Activity() {
         if (!::dock.isInitialized) return
         val params = dock.layoutParams as FrameLayout.LayoutParams
         params.width = (resources.displayMetrics.widthPixels * dockWidthPercent / 100f).toInt()
-        val actualHeight = if (dockExpanded) max(270, dockHeightDp + 112) else dockHeightDp
-        params.height = dp(actualHeight)
+        params.height = dp(dockHeightDp)
         dock.layoutParams = params
-        updateWallpaperButtonPosition(actualHeight)
-    }
-
-    private fun updateWallpaperButtonPosition(actualDockHeightDp: Int) {
-        if (!::root.isInitialized) return
-        val button = root.findViewWithTag<View>("rftv-wallpaper-button") ?: return
-        val params = button.layoutParams as? FrameLayout.LayoutParams ?: return
-        params.bottomMargin = dp(actualDockHeightDp + RftvDesignSystem.Spacing.HOME_WALLPAPER_DOCK_GAP)
-        button.layoutParams = params
     }
 
     private fun showTvManager() {
