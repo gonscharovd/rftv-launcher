@@ -55,7 +55,7 @@ internal class TvManagerOperationStore(context: Context) {
             snapshot.originalEnabledSetting, snapshot.originalEnabledSetting,
             snapshot.provider, snapshot.createdAt, "Исходное состояние сохранено"
         )
-        val journal = readJournal().put(entry.toJson())
+        val journal = appendJournal(readJournal(), entry)
         if (!preferences.edit()
                 .putString(KEY_ACTIVE, active.toString())
                 .putString(KEY_JOURNAL, journal.toString())
@@ -98,12 +98,13 @@ internal class TvManagerOperationStore(context: Context) {
         val stored = active.optJSONObject(snapshot.packageName) ?: return false
         if (stored.optString("operationId") != snapshot.operationId) return false
         active.remove(snapshot.packageName)
-        val journal = readJournal().put(
+        val journal = appendJournal(
+            readJournal(),
             JournalEntry(
                 snapshot.operationId, snapshot.packageName, "RESTORED",
                 null, resultingEnabledSetting, snapshot.provider,
                 System.currentTimeMillis(), "Исходное состояние восстановлено"
-            ).toJson()
+            )
         )
         return preferences.edit()
             .putString(KEY_ACTIVE, active.toString())
@@ -134,14 +135,21 @@ internal class TvManagerOperationStore(context: Context) {
         afterState: Int?,
         result: String
     ): Boolean {
-        val journal = readJournal().put(
+        val journal = appendJournal(
+            readJournal(),
             JournalEntry(
                 snapshot.operationId, snapshot.packageName, action,
                 snapshot.originalEnabledSetting, afterState, snapshot.provider,
                 System.currentTimeMillis(), result
-            ).toJson()
+            )
         )
         return preferences.edit().putString(KEY_JOURNAL, journal.toString()).commit()
+    }
+
+    private fun appendJournal(journal: JSONArray, entry: JournalEntry): JSONArray {
+        journal.put(entry.toJson())
+        while (journal.length() > MAX_JOURNAL_ENTRIES) journal.remove(0)
+        return journal
     }
 
     private fun readSnapshots(): JSONObject = try {
@@ -206,6 +214,7 @@ internal class TvManagerOperationStore(context: Context) {
         private const val PREFERENCES_NAME = "rftv_tv_manager_operations"
         private const val KEY_ACTIVE = "active_snapshots"
         private const val KEY_JOURNAL = "operation_journal"
+        private const val MAX_JOURNAL_ENTRIES = 500
         private val PACKAGE_NAME = Regex("[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)+")
 
         fun newOperationId(): String = UUID.randomUUID().toString()
