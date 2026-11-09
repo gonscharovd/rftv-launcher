@@ -59,9 +59,10 @@ internal object TvManagerShizukuBridge {
             val args = Shizuku.UserServiceArgs(
                 ComponentName(context, TvManagerShellService::class.java)
             ).daemon(false)
+                .tag(USER_SERVICE_TAG)
                 .processNameSuffix("tvmanager")
                 .debuggable(false)
-                .version(1)
+                .version(USER_SERVICE_VERSION)
             Shizuku.unbindUserService(args, connection, true)
         } catch (_: Throwable) {
             // Service may already have died or never been bound.
