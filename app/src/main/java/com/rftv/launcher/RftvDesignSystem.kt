@@ -8,8 +8,8 @@ import android.view.View
 /**
  * Shared visual language for RFTV.
  *
- * Android 9 / MT9632 profile: translucent fills, thin strokes and short property
- * animations. No real-time blur, RenderEffect or expensive per-frame shaders.
+ * Liquid Glass design system for Android TV. Blur is supplied by a backdrop snapshot
+ * pipeline on legacy Android and native APIs where available; never blur every frame.
  */
 internal object RftvDesignSystem {
     object ColorTokens {
