@@ -125,7 +125,7 @@
 
 Работаем строго по порядку: **1 → 2 → 3 → 4 → 5 → 6**. Исправления безопасности и блокирующие OTA-дефекты имеют право приоритета над очередностью.
 
-Текущее действие: завершение PR #34. В исходниках уже реализованы согласованные изменения Home, фотообоев, адаптивного Dock, каталога, Control Center, Settings и общей data layer ручной/системной заставки. Все 20 фотоисточников прошли предыдущую live HTTP/decode проверку; подписанная Release-сборка versionCode 11 на commit ffdefd6 прошла identity/signature/SHA-256 проверки. Полный CI на PR HEAD зелёный; остаются code review, merge и автоматическая публикация OTA Release. Физическая приёмка v0.8.0 остаётся NOT VERIFIED. Детали — docs/V0.8.0_IMPLEMENTATION_AUDIT.md.
+Текущее действие: завершение PR #34. В исходниках уже реализованы согласованные изменения Home, фотообоев, адаптивного Dock, каталога, Control Center, Settings и общей data layer ручной/системной заставки. Все 20 фотоисточников прошли предыдущую live HTTP/decode проверку; подписанная Release-сборка versionCode 11 на commit ffdefd6 прошла identity/signature/SHA-256 проверки. Полный CI на PR HEAD зелёный; после документационного commit требуется повторный CI, затем code review, merge и автоматическая публикация OTA Release. Физическая приёмка v0.8.0 остаётся NOT VERIFIED. Детали — docs/V0.8.0_IMPLEMENTATION_AUDIT.md.
 
 
 ## Донорские проекты и анализ Aerial TV
