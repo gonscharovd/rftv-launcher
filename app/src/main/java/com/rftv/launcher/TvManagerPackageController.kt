@@ -116,7 +116,7 @@ internal class TvManagerPackageController(
         val original = state?.let {
             PackageOperationPolicy.OriginalState(
                 enabledSetting = it,
-                manifestEnabled = app.enabled,
+                applicationEnabled = app.enabled,
                 hiddenByDevicePolicy = false
             )
         }
@@ -237,7 +237,7 @@ internal class TvManagerPackageController(
             packageName = packageName,
             userId = 0,
             originalEnabledSetting = originalState,
-            manifestEnabled = app.enabled,
+            applicationEnabled = app.enabled,
             originalHidden = false,
             provider = if (uid == 0) "Shizuku root" else "Shizuku ADB shell",
             deviceFingerprint = Build.FINGERPRINT,
@@ -294,7 +294,7 @@ internal class TvManagerPackageController(
             isOwnPackage = packageName == appContext.packageName,
             isProtected = false,
             originalState = PackageOperationPolicy.EnabledSetting.from(snapshot.originalEnabledSetting)?.let {
-                PackageOperationPolicy.OriginalState(it, snapshot.manifestEnabled, snapshot.originalHidden)
+                PackageOperationPolicy.OriginalState(it, snapshot.applicationEnabled, snapshot.originalHidden)
             },
             changedByRftv = true,
             access = PackageOperationPolicy.Access(
