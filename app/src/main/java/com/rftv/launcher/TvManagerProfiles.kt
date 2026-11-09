@@ -5,8 +5,9 @@ import android.os.Build
 /**
  * Curated reference profiles derived from CleanYourTV examples.
  *
- * These are reference-only. A profile is never applied to a device unless its
- * hardware/OS fingerprint matches, and this prototype has no privileged bridge.
+ * These are reference-only. A profile is never applied unless its hardware/OS
+ * fingerprint matches. Donor entries are not automatically considered safe: the
+ * optional/dependency flags default to false until independently validated.
  */
 internal object TvManagerProfiles {
     data class PackageEntry(
@@ -14,7 +15,10 @@ internal object TvManagerProfiles {
         val label: String,
         val group: String,
         val note: String,
-        val risk: String = "Проверить"
+        val risk: String = "Проверить",
+        val verifiedOptional: Boolean = false,
+        val confidenceHigh: Boolean = false,
+        val dependenciesVerified: Boolean = false
     )
 
     data class Profile(
