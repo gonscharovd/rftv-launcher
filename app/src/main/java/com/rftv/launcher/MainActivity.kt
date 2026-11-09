@@ -149,6 +149,7 @@ class MainActivity : Activity() {
     // One failed URL is not retried on every clock tick; retry is user-initiated.
     private val wallpaperLoadingKeys = ConcurrentHashMap.newKeySet<String>()
     private val wallpaperFailedKeys = ConcurrentHashMap.newKeySet<String>()
+    private val wallpaperFallbackAttempted = ConcurrentHashMap.newKeySet<String>()
     private val installedApps = mutableListOf<TvApp>()
     private var controlCenterReturnFocus: View? = null
     private var page = "home"
@@ -532,6 +533,7 @@ class MainActivity : Activity() {
         if (selectionKey == lastAppliedWallpaperKey) return
 
         lastAppliedWallpaperKey = selectionKey
+        wallpaperFallbackAttempted.remove(selectionKey)
         val colors = palette[index]
         wallpaperView.background = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
@@ -583,11 +585,15 @@ class MainActivity : Activity() {
                     instanceFollowRedirects = true
                     useCaches = true
                     setRequestProperty("User-Agent", "RFTV-Launcher/0.7")
-                    setRequestProperty("Accept", "image/avif,image/webp,image/jpeg,image/*")
+                    setRequestProperty("Accept", "image/jpeg,image/*;q=0.8,*/*;q=0.5")
                 }
                 connection.connect()
                 if (connection.responseCode !in 200..299) {
                     throw IllegalStateException("Wallpaper HTTP ${connection.responseCode}")
+                }
+                val contentType = connection.contentType.orEmpty()
+                if (contentType.isNotBlank() && !contentType.startsWith("image/", ignoreCase = true)) {
+                    throw IllegalStateException("Wallpaper returned non-image content: $contentType")
                 }
                 val part = File(directory, file.name + ".part")
                 tempFile = part
@@ -607,7 +613,10 @@ class MainActivity : Activity() {
                 if (part.length() <= 10_000L) throw IllegalStateException("Wallpaper response is empty")
                 if (file.exists()) file.delete()
                 if (!part.renameTo(file)) throw IllegalStateException("Could not commit wallpaper cache")
-                return decode(file, sampleSize)
+                return decode(file, sampleSize) ?: run {
+                    file.delete()
+                    throw IllegalStateException("Wallpaper bitmap decode failed: $address")
+                }
             } finally {
                 tempFile?.takeIf { it.exists() }?.delete()
                 connection?.disconnect()
@@ -637,7 +646,15 @@ class MainActivity : Activity() {
                     wallpaperFailedKeys.add(tag)
                     target.contentDescription = "Не удалось загрузить обои: ${photo.title}"
                     if (target === wallpaperView && page == "home" && target.drawable == null) {
-                        Toast.makeText(this, "Не удалось загрузить фотографию. Проверьте соединение или повторите выбор обоев.", Toast.LENGTH_LONG).show()
+                        val selectedIndex = if (dark) wallpaperDark else wallpaperLight
+                        val selectedKey = WallpaperImageUrls.selectionKey(dark, selectedIndex)
+                        if (wallpaperFallbackAttempted.add(selectedKey)) {
+                            android.util.Log.w("RFTVWallpaper", "Primary wallpaper failed; trying next photo. selected=$selectedKey")
+                            loadPhoto((safeIndex + 1) % photos.size, dark, target)
+                        } else {
+                            android.util.Log.e("RFTVWallpaper", "Primary and fallback wallpapers failed. selected=$selectedKey")
+                            Toast.makeText(this, "Не удалось загрузить фотографии обоев. Ошибка сохранена в журнале.", Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
             }
@@ -676,7 +693,9 @@ class MainActivity : Activity() {
                     val full = fetch(fullFile, fullUrl, 24L * 1024L * 1024L, 2)
                     finish(full, completed = true, failure = full == null && !previewShown)
                 }
-            } catch (_: Exception) {
+            } catch (error: Exception) {
+                android.util.Log.w("RFTVWallpaper", "Wallpaper load failed for ${photo.imageUrl}", error)
+                prefs.edit().putString("wallpaper_last_error", error.message ?: error.javaClass.simpleName).apply()
                 // A preview is already useful content: a failed full-size request
                 // must not mark the whole wallpaper as unavailable or show an error.
                 finish(null, completed = true, failure = !previewShown)
