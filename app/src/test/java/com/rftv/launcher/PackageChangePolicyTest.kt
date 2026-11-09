@@ -20,6 +20,22 @@ class PackageChangePolicyTest {
     }
 
     @Test
+    fun ignoresRemovalBroadcastWhenPackageIsBeingReplaced() {
+        assertFalse(PackageChangePolicy.shouldRefresh(
+            "android.intent.action.PACKAGE_REMOVED",
+            "com.example.tv",
+            "com.rftv.launcher",
+            isReplacing = true
+        ))
+        assertTrue(PackageChangePolicy.shouldRefresh(
+            "android.intent.action.PACKAGE_ADDED",
+            "com.example.tv",
+            "com.rftv.launcher",
+            isReplacing = true
+        ))
+    }
+
+    @Test
     fun ignoresOwnPackageAndUnrelatedOrMalformedBroadcasts() {
         assertFalse(PackageChangePolicy.shouldRefresh("android.intent.action.PACKAGE_ADDED", "com.rftv.launcher", "com.rftv.launcher"))
         assertFalse(PackageChangePolicy.shouldRefresh("android.intent.action.BOOT_COMPLETED", "com.example.tv", "com.rftv.launcher"))
