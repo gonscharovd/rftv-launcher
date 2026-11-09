@@ -52,7 +52,7 @@ GitHub Actions builds pushes to main and feature/** branches and pull requests t
 
 - RFTV now includes an Android DreamService screensaver prototype with hourly random landscape downloads, cached images, Open-Meteo weather for Chelyabinsk, official Bank of Russia USD/EUR rates, and RSS headlines from RIA Novosti and Google News (Russian-language world feed). The initial city and feeds are hard-coded; configuration UI is a follow-up.
 - Wallpaper photos require an internet connection for their first download. The launcher stores each downloaded image privately; previously downloaded wallpapers remain available offline.
-- Glass is approximated with translucent fills and strokes. Real-time background blur is intentionally avoided for the low-memory target device.
+- Liquid Glass surfaces use layered translucent fills, highlights, strokes and a blurred backdrop. Android 9 uses an asynchronously generated, downsampled snapshot blur; newer Android versions may use native blur APIs with a compatible fallback. The effect is evaluated on the target TV rather than disabled by assumption.
 - Brightness, Wi-Fi and Bluetooth entries open Android settings. Direct toggles depend on StarOS permissions and firmware APIs and are not claimed to work universally.
 - RAM is informational. Android controls background process lifecycle; this app does not force-stop arbitrary apps or claim to free RAM by killing protected processes.
 - Theme selection, dock dimensions, favourites, per-app ordering and hidden-app state are persisted. Per-app icon sizing and a full appearance editor are not implemented.
