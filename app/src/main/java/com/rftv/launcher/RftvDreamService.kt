@@ -376,7 +376,7 @@ class RftvDreamService : DreamService() {
                 }
                 event = parser.next()
             }
-            if (titles.isEmpty()) "Новостная лента пуста" else titles.joinToString("\\n• ", "• ")
+            if (titles.isEmpty()) "Новостная лента пуста" else titles.joinToString("\n• ", "• ")
         } catch (_: Exception) {
             "Лента временно недоступна"
         }
