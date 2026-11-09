@@ -79,7 +79,7 @@ class MainActivity : Activity() {
     private val packageChangeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val changedPackage = intent?.data?.schemeSpecificPart
-            if (changedPackage == packageName) return
+            if (!PackageChangePolicy.shouldRefresh(intent?.action, changedPackage, packageName)) return
             handler.removeCallbacks(packageRefreshTask)
             // Package replacement emits multiple broadcasts; coalesce them so
             // the catalog is rebuilt once after PackageManager settles.
@@ -237,6 +237,7 @@ class MainActivity : Activity() {
             addAction(Intent.ACTION_PACKAGE_REMOVED)
             addAction(Intent.ACTION_PACKAGE_CHANGED)
             addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addAction("android.intent.action.PACKAGE_FULLY_REMOVED")
             addDataScheme("package")
         }
         registerReceiver(packageChangeReceiver, filter)
