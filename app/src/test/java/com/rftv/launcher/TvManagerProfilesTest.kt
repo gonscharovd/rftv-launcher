@@ -43,6 +43,8 @@ class TvManagerProfilesTest {
         ))
 
         val profile = reference.copy(
+            hardwareTokens = listOf("mt9256"),
+            productTokens = listOf("pb766"),
             manufacturerTokens = listOf("Sber"),
             modelTokens = listOf("Sber TV 32"),
             buildFingerprintTokens = listOf("vendor/sber/pb766:11/BUILD/123:user/release-keys"),
@@ -87,6 +89,17 @@ class TvManagerProfilesTest {
             model = "Sber TV 32",
             buildFingerprint = "vendor/sber/pb766:11/BUILD/123:user/release-keys",
             supportedAbis = listOf("arm64-v8a")
+        ))
+        assertFalse(profile.matchesFingerprint(
+            board = exact.getValue("board"),
+            hardware = exact.getValue("hardware"),
+            device = exact.getValue("device"),
+            product = "different-product",
+            sdk = 30,
+            manufacturer = "Sber",
+            model = "Sber TV 32",
+            buildFingerprint = "vendor/sber/pb766:11/BUILD/123:user/release-keys",
+            supportedAbis = listOf("armeabi-v7a")
         ))
         assertFalse(profile.matchesFingerprint(
             board = exact.getValue("board"),
