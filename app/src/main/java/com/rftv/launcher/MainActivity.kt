@@ -108,7 +108,7 @@ class MainActivity : Activity() {
             tvManagerShellService = null
             tvManagerShellUid = -1
             handler.post {
-                if (page == "panel" && activePanelTitle == "ADB и разрешения") showTvAdb()
+                refreshTvManagerScreen()
             }
         }
     }
