@@ -121,6 +121,8 @@ class MainActivity : Activity() {
     private var glassBackdropBitmap: Bitmap? = null
     private var glassBackdropCacheKey: String? = null
     private var glassBackdropLoadingKey: String? = null
+    private var activeGlassBackdropView: ImageView? = null
+    private var activeGlassBackdropKey: String? = null
     private val networkExecutor = Executors.newSingleThreadExecutor()
     private val tvManagerExecutor = Executors.newSingleThreadExecutor()
     private val tvManagerController by lazy {
@@ -667,6 +669,7 @@ class MainActivity : Activity() {
                         target.setImageBitmap(bitmap)
                     }
                     target.contentDescription = "${photo.title} — ${photo.author}"
+                    if (target === wallpaperView) refreshGlassBackdrop()
                 } else if (failure) {
                     wallpaperFailedKeys.add(tag)
                     target.contentDescription = "Не удалось загрузить обои: ${photo.title}"
@@ -742,6 +745,8 @@ class MainActivity : Activity() {
     }
 
     private fun showHome() {
+        activeGlassBackdropView = null
+        activeGlassBackdropKey = null
         settingsNavigationActive = false
         settingsHubVisible = false
         settingsSelectedIndex = 0
@@ -3446,7 +3451,14 @@ class MainActivity : Activity() {
             setBackgroundColor(Color.argb(112, 5, 11, 22))
             isFocusable = false
         }, 1, FrameLayout.LayoutParams(-1, -1))
+        activeGlassBackdropView = backdrop
+        activeGlassBackdropKey = selectionKey
+        refreshGlassBackdrop()
+    }
 
+    private fun refreshGlassBackdrop() {
+        val selectionKey = activeGlassBackdropKey ?: return
+        val backdrop = activeGlassBackdropView ?: return
         if (glassBackdropCacheKey == selectionKey && glassBackdropBitmap?.isRecycled == false) {
             backdrop.setImageBitmap(glassBackdropBitmap)
             return
@@ -3455,10 +3467,10 @@ class MainActivity : Activity() {
         val source = (wallpaperView.drawable as? BitmapDrawable)?.bitmap ?: return
         if (source.isRecycled) return
         glassBackdropLoadingKey = selectionKey
+        val width = min(480, (resources.displayMetrics.widthPixels / 2).coerceAtLeast(240))
+        val height = (width * 9f / 16f).toInt().coerceAtLeast(135)
         glassBlurExecutor.execute {
             val blurred = try {
-                val width = min(480, (resources.displayMetrics.widthPixels / 2).coerceAtLeast(240))
-                val height = (width * 9f / 16f).toInt().coerceAtLeast(135)
                 GlassBackdrop.createBlurredSnapshot(source, width, height, radius = 7, passes = 3)
             } catch (_: Exception) {
                 null
@@ -3473,7 +3485,9 @@ class MainActivity : Activity() {
                 glassBackdropBitmap?.takeIf { it !== blurred && !it.isRecycled }?.recycle()
                 glassBackdropBitmap = blurred
                 glassBackdropCacheKey = selectionKey
-                if (backdrop.parent === container) backdrop.setImageBitmap(blurred)
+                if (activeGlassBackdropKey == selectionKey) {
+                    activeGlassBackdropView?.setImageBitmap(blurred)
+                }
             }
         }
     }
