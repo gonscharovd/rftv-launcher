@@ -42,6 +42,7 @@ class RftvDreamService : DreamService() {
     private var lastHourKey = -1L
     private var lastDashboardRefreshAt = 0L
     @Volatile private var dreaming = false
+    private var sessionAcquired = false
 
     private val refreshTask = object : Runnable {
         override fun run() {
@@ -60,6 +61,11 @@ class RftvDreamService : DreamService() {
 
     override fun onDreamingStarted() {
         super.onDreamingStarted()
+        sessionAcquired = ScreensaverSession.tryAcquire()
+        if (!sessionAcquired) {
+            finish()
+            return
+        }
         dreaming = true
         // A DreamService can be started more than once in the same hour.
         // Force a refresh so a newly created view is never left blank.
@@ -81,6 +87,8 @@ class RftvDreamService : DreamService() {
         handler.removeCallbacksAndMessages(null)
         refreshFuture?.cancel(true)
         refreshFuture = null
+        if (sessionAcquired) ScreensaverSession.release()
+        sessionAcquired = false
         super.onDreamingStopped()
     }
 
