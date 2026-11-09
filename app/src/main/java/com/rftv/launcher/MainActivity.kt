@@ -2304,14 +2304,25 @@ class MainActivity : Activity() {
                         .filter { it.packageName != packageName }
                     val loadedRows = apps.map { app ->
                         val label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
-                        val preview = tvManagerController.preview(app.packageName, PackageOperationPolicy.Mode.MANUAL, hasActiveSnapshot = false)
+                        val preview = tvManagerController.preview(
+                            app.packageName,
+                            PackageOperationPolicy.Mode.MANUAL,
+                            hasActiveSnapshot = false
+                        )
                         val protected = preview?.isProtected == true
                         val (riskLabel, riskColor) = risk(app.packageName, protected)
+                        val setting = preview?.enabledSetting ?: try {
+                            packageManager.getApplicationEnabledSetting(app.packageName)
+                        } catch (_: Exception) { PackageManager.COMPONENT_ENABLED_STATE_DEFAULT }
+                        val disabled = setting == PackageManager.COMPONENT_ENABLED_STATE_DISABLED ||
+                            setting == PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER ||
+                            setting == PackageManager.COMPONENT_ENABLED_STATE_DISABLED_UNTIL_USED ||
+                            (setting == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT && !app.enabled)
                         PackageRow(
                             app,
                             label,
                             app.flags and ApplicationInfo.FLAG_SYSTEM != 0,
-                            isPackageDisabled(app.packageName, app.enabled),
+                            disabled,
                             protected,
                             riskLabel,
                             riskColor
