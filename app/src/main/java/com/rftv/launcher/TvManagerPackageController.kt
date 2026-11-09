@@ -128,6 +128,8 @@ internal class TvManagerPackageController(
         } catch (_: Exception) {
             return OperationResult(false, "Пакет больше не установлен.")
         }
+        val service = serviceProvider()
+            ?: return OperationResult(false, "Привилегированный канал отключился до сохранения snapshot.")
         val originalState = preview.enabledSetting
         val operationId = TvManagerOperationStore.newOperationId()
         val uid = serviceUidProvider()
@@ -146,8 +148,6 @@ internal class TvManagerPackageController(
             return OperationResult(false, "Не удалось надёжно сохранить исходное состояние. Изменение не выполнялось.")
         }
 
-        val service = serviceProvider()
-            ?: return OperationResult(false, "Привилегированный канал отключился до операции.", snapshot)
         val commandResult = try {
             service.setEnabledSetting(packageName, PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER, 0)
         } catch (error: Exception) {
@@ -159,6 +159,7 @@ internal class TvManagerPackageController(
         if (!verified) {
             val rollback = restoreState(service, snapshot)
             store.recordRollback(snapshot, rollback, "Отключение не подтверждено. Ответ: $commandResult")
+            if (rollback) store.recordRestored(snapshot, snapshot.originalEnabledSetting, true)
             return OperationResult(
                 false,
                 if (rollback) "Отключение не подтверждено; исходное состояние восстановлено."
@@ -166,7 +167,17 @@ internal class TvManagerPackageController(
                 snapshot
             )
         }
-        store.recordApplied(snapshot, PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER, true)
+        if (!store.recordApplied(snapshot, PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER, true)) {
+            val rollback = restoreState(service, snapshot)
+            store.recordRollback(snapshot, rollback, "Не удалось записать результат операции в журнал.")
+            if (rollback) store.recordRestored(snapshot, snapshot.originalEnabledSetting, true)
+            return OperationResult(
+                false,
+                if (rollback) "Не удалось сохранить журнал. Пакет возвращён в исходное состояние."
+                else "КРИТИЧЕСКАЯ ОШИБКА: не удалось сохранить журнал и подтвердить откат.",
+                snapshot
+            )
+        }
         return OperationResult(true, "Пакет отключён; новое состояние подтверждено.", snapshot)
     }
 
@@ -203,7 +214,13 @@ internal class TvManagerPackageController(
             store.recordRestored(snapshot, currentState(packageName), false)
             return OperationResult(false, "Исходное состояние не подтверждено. Запись сохранена для повторной попытки.", snapshot)
         }
-        store.recordRestored(snapshot, snapshot.originalEnabledSetting, true)
+        if (!store.recordRestored(snapshot, snapshot.originalEnabledSetting, true)) {
+            return OperationResult(
+                false,
+                "Состояние восстановлено, но журнал не удалось обновить. Snapshot сохранён; повтори проверку.",
+                snapshot
+            )
+        }
         return OperationResult(true, "Исходное состояние пакета восстановлено и проверено.")
     }
 
