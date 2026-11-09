@@ -667,7 +667,7 @@ class MainActivity : Activity() {
                 contentDescription = app.label
                 setOnFocusChangeListener { view, focused ->
                     view.background = RftvDesignSystem.focusSurface(
-                        this@MainActivity, focused, RftvDesignSystem.Radius.DOCK_TILE, restingAlpha = 25, focusedAlpha = 112
+                        this@MainActivity, focused, RftvDesignSystem.Radius.DOCK_TILE, restingAlpha = RftvDesignSystem.GlassAlpha.DOCK_TILE_RESTING, focusedAlpha = RftvDesignSystem.GlassAlpha.DOCK_TILE_FOCUSED
                     )
                     RftvDesignSystem.applyFocusScale(view, focused, RftvDesignSystem.Size.DOCK_FOCUS_SCALE)
                     view.elevation = if (focused) dp(RftvDesignSystem.Elevation.FOCUSED_TILE_DP).toFloat() else 0f
