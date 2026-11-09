@@ -2492,9 +2492,7 @@ class MainActivity : Activity() {
         val matched = TvManagerProfiles.matchingProfiles()
         val profile = matched.firstOrNull()
         val channelReady = tvManagerShellService != null && (tvManagerShellUid == 0 || tvManagerShellUid == 2000)
-        val autoCandidates = matched.flatMap { it.packages }.filter {
-            it.verifiedOptional && it.confidenceHigh && it.dependenciesVerified
-        }
+        val autoCandidates = tvManagerController.automaticCandidates()
         showPanel("Очистка ТВ") { body ->
             body.addView(infoCard("АВТО-ОПРЕДЕЛЕНИЕ",
                 "${Build.MANUFACTURER} ${Build.MODEL}",
@@ -2506,9 +2504,9 @@ class MainActivity : Activity() {
             body.addView(infoCard("АВТОМАТИЧЕСКАЯ ОЧИСТКА",
                 if (autoCandidates.isNotEmpty() && channelReady) "Доступна после предпросмотра" else "Пока недоступна",
                 when {
-                    autoCandidates.isEmpty() -> "В профиле нет пакетов, прошедших все обязательные проверки: подтверждённая необязательность, высокая уверенность и проверенные зависимости. Автоматически ничего не отключается."
+                    autoCandidates.isEmpty() -> "В точном профиле нет пакетов, прошедших все проверки: подтверждённая необязательность, высокая уверенность и проверенные зависимости. Автоматически ничего не отключается."
                     !channelReady -> "Профиль найден, но Shizuku privileged channel не подключён."
-                    else -> "Кандидатов: ${autoCandidates.size}. Перед каждой операцией будет показан список и последствия."
+                    else -> "Кандидатов: ${autoCandidates.size}. Будет показан полный список, затем каждое изменение пройдёт с snapshot, проверкой и общим откатом при первой ошибке."
                 }))
             body.addView(glassButton("Открыть автоматическую очистку") { showTvAutomaticCleanup() },
                 LinearLayout.LayoutParams(-2, dp(48)))
@@ -2535,18 +2533,47 @@ class MainActivity : Activity() {
     }
 
     private fun showTvAutomaticCleanup() {
-        val matched = TvManagerProfiles.matchingProfiles()
-        val candidates = matched.flatMap { it.packages }.filter {
-            it.verifiedOptional && it.confidenceHigh && it.dependenciesVerified
-        }
+        val candidates = tvManagerController.automaticCandidates()
+        val channelReady = tvManagerShellService != null && (tvManagerShellUid == 0 || tvManagerShellUid == 2000)
         showPanel("Автоматическая очистка") { body ->
             body.addView(infoCard("СТРОГАЯ ПРОВЕРКА",
                 if (candidates.isEmpty()) "Нет разрешённых кандидатов" else "Подтверждено кандидатов: ${candidates.size}",
                 "Нужны точное совпадение профиля, явная отметка optional, высокая уверенность и проверенные зависимости. Списки CleanYourTV не считаются автоматически безопасными для другой модели или прошивки."))
             if (candidates.isNotEmpty()) {
-                candidates.forEach { entry ->
-                    body.addView(infoCard(entry.label, entry.packageId, entry.note))
+                candidates.forEach { candidate ->
+                    body.addView(infoCard(
+                        candidate.label,
+                        candidate.packageName,
+                        "${candidate.decision.reason}\nСистемное приложение: ${candidate.isSystemApp}"
+                    ))
                 }
+            }
+            if (candidates.isNotEmpty() && channelReady) {
+                body.addView(glassButton("Подтвердить и запустить очистку") {
+                    val summary = candidates.joinToString("\n") { "• ${it.label} — ${it.packageName}" }
+                    AlertDialog.Builder(this)
+                        .setTitle("Запустить автоматическую очистку?")
+                        .setMessage("Будут отключены только эти пакеты:\n\n$summary\n\nRFTV сохранит исходные состояния перед каждой операцией. При первой ошибке остановится и восстановит уже изменённые пакеты в обратном порядке.")
+                        .setNegativeButton("Отмена", null)
+                        .setPositiveButton("Запустить") { _, _ ->
+                            tvManagerExecutor.execute {
+                                val result = tvManagerController.disableAutomaticBatch(true)
+                                runOnUiThread {
+                                    val details = if (result.rollbackMessages.isEmpty()) "" else "\n" + result.rollbackMessages.joinToString("\n")
+                                    Toast.makeText(this, result.message + details, Toast.LENGTH_LONG).show()
+                                    showTvAutomaticCleanup()
+                                }
+                            }
+                        }.show()
+                }, LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(10) })
+            } else if (candidates.isNotEmpty()) {
+                body.addView(infoCard("НЕТ ДОСТУПА",
+                    "Подключи Shizuku",
+                    "Привилегированный канал не подключён; операции заблокированы."))
+            } else {
+                body.addView(infoCard("АВТОМАТИЧЕСКИЙ РЕЖИМ НЕДОСТУПЕН",
+                    "Профиль не подтверждает безопасные кандидаты",
+                    "Для текущего ТВ автоматическое отключение запрещено. Можно использовать ручную очистку с отдельным подтверждением каждого пакета."))
             }
             body.addView(glassButton("Назад к очистке ТВ") { showTvCleanup() },
                 LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
