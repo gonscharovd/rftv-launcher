@@ -3350,14 +3350,21 @@ class MainActivity : Activity() {
         val tile = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
-            background = RftvDesignSystem.surface(this@MainActivity, Color.argb(RftvDesignSystem.GlassAlpha.CONTROL_TILE, 255, 255, 255), RftvDesignSystem.Radius.CONTROL)
+            background = RftvDesignSystem.interactiveSurface(this@MainActivity, focused = false, RftvDesignSystem.Radius.CONTROL)
             isFocusable = true
             isFocusableInTouchMode = true
             setPadding(dp(16), dp(9), dp(16), dp(9))
             setOnClickListener { action() }
             setOnFocusChangeListener { view, focused ->
-                view.background = RftvDesignSystem.focusSurface(this@MainActivity, focused, RftvDesignSystem.Radius.CONTROL, RftvDesignSystem.GlassAlpha.CONTROL_TILE, RftvDesignSystem.GlassAlpha.CONTROL_TILE_FOCUSED)
-                RftvDesignSystem.applyFocusScale(view, focused, 1.025f)
+                view.background = RftvDesignSystem.interactiveSurface(this@MainActivity, focused, RftvDesignSystem.Radius.CONTROL)
+                val labels = view as LinearLayout
+                for (index in 0 until labels.childCount) {
+                    (labels.getChildAt(index) as? TextView)?.setTextColor(
+                        if (focused) RftvDesignSystem.ColorTokens.INTERACTIVE_FOCUSED_TEXT
+                        else if (index == 0) Color.WHITE else Color.LTGRAY
+                    )
+                }
+                RftvDesignSystem.applyFocusScale(view, focused, 1.035f)
             }
         }
         tile.addView(TextView(this).apply {
@@ -3382,14 +3389,17 @@ class MainActivity : Activity() {
             textSize = RftvDesignSystem.Size.BUTTON_TEXT_SP
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
-            background = RftvDesignSystem.surface(this@MainActivity, Color.argb(RftvDesignSystem.GlassAlpha.BUTTON, 255, 255, 255), RftvDesignSystem.Radius.BUTTON)
+            background = RftvDesignSystem.interactiveSurface(this@MainActivity, focused = false, RftvDesignSystem.Radius.BUTTON)
             isFocusable = true
             isFocusableInTouchMode = true
             setPadding(dp(18), 0, dp(18), 0)
             setOnClickListener { action() }
             setOnFocusChangeListener { view, focused ->
-                view.background = RftvDesignSystem.focusSurface(this@MainActivity, focused, RftvDesignSystem.Radius.BUTTON, RftvDesignSystem.GlassAlpha.BUTTON, RftvDesignSystem.GlassAlpha.BUTTON_FOCUSED)
-                RftvDesignSystem.applyFocusScale(view, focused, 1.04f)
+                view.background = RftvDesignSystem.interactiveSurface(this@MainActivity, focused, RftvDesignSystem.Radius.BUTTON)
+                (view as TextView).setTextColor(
+                    if (focused) RftvDesignSystem.ColorTokens.INTERACTIVE_FOCUSED_TEXT else Color.WHITE
+                )
+                RftvDesignSystem.applyFocusScale(view, focused, 1.035f)
             }
         }
     }
