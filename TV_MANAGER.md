@@ -14,7 +14,7 @@
 - Matches a reference profile only when its board/device token and Android API level match.
 - Shows each profile's package IDs, descriptions, risk notes and original source link.
 
-The catalogue is deliberately reference-only. It does not execute shell commands, disable packages, uninstall packages, or modify system state.
+The catalogue is deliberately reference-only. It does not execute shell commands, disable packages, uninstall packages, or modify system state. The implementation boundary for future privileged providers and exact-state recovery is documented in [TV_MANAGER_BRIDGE.md](TV_MANAGER_BRIDGE.md).
 
 ## Analysis evidence and limits
 
@@ -99,5 +99,5 @@ Profiles without a tested disable list can still be added as device-identificati
 - Inventory and report export: implemented.
 - Reference catalogue and strict profile matching: implemented for two Sber examples.
 - Other manufacturers/models: catalogue structure is extensible; profiles still need to be imported and reviewed.
-- Privileged bridge, disable/restore, journal and rollback: not implemented.
+- Privileged bridge, durable snapshots, disable/restore, journal and rollback: not implemented on this branch yet; the pure safety gate and its unit tests are being introduced separately.
 - No package is modified by the current TV Manager.
