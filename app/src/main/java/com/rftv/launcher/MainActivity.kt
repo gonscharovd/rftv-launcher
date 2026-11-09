@@ -20,6 +20,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.IBinder
@@ -58,8 +59,8 @@ import rikka.shizuku.Shizuku
  * RFTV Launcher visual prototype.
  * Target device: Android 9 / API 28 / ARMv7 / low-memory Android TV.
  *
- * Glass is simulated with translucent fills and subtle strokes instead of
- * real-time blur to keep rendering affordable on MediaTek MT9632-class hardware.
+ * Liquid Glass uses a cached, downsampled backdrop snapshot blur on legacy Android.
+ * Blur is generated asynchronously when an overlay opens, never on every frame.
  */
 class MainActivity : Activity() {
 
@@ -116,6 +117,10 @@ class MainActivity : Activity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val wallpaperExecutor = Executors.newSingleThreadExecutor()
+    private val glassBlurExecutor = Executors.newSingleThreadExecutor()
+    private var glassBackdropBitmap: Bitmap? = null
+    private var glassBackdropCacheKey: String? = null
+    private var glassBackdropLoadingKey: String? = null
     private val networkExecutor = Executors.newSingleThreadExecutor()
     private val tvManagerExecutor = Executors.newSingleThreadExecutor()
     private val tvManagerController by lazy {
@@ -363,6 +368,9 @@ class MainActivity : Activity() {
             packageReceiverRegistered = false
         }
         wallpaperExecutor.shutdownNow()
+        glassBlurExecutor.shutdownNow()
+        glassBackdropBitmap?.recycle()
+        glassBackdropBitmap = null
         networkExecutor.shutdownNow()
         tvManagerExecutor.shutdownNow()
         super.onDestroy()
@@ -410,15 +418,8 @@ class MainActivity : Activity() {
                         return true
                     }
                     when (event.keyCode) {
-                        KeyEvent.KEYCODE_DPAD_DOWN -> if (!dockExpanded) {
-                            setDockExpanded(true)
-                            return true
-                        }
-                        KeyEvent.KEYCODE_DPAD_UP -> if (dockExpanded) {
-                            setDockExpanded(false)
-                            return true
-                        }
-                    }
+                // Dock is a single row; vertical navigation no longer expands or collapses it.
+            }
                 } else if (page == "panel") {
                     moveFocusWithin(root, direction)
                     return true
@@ -1095,10 +1096,11 @@ class MainActivity : Activity() {
 
         val overlay = FrameLayout(this).apply {
             tag = "rftv-control-center"
-            setBackgroundColor(RftvDesignSystem.ColorTokens.CONTROL_CENTER_SCRIM)
+            setBackgroundColor(Color.TRANSPARENT)
             isFocusable = false
             isFocusableInTouchMode = false
         }
+        addGlassBackdrop(overlay)
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = RftvDesignSystem.gradientSurface(
@@ -1699,7 +1701,8 @@ class MainActivity : Activity() {
         activePanelTitle = "Настройки RFTV"
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
-        root = FrameLayout(this).apply { setBackgroundColor(RftvDesignSystem.ColorTokens.PANEL_SCRIM) }
+        root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
+        addGlassBackdrop(root)
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             background = RftvDesignSystem.settingsShellSurface(this@MainActivity)
@@ -1742,7 +1745,6 @@ class MainActivity : Activity() {
             text = "Настройки"; textSize = RftvDesignSystem.Size.SETTINGS_HEADER_TEXT_SP; typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
         }, LinearLayout.LayoutParams(0, dp(56), 1f))
-        header.addView(glassButton("Закрыть  ✕") { showHome() }, LinearLayout.LayoutParams(-2, dp(46)))
         contentColumn.addView(header)
         val detailScroll = ScrollView(this).apply { clipToPadding = false }
         val detail = LinearLayout(this).apply {
@@ -1930,7 +1932,7 @@ class MainActivity : Activity() {
             body.addView(infoCard(
                 "ОФОРМЛЕНИЕ RFTV",
                 "Liquid Glass",
-                "Лёгкие полупрозрачные поверхности, тонкие контуры и выразительный фокус. Тяжёлое постоянное размытие не используется."
+                "Многослойные стеклянные поверхности, настоящее размытие активного фона, тонкие блики и выразительный фокус."
             ))
             addWallpaperSettings(body)
             body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
@@ -3250,13 +3252,12 @@ class MainActivity : Activity() {
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
 
-        root = FrameLayout(this).apply {
-            setBackgroundColor(RftvDesignSystem.ColorTokens.PANEL_SCRIM)
-        }
+        root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
+        addGlassBackdrop(root)
         val panelBackground = View(this).apply {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                intArrayOf(RftvDesignSystem.ColorTokens.PANEL_GRADIENT_START, RftvDesignSystem.ColorTokens.PANEL_GRADIENT_END)
+                intArrayOf(Color.argb(72, 8, 16, 30), Color.argb(116, 8, 16, 30))
             )
         }
         val shell = LinearLayout(this).apply {
@@ -3302,6 +3303,50 @@ class MainActivity : Activity() {
         // only for informational panels without focusable controls.
         body.post {
             if (!requestFirstFocusable(body)) header.getChildAt(1)?.requestFocus()
+        }
+    }
+
+    private fun addGlassBackdrop(container: FrameLayout) {
+        val selectionKey = lastAppliedWallpaperKey ?: return
+        val backdrop = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = "Размытый фон Liquid Glass"
+            isFocusable = false
+        }
+        container.addView(backdrop, 0, FrameLayout.LayoutParams(-1, -1))
+        container.addView(View(this).apply {
+            setBackgroundColor(Color.argb(112, 5, 11, 22))
+            isFocusable = false
+        }, 1, FrameLayout.LayoutParams(-1, -1))
+
+        if (glassBackdropCacheKey == selectionKey && glassBackdropBitmap?.isRecycled == false) {
+            backdrop.setImageBitmap(glassBackdropBitmap)
+            return
+        }
+        if (glassBackdropLoadingKey == selectionKey) return
+        val source = (wallpaperView.drawable as? BitmapDrawable)?.bitmap ?: return
+        if (source.isRecycled) return
+        glassBackdropLoadingKey = selectionKey
+        glassBlurExecutor.execute {
+            val blurred = try {
+                val width = min(480, (resources.displayMetrics.widthPixels / 2).coerceAtLeast(240))
+                val height = (width * 9f / 16f).toInt().coerceAtLeast(135)
+                GlassBackdrop.createBlurredSnapshot(source, width, height, radius = 7, passes = 3)
+            } catch (_: Exception) {
+                null
+            }
+            handler.post {
+                if (glassBackdropLoadingKey == selectionKey) glassBackdropLoadingKey = null
+                if (blurred == null) return@post
+                if (selectionKey != lastAppliedWallpaperKey || isFinishing) {
+                    blurred.recycle()
+                    return@post
+                }
+                glassBackdropBitmap?.takeIf { it !== blurred && !it.isRecycled }?.recycle()
+                glassBackdropBitmap = blurred
+                glassBackdropCacheKey = selectionKey
+                if (backdrop.parent === container) backdrop.setImageBitmap(blurred)
+            }
         }
     }
 
