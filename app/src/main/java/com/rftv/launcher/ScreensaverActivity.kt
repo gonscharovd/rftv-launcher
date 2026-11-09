@@ -165,7 +165,7 @@ class ScreensaverActivity : Activity() {
         val clockCard = glassCard().apply { orientation = LinearLayout.VERTICAL }
         clock = TextView(this).apply {
             text = "00:00"
-            textSize = RftvDesignSystem.Size.SCREENSAVER_CLOCK_TEXT_SP
+            textSize = if (screenHeightDp < 760) 52f else RftvDesignSystem.Size.SCREENSAVER_CLOCK_TEXT_SP
             letterSpacing = -0.045f
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(Color.WHITE)
