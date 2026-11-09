@@ -121,7 +121,9 @@ class PackageAnalysisPolicyTest {
             "com.android.tv.settings",
             "com.mediatek.tv.service",
             "com.cvte.platform.service",
-            "ru.sberdevices.starlauncher"
+            "ru.sberdevices.starlauncher",
+            "ru.sberdevices.services.remote",
+            "ru.sberdevices.tvinputs.service"
         ).forEach { assertTrue("Expected protected package: $it", PackageAnalysisPolicy.isProtectedPackage(it)) }
         assertTrue(!PackageAnalysisPolicy.isProtectedPackage("com.example.settings.helper"))
     }
