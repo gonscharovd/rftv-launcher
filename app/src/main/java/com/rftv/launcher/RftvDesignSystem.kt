@@ -57,6 +57,7 @@ internal object RftvDesignSystem {
         const val SETTINGS_NAV_SELECTED_TOP = 0x705D8FC8
         const val SETTINGS_NAV_SELECTED_BOTTOM = 0x4A315B85
         const val SETTINGS_NAV_FOCUSED_STROKE = 0xC8E4F4FF.toInt()
+        const val INTERACTIVE_FOCUSED_TEXT = 0xFF17283E.toInt()
     }
 
     object Spacing {
@@ -243,6 +244,14 @@ internal object RftvDesignSystem {
         cornerRadius = dp(context, radiusDp).toFloat()
         if (strokeWidthDp > 0) setStroke(dp(context, strokeWidthDp), strokeColor)
     }
+
+    fun interactiveSurface(context: Context, focused: Boolean, radiusDp: Int): GradientDrawable = gradientSurface(
+        context,
+        if (focused) intArrayOf(0xE8F3FCFF.toInt(), 0xC9C8D9E9.toInt())
+        else intArrayOf(0x4AFFFFFF, 0x20FFFFFF),
+        radiusDp,
+        if (focused) ColorTokens.SETTINGS_NAV_FOCUSED_STROKE else Color.argb(GlassAlpha.SURFACE_STROKE, 255, 255, 255)
+    )
 
     fun dockSurface(context: Context): GradientDrawable = gradientSurface(
         context,
