@@ -2843,19 +2843,13 @@ class MainActivity : Activity() {
     }
 
     private fun showTvDisabledPackages() {
-        val disabled = packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-            .filter { it.packageName != packageName && isPackageDisabled(it.packageName, it.enabled) }
+        val generation = ++tvManagerInventoryGeneration
         val owned = tvManagerController.activeSnapshots().associateBy { it.packageName }
         showPanel("Отключённые пакеты") { body ->
-            body.addView(infoCard("НАЙДЕНО ОТКЛЮЧЁННЫХ ПАКЕТОВ",
-                disabled.size.toString(),
-                "Состояние отражает PackageManager. Только пакеты с подтверждённым snapshot RFTV можно восстановить отсюда. Ранее отключённые пользователем пакеты не включаются автоматически."))
+            body.addView(infoCard("ИЗМЕНЕНИЯ RFTV",
+                "${owned.size} сохранённых исходных состояний",
+                "Можно восстановить только пакеты, которые RFTV изменил и для которых сохранил snapshot. Восстановление выполняется в обратном порядке; ранее отключённые пользователем пакеты не затрагиваются."))
             if (owned.isNotEmpty()) {
-                body.addView(infoCard(
-                    "ИЗМЕНЕНИЯ RFTV",
-                    "${owned.size} сохранённых исходных состояний",
-                    "Можно восстановить все пакеты, которые RFTV изменил и для которых сохранил snapshot. Восстановление выполняется в обратном порядке; сторонние и ранее отключённые пакеты не затрагиваются."
-                ))
                 body.addView(glassButton("Восстановить все изменения RFTV") {
                     AlertDialog.Builder(this)
                         .setTitle("Восстановить все пакеты RFTV?")
@@ -2878,33 +2872,61 @@ class MainActivity : Activity() {
                         }.show()
                 }, LinearLayout.LayoutParams(-2, dp(48)).apply { bottomMargin = dp(10) })
             }
-            if (disabled.isEmpty()) body.addView(infoCard("Список пуст", "Отключённых пакетов не найдено", ""))
-            disabled.forEach { app ->
-                val label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
-                val snapshot = owned[app.packageName]
-                body.addView(infoCard(label, app.packageName,
-                    if (snapshot != null) "Отключено RFTV · исходное состояние: ${snapshot.originalEnabledSetting}"
-                    else "Отключено до RFTV или другим способом · восстановление заблокировано."))
-                if (snapshot != null) {
-                    body.addView(glassButton("Восстановить исходное состояние") {
-                        AlertDialog.Builder(this)
-                            .setTitle("Восстановить пакет?")
-                            .setMessage("$label\n${app.packageName}\nRFTV вернёт сохранённое состояние ${snapshot.originalEnabledSetting}.")
-                            .setNegativeButton("Отмена", null)
-                            .setPositiveButton("Восстановить") { _, _ ->
-                                tvManagerExecutor.execute {
-                                    val result = tvManagerController.restore(app.packageName)
-                                    runOnUiThread {
-                                        Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
-                                        showTvDisabledPackages()
-                                    }
-                                }
-                            }.show()
-                    }, LinearLayout.LayoutParams(-2, dp(44)).apply { bottomMargin = dp(8) })
-                }
-            }
+            val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            val scroll = ScrollView(this).apply { isFillViewport = true; addView(list) }
+            list.addView(infoCard("СКАНИРОВАНИЕ", "Проверяем состояние пакетов", "Чтение PackageManager выполняется в фоне."))
+            body.addView(scroll, LinearLayout.LayoutParams(-1, dp(390)))
             body.addView(glassButton("Назад в TV Manager") { showTvManager() },
                 LinearLayout.LayoutParams(-2, dp(48)).apply { topMargin = dp(8) })
+
+            tvManagerExecutor.execute {
+                val disabled = try {
+                    packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+                        .filter { app ->
+                            app.packageName != packageName && isPackageDisabled(app.packageName, app.enabled)
+                        }
+                        .map { app ->
+                            val label = try { packageManager.getApplicationLabel(app).toString() } catch (_: Exception) { app.packageName }
+                            app to label
+                        }
+                } catch (_: Exception) {
+                    emptyList()
+                }
+                runOnUiThread {
+                    if (generation != tvManagerInventoryGeneration ||
+                        page != "panel" || activePanelTitle != "Отключённые пакеты") return@runOnUiThread
+                    list.removeAllViews()
+                    list.addView(infoCard("НАЙДЕНО ОТКЛЮЧЁННЫХ ПАКЕТОВ",
+                        disabled.size.toString(),
+                        "Состояние отражает PackageManager. Только пакеты с подтверждённым snapshot RFTV можно восстановить отсюда."))
+                    if (disabled.isEmpty()) {
+                        list.addView(infoCard("Список пуст", "Отключённых пакетов не найдено", ""))
+                    }
+                    disabled.forEach { (app, label) ->
+                        val snapshot = owned[app.packageName]
+                        list.addView(infoCard(label, app.packageName,
+                            if (snapshot != null) "Отключено RFTV · исходное состояние: ${snapshot.originalEnabledSetting}"
+                            else "Отключено до RFTV или другим способом · восстановление заблокировано."))
+                        if (snapshot != null) {
+                            list.addView(glassButton("Восстановить исходное состояние") {
+                                AlertDialog.Builder(this)
+                                    .setTitle("Восстановить пакет?")
+                                    .setMessage("$label\n${app.packageName}\nRFTV вернёт сохранённое состояние ${snapshot.originalEnabledSetting}.")
+                                    .setNegativeButton("Отмена", null)
+                                    .setPositiveButton("Восстановить") { _, _ ->
+                                        tvManagerExecutor.execute {
+                                            val result = tvManagerController.restore(app.packageName)
+                                            runOnUiThread {
+                                                Toast.makeText(this, result.message, Toast.LENGTH_LONG).show()
+                                                showTvDisabledPackages()
+                                            }
+                                        }
+                                    }.show()
+                            }, LinearLayout.LayoutParams(-2, dp(44)).apply { bottomMargin = dp(8) })
+                        }
+                    }
+                }
+            }
         }
     }
 
