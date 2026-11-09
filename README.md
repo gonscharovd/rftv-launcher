@@ -2,11 +2,12 @@
 
 A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direction.
 
-## Current prototype
+## Implemented features
 
 - Native Kotlin Android Views (no Compose and no third-party UI dependencies).
 - Home screen with a large centered clock, date, weather entry point and glass-style settings button.
 - Translucent app dock with focus scaling and a second row revealed with DPAD Down / hidden again with DPAD Up.
+- Dock and catalog refresh automatically after app installation, removal or replacement, without restarting the launcher; focus and favorite ordering are preserved.
 - 10 photographic daytime and 10 photographic nighttime landscape wallpapers from Unsplash.
 - Separate day/night wallpaper selection and carousel modes, with a configurable 1–60 minute interval.
 - Wallpaper photographs are downloaded over HTTPS on first use and cached in app-private storage. Once cached, they work offline.
@@ -15,6 +16,7 @@ A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direc
 - TV Cleaner lists user-installed apps and delegates uninstall to Android's confirmation screen.
 - RFTV TV Manager provides a read-only system-package inventory, device fingerprint export, and a reference catalogue with strict API + exact board/hardware + exact device/product matching for two CleanYourTV Sber StarOS reference profiles.
 - Remote-control focus states and large TV-friendly controls.
+- Both the manual idle screen and Android DreamService keep the displayed date synchronized with the clock.
 
 ## Target device
 
@@ -42,6 +44,8 @@ gradle --no-daemon assembleDebug
 
 Debug APK: app/build/outputs/apk/debug/app-debug.apk
 
+Stable Release APKs are published through [GitHub Releases](https://github.com/gonscharovd/rftv-launcher/releases). Use the in-app OTA updater for upgrades; it verifies SHA-256, package identity, versionCode, ABI and signing certificate before opening Android's installer.
+
 GitHub Actions builds pushes to main and feature/** branches and pull requests targeting main.
 
 ## Important prototype limitations
@@ -51,7 +55,7 @@ GitHub Actions builds pushes to main and feature/** branches and pull requests t
 - Glass is approximated with translucent fills and strokes. Real-time background blur is intentionally avoided for the low-memory target device.
 - Brightness, Wi-Fi and Bluetooth entries open Android settings. Direct toggles depend on StarOS permissions and firmware APIs and are not claimed to work universally.
 - RAM is informational. Android controls background process lifecycle; this app does not force-stop arbitrary apps or claim to free RAM by killing protected processes.
-- Theme selection and dock dimensions are persisted. Favourites, per-app ordering, icon sizing and full appearance editor are not implemented yet.
+- Theme selection, dock dimensions, favourites, per-app ordering and hidden-app state are persisted. Per-app icon sizing and a full appearance editor are not implemented.
 - The screensaver must be selected by the user in Android/StarOS Settings > Display > Screen saver if the firmware exposes DreamService. Some TV firmware builds remove this system feature; this must be verified on the physical Sber TV.
 - Random screensaver photos are served by LoremFlickr and cached locally. The service retains only a small cache to protect internal storage.
 - Device installation, launcher replacement behaviour, remote navigation and performance still require testing on the physical Sber TV.
