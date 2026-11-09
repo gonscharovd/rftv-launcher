@@ -19,7 +19,8 @@ internal object PackageChangePolicy {
         ownPackage: String,
         isReplacing: Boolean = false
     ): Boolean =
-        action in relevantActions &&
+        action != null &&
+            action in relevantActions &&
             !(action == "android.intent.action.PACKAGE_REMOVED" && isReplacing) &&
             !changedPackage.isNullOrBlank() &&
             changedPackage != ownPackage
