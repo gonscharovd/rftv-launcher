@@ -2,6 +2,11 @@
 
 ## What is implemented in this branch
 
+- The settings hub uses a two-column TV layout: a persistent left navigation rail and a contextual right-hand content area. It reuses the existing settings screens for actual controls.
+- Package details include a conservative metadata report: category, severity, confidence, observed permissions and declared component counts, with explicit limitations.
+- Sensitive permissions are described as requested metadata, never as proof of recording, tracking or data transmission.
+- Protected package identities receive a critical guard classification; unknown packages remain unverified.
+
 - Reads the installed system-package inventory using Android PackageManager.
 - Exports device identity (manufacturer, model, board, device, hardware, product, Android/API) and package state.
 - Includes a small, offline reference catalogue derived from two CleanYourTV Sber StarOS examples.
