@@ -16,6 +16,39 @@ TV Manager must discover capabilities at runtime. A setting such as Android's gl
 
 A provider is not considered available merely because a helper app is installed, USB/Wi-Fi debugging is enabled, an IP address is known, or a port is displayed. Each capability is probed independently and non-destructively.
 
+## User-facing flow
+
+TV Manager presents two primary actions:
+
+### Automatic cleanup
+
+1. The owner enables Developer options and ADB debugging in the TV settings.
+2. RFTV detects the exact TV model, manufacturer, board, hardware/SoC, Android API, build/firmware fingerprint and ABI.
+3. RFTV finds a matching, reviewed device profile. A profile is valid only for the identifiers and firmware range it explicitly covers.
+4. RFTV checks the privileged provider and probes the exact package-state operation non-destructively.
+5. It previews only profile-listed optional packages, evidence, confidence, dependencies and expected consequences.
+6. After explicit confirmation, it saves and verifies every original state, then disables packages one at a time and verifies each result.
+7. On the first failure or unexpected state, it stops and rolls back the already changed packages in reverse order.
+
+Developer options and the global ADB debugging toggle are not themselves a grant of shell privileges to an ordinary application. RFTV must show the exact missing step/provider. For Android 9, Shizuku commonly needs to be started from an already authorized computer/ADB host unless the TV is already rooted. Do not claim that enabling a toggle on the TV is enough.
+
+If no exact profile exists, the firmware is outside the tested range, or the privileged channel cannot perform the operation, automatic cleanup is unavailable. The user can still open Manual cleanup.
+
+### Manual cleanup
+
+Manual cleanup displays the installed package inventory with a per-package enable/disable switch and a clear status indicator. Each row explains the package name, display label, category, system/user status, declared permissions, exported services/components where available, known dependencies, analysis confidence and risk. The UI must distinguish facts from heuristics.
+
+- Protected packages (RFTV, HOME/launcher, System UI, Settings, installer, permission controller, package manager, network, Bluetooth, audio/video, remote/input, update and essential OEM/SoC services) are always locked and cannot be toggled.
+- Packages already disabled before RFTV are shown as already disabled and are not adopted into RFTV's restore set.
+- A package that the user manually selects may lack an exact device profile or have low-confidence analysis. Show a strong, package-specific warning and require a separate confirmation before applying it; never silently apply such a selection.
+- If dependencies are unknown, explain that dependent features may stop working. Never present an unknown package as safe.
+- The switch is actionable only when a verified provider can perform the requested operation. Otherwise show the reason and the exact access path needed.
+- Turning a package off first commits and verifies its exact original state snapshot. Only then may the provider execute the operation. Read the effective state back and verify it.
+- Turning it back on restores the captured original enabled setting, not a generic ENABLED state. This includes restoring DEFAULT, DISABLED_USER and DISABLED_UNTIL_USED exactly.
+- If a manual operation fails verification, revert the switch and report the error. Do not display a successful state based on the command exit code alone.
+
+Automatic and manual operations share the same snapshot store, operation journal, provider verification and rollback mechanisms. Manual mode changes who selects a candidate; it does not bypass protected-package rules or access checks.
+
 ## Android 9 / target-device constraints
 
 - Android 9 (API 28) does not have Android 11's on-device Wireless debugging pairing workflow. ADB-over-network availability and port are firmware-dependent.
