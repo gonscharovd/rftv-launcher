@@ -75,6 +75,7 @@ class MainActivity : Activity() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val wallpaperExecutor = Executors.newSingleThreadExecutor()
+    private val networkExecutor = Executors.newSingleThreadExecutor()
     private val packageRefreshTask = Runnable { refreshInstalledAppsAfterPackageChange() }
     private val packageChangeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -290,6 +291,7 @@ class MainActivity : Activity() {
             packageReceiverRegistered = false
         }
         wallpaperExecutor.shutdownNow()
+        networkExecutor.shutdownNow()
         super.onDestroy()
     }
 
@@ -816,6 +818,24 @@ class MainActivity : Activity() {
         applyWallpaper()
     }
 
+    private fun readHttpText(address: String): String {
+        val connection = (URL(address).openConnection() as HttpURLConnection).apply {
+            connectTimeout = 8_000
+            readTimeout = 10_000
+            instanceFollowRedirects = true
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("User-Agent", "RFTV-Launcher")
+        }
+        return try {
+            if (connection.responseCode !in 200..299) {
+                throw IllegalStateException("HTTP ${connection.responseCode}")
+            }
+            connection.inputStream.bufferedReader().use { it.readText() }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     private fun showWeather() {
         showPanel("Погода") { body ->
             val liveWeather = TextView(this).apply {
@@ -826,10 +846,10 @@ class MainActivity : Activity() {
                 background = RftvDesignSystem.cardSurface(this@MainActivity)
             }
             body.addView(liveWeather, LinearLayout.LayoutParams(-1, -2))
-            Thread {
+            networkExecutor.execute {
                 val result = try {
                     val address = "https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=Asia%2FYekaterinburg"
-                    val current = org.json.JSONObject(URL(address).readText())
+                    val current = org.json.JSONObject(readHttpText(address))
                         .getJSONObject("current")
                     val temp = current.getDouble("temperature_2m").toInt()
                     val feels = current.getDouble("apparent_temperature").toInt()
@@ -853,9 +873,11 @@ class MainActivity : Activity() {
                     "Не удалось загрузить погоду. Проверь подключение к интернету."
                 }
                 handler.post {
-                    if (!isFinishing) liveWeather.text = result
+                    if (!isFinishing && page == "panel" && activePanelTitle == "Погода" && liveWeather.parent != null) {
+                        liveWeather.text = result
+                    }
                 }
-            }.start()
+            }
             body.addView(infoCard("КУРСЫ ВАЛЮТ", "Банк России",
                 "На экране ожидания показываются курсы доллара и евро к рублю из официального источника ЦБ РФ."))
             body.addView(infoCard("НОВОСТИ", "Россия и мир",
