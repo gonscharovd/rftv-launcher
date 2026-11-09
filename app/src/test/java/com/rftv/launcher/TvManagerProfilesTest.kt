@@ -21,6 +21,13 @@ class TvManagerProfilesTest {
     }
 
     @Test
+    fun donorProfileEntriesAreNotAutomaticallyTrustedForDebloating() {
+        assertTrue(TvManagerProfiles.all.flatMap { it.packages }.none {
+            it.verifiedOptional && it.confidenceHigh && it.dependenciesVerified
+        })
+    }
+
+    @Test
     fun profileRequiresExactBoardDeviceAndSdkTogether() {
         val profile = TvManagerProfiles.all.first { it.id == "sber-pb766" }
         assertTrue(profile.matchesFingerprint(
