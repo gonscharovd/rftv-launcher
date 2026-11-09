@@ -86,6 +86,32 @@ class PackageOperationPolicyTest {
     }
 
     @Test
+    fun manualModeAllowsUserChoiceForUnknownPackagesButKeepsHardProtection() {
+        val unknown = safeCandidate.copy(
+            exactDeviceProfileMatch = false,
+            explicitlyVerifiedOptional = false,
+            confidence = PackageOperationPolicy.Confidence.LOW,
+            dependenciesChecked = false,
+            hasUnresolvedDependencies = true
+        )
+        val manual = PackageOperationPolicy.canDisable(
+            unknown, adbAccess, PackageOperationPolicy.Mode.MANUAL
+        )
+        assertTrue(manual.allowed)
+        assertTrue(manual.requiresExplicitWarning)
+
+        val automatic = PackageOperationPolicy.canDisable(
+            unknown, adbAccess, PackageOperationPolicy.Mode.AUTOMATIC
+        )
+        assertFalse(automatic.allowed)
+
+        val protected = PackageOperationPolicy.canDisable(
+            unknown.copy(isProtected = true), adbAccess, PackageOperationPolicy.Mode.MANUAL
+        )
+        assertFalse(protected.allowed)
+    }
+
+    @Test
     fun batchFailureRequiresRollbackOnlyAfterAtLeastOneAppliedChange() {
         assertFalse(PackageOperationPolicy.shouldRollbackBatch(0, true))
         assertFalse(PackageOperationPolicy.shouldRollbackBatch(3, false))
