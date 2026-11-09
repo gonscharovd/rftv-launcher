@@ -527,36 +527,80 @@ class MainActivity : Activity() {
         if (target.tag != tag) target.setImageDrawable(null)
         target.tag = tag
 
-        // Do not enqueue the same failed request every 30 seconds from clockTask.
+        // Failed requests are not restarted by the 30-second clock refresh.
         if (tag in wallpaperFailedKeys) return
         val requestKey = "$tag@${System.identityHashCode(target)}"
         if (!wallpaperLoadingKeys.add(requestKey)) return
 
         val directory = File(filesDir, "wallpapers").apply { mkdirs() }
-        // Picker previews use their own small cache and never downgrade the
-        // full-resolution wallpaper kept for the home screen.
-        val file = File(directory, WallpaperImageUrls.cacheFileName(dark, safeIndex, thumbnail))
-        val imageUrl = if (thumbnail) WallpaperImageUrls.thumbnailUrl(photo.imageUrl) else photo.imageUrl
+        val fullFile = File(directory, WallpaperImageUrls.cacheFileName(dark, safeIndex, false))
+        val previewFile = File(directory, WallpaperImageUrls.cacheFileName(dark, safeIndex, true))
+        val fullUrl = photo.imageUrl
+        val previewUrl = WallpaperImageUrls.thumbnailUrl(photo.imageUrl)
 
-        fun decode(): Bitmap? {
+        fun decode(file: File, sampleSize: Int): Bitmap? {
+            if (!file.exists() || file.length() <= 10_000L) return null
             val options = BitmapFactory.Options().apply {
                 inPreferredConfig = Bitmap.Config.RGB_565
-                inSampleSize = if (thumbnail) 4 else 1
+                inSampleSize = sampleSize
             }
             return BitmapFactory.decodeFile(file.absolutePath, options)
         }
 
-        fun finish(bitmap: Bitmap?) {
+        fun fetch(file: File, address: String, maxBytes: Long, sampleSize: Int): Bitmap? {
+            decode(file, sampleSize)?.let { return it }
+            if (file.exists()) file.delete()
+
+            var connection: HttpURLConnection? = null
+            var tempFile: File? = null
+            try {
+                connection = (URL(address).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 8_000
+                    readTimeout = 12_000
+                    instanceFollowRedirects = true
+                    useCaches = true
+                    setRequestProperty("User-Agent", "RFTV-Launcher/0.7")
+                    setRequestProperty("Accept", "image/avif,image/webp,image/jpeg,image/*")
+                }
+                connection.connect()
+                if (connection.responseCode !in 200..299) {
+                    throw IllegalStateException("Wallpaper HTTP ${connection.responseCode}")
+                }
+                val part = File(directory, file.name + ".part")
+                tempFile = part
+                connection.inputStream.use { input ->
+                    FileOutputStream(part).use { output ->
+                        val buffer = ByteArray(32 * 1024)
+                        var total = 0L
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            total += count
+                            if (total > maxBytes) throw IllegalStateException("Wallpaper exceeds size limit")
+                            output.write(buffer, 0, count)
+                        }
+                    }
+                }
+                if (part.length() <= 10_000L) throw IllegalStateException("Wallpaper response is empty")
+                if (file.exists()) file.delete()
+                if (!part.renameTo(file)) throw IllegalStateException("Could not commit wallpaper cache")
+                return decode(file, sampleSize)
+            } finally {
+                tempFile?.takeIf { it.exists() }?.delete()
+                connection?.disconnect()
+            }
+        }
+
+        fun finish(bitmap: Bitmap?, completed: Boolean, failure: Boolean = false) {
             handler.post {
-                wallpaperLoadingKeys.remove(requestKey)
+                if (completed) wallpaperLoadingKeys.remove(requestKey)
                 if (target.tag != tag) {
                     bitmap?.recycle()
                     return@post
                 }
                 if (bitmap != null) {
                     wallpaperFailedKeys.remove(tag)
-                    if (!thumbnail && target === wallpaperView) {
-                        target.animate().cancel()
+                    if (!thumbnail && target === wallpaperView && target.drawable == null) {
                         target.alpha = 0f
                         target.setImageBitmap(bitmap)
                         target.animate().alpha(1f)
@@ -566,67 +610,32 @@ class MainActivity : Activity() {
                         target.setImageBitmap(bitmap)
                     }
                     target.contentDescription = "${photo.title} — ${photo.author}"
-                } else {
+                } else if (failure) {
                     wallpaperFailedKeys.add(tag)
                     target.contentDescription = "Не удалось загрузить обои: ${photo.title}"
-                    if (target === wallpaperView && page == "home") {
-                        Toast.makeText(this, "Не удалось загрузить фотографию. Удерживай кнопку «Обои» для повтора.", Toast.LENGTH_LONG).show()
+                    if (target === wallpaperView && page == "home" && target.drawable == null) {
+                        Toast.makeText(this, "Не удалось загрузить фотографию. Проверьте соединение или повторите выбор обоев.", Toast.LENGTH_LONG).show()
                     }
                 }
             }
         }
 
         wallpaperExecutor.execute {
-            var connection: HttpURLConnection? = null
-            var temp: File? = null
             try {
-                if (file.exists() && file.length() > 10_000L) {
-                    val cached = decode()
-                    if (cached != null) {
-                        finish(cached)
-                        return@execute
-                    }
-                    // A truncated/corrupt cache must not permanently block this wallpaper.
-                    file.delete()
-                }
+                if (thumbnail) {
+                    val preview = fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
+                    finish(preview, completed = true, failure = preview == null)
+                } else {
+                    // Show a small image first; the full-resolution file replaces it
+                    // when ready. This avoids a blank/gradient home screen on slow CDNs.
+                    val preview = fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
+                    if (preview != null) finish(preview, completed = false)
 
-                connection = (URL(imageUrl).openConnection() as HttpURLConnection).apply {
-                    connectTimeout = 15000
-                    readTimeout = 25000
-                    instanceFollowRedirects = true
-                    setRequestProperty("User-Agent", "RFTV-Launcher/0.1")
+                    val full = fetch(fullFile, fullUrl, 24L * 1024L * 1024L, 2)
+                    finish(full, completed = true, failure = full == null && preview == null)
                 }
-                connection.connect()
-                if (connection.responseCode !in 200..299) {
-                    throw IllegalStateException("HTTP ${connection.responseCode}")
-                }
-                val tempFile = File(directory, file.name + ".part")
-                temp = tempFile
-                connection.inputStream.use { input ->
-                    FileOutputStream(tempFile).use { output ->
-                        val buffer = ByteArray(16 * 1024)
-                        var total = 0L
-                        while (true) {
-                            val count = input.read(buffer)
-                            if (count < 0) break
-                            total += count
-                            if (total > 24L * 1024L * 1024L) {
-                                throw IllegalStateException("Изображение превышает 24 МБ")
-                            }
-                            output.write(buffer, 0, count)
-                        }
-                    }
-                }
-                if (tempFile.length() <= 10_000L) throw IllegalStateException("Пустой или неполный файл")
-                if (file.exists()) file.delete()
-                if (!tempFile.renameTo(file)) throw IllegalStateException("Не удалось сохранить обои в кеш")
-                val downloaded = decode() ?: throw IllegalStateException("Файл не является читаемым изображением")
-                finish(downloaded)
             } catch (_: Exception) {
-                temp?.delete()
-                finish(null)
-            } finally {
-                connection?.disconnect()
+                finish(null, completed = true, failure = true)
             }
         }
     }
