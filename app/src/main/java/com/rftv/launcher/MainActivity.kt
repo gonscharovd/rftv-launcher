@@ -79,7 +79,12 @@ class MainActivity : Activity() {
     private val packageChangeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val changedPackage = intent?.data?.schemeSpecificPart
-            if (!PackageChangePolicy.shouldRefresh(intent?.action, changedPackage, packageName)) return
+            if (!PackageChangePolicy.shouldRefresh(
+                    intent?.action,
+                    changedPackage,
+                    packageName,
+                    intent?.getBooleanExtra(Intent.EXTRA_REPLACING, false) == true
+                )) return
             handler.removeCallbacks(packageRefreshTask)
             // Package replacement emits multiple broadcasts; coalesce them so
             // the catalog is rebuilt once after PackageManager settles.
