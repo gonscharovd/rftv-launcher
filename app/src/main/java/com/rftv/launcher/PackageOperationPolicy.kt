@@ -36,7 +36,7 @@ internal object PackageOperationPolicy {
     /** Exact state captured before RFTV changes anything. */
     data class OriginalState(
         val enabledSetting: EnabledSetting,
-        val manifestEnabled: Boolean,
+        val applicationEnabled: Boolean,
         val hiddenByDevicePolicy: Boolean = false
     )
 
