@@ -50,6 +50,13 @@ internal object RftvDesignSystem {
         const val SCREENSAVER_TEXT_SECONDARY = -587202561
         const val SCREENSAVER_TEXT_MUTED = -1342177281
         const val SCREENSAVER_GLASS = 0x26FFFFFF
+        const val SETTINGS_SHELL_TOP = 0xF02A3B55.toInt()
+        const val SETTINGS_SHELL_BOTTOM = 0xF00D1728.toInt()
+        const val SETTINGS_SIDEBAR_TOP = 0x765F7895
+        const val SETTINGS_SIDEBAR_BOTTOM = 0x382B3E59
+        const val SETTINGS_NAV_SELECTED_TOP = 0x705D8FC8
+        const val SETTINGS_NAV_SELECTED_BOTTOM = 0x4A315B85
+        const val SETTINGS_NAV_FOCUSED_STROKE = 0xC8E4F4FF.toInt()
     }
 
     object Spacing {
@@ -132,6 +139,9 @@ internal object RftvDesignSystem {
         const val CONTROL_CENTER_PANEL = 34
         const val CONTROL_CENTER_TILE = 32
         const val SCREENSAVER_DETAILS = 24
+        const val SETTINGS_SHELL = 30
+        const val SETTINGS_SIDEBAR = 24
+        const val SETTINGS_NAV = 16
     }
 
     object Elevation {
@@ -255,6 +265,34 @@ internal object RftvDesignSystem {
 
     fun controlCenterSurface(context: Context): GradientDrawable =
         surface(context, ColorTokens.CONTROL_CENTER_SURFACE, Radius.BUTTON, GlassAlpha.PANEL_STROKE)
+
+    fun settingsShellSurface(context: Context): GradientDrawable = gradientSurface(
+        context,
+        intArrayOf(ColorTokens.SETTINGS_SHELL_TOP, ColorTokens.SETTINGS_SHELL_BOTTOM),
+        Radius.SETTINGS_SHELL,
+        ColorTokens.CONTROL_CENTER_STROKE
+    )
+
+    fun settingsSidebarSurface(context: Context): GradientDrawable = gradientSurface(
+        context,
+        intArrayOf(ColorTokens.SETTINGS_SIDEBAR_TOP, ColorTokens.SETTINGS_SIDEBAR_BOTTOM),
+        Radius.SETTINGS_SIDEBAR,
+        Color.argb(GlassAlpha.SURFACE_STROKE, 255, 255, 255)
+    )
+
+    fun settingsNavigationSurface(context: Context, focused: Boolean, selected: Boolean): GradientDrawable {
+        val colors = when {
+            focused -> intArrayOf(0xDCEAF7FF.toInt(), 0xB8B9D4E8.toInt())
+            selected -> intArrayOf(ColorTokens.SETTINGS_NAV_SELECTED_TOP, ColorTokens.SETTINGS_NAV_SELECTED_BOTTOM)
+            else -> intArrayOf(0x18FFFFFF, 0x08FFFFFF)
+        }
+        return gradientSurface(
+            context,
+            colors,
+            Radius.SETTINGS_NAV,
+            if (focused) ColorTokens.SETTINGS_NAV_FOCUSED_STROKE else Color.argb(if (selected) 110 else 28, 255, 255, 255)
+        )
+    }
 
     fun panelSurface(context: Context): GradientDrawable =
         surface(context, ColorTokens.PANEL_SURFACE, Radius.DOCK, GlassAlpha.PANEL_STROKE)
