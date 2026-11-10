@@ -56,20 +56,15 @@ Fix committed:
 - Added pure `CatalogReturnPolicy` and unit regression tests.
 - Candidate version: 0.9.4 / versionCode 16. Not released.
 
-Current CI for branch head `f009ba879141b5d5a85cd71c9bafd601cc1fe8b3`: run [#42868608153](https://github.com/gonscharovd/rftv-launcher/actions/runs/42868608153), last observed in progress. Check actual status before relying on this snapshot.
+Current feature branch has subsequent 4B/4C commits beyond the initial 4A head; always check latest branch HEAD and latest Actions run before relying on CI status.
 
-### 4B — not implemented
+### 4B — implemented on the feature branch
 
-Responsive Dock width based on favorite count plus All Apps, centered and content-sized, with min width around three tiles and max width below full screen. Keep existing squircle metrics and favorites behavior.
+Dock width is derived from favorites plus All Apps, centered, minimum three tiles and capped below full screen by the existing width preference. Existing tile geometry, favorites and scrolling remain. `DockWidthPolicy` has unit tests.
 
-### 4C — not implemented
+### 4C — implemented on the feature branch
 
-Audit and unify real frosted-glass material on Dock, Control Center, Settings and catalog. Current code audit:
-- Dock: flat translucent gradient from `RftvDesignSystem.dockSurface()`; no blurred image layer.
-- Control Center: real low-resolution screenshot snapshot, blurred with `GlassBackdrop` radius 7 / 3 passes, then dark scrim; glass panel itself is a gradient.
-- Settings: cached blur of the selected wallpaper via `addWallpaperGlassBackdrop()`, not a fresh screenshot of the current Home tree; shell is a gradient.
-- App catalog: real low-resolution screenshot snapshot via `captureBackdropSnapshot()`, blurred with `GlassBackdrop` radius 7 / 3 passes; dark scrim and panel gradient.
-- Need common material parameters and a clipped blurred layer on each actual surface. Keep CPU cost bounded and do not add user-facing transparency controls.
+Pre-change audit: Dock had no blur; Control Center and catalog used real screenshot blur; Settings used only cached wallpaper blur, not a current Home screenshot. Changes: Dock now uses a cropped low-resolution blur of the exact wallpaper region behind it; Settings captures Home and uses the same screenshot blur path as catalog and Control Center. Shared blur radius 7 / 3 passes and matched scrim/edge treatment; no user transparency controls.
 
 ## Important document issues already corrected on the Iteration 4 branch
 
