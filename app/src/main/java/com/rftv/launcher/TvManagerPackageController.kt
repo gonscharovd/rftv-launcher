@@ -48,14 +48,18 @@ internal class TvManagerPackageController(
     private val profileEntries by lazy {
         matchingProfiles.flatMap { it.packages }.associateBy { it.packageId }
     }
-    private val dynamicProtectedPackages by lazy {
-        val protected = mutableSetOf<String>()
+    private val tvInputServicePackages by lazy {
         try {
             packageManager.queryIntentServices(
                 android.content.Intent("android.media.tv.TvInputService"),
                 PackageManager.MATCH_DISABLED_COMPONENTS
-            ).mapNotNullTo(protected) { it.serviceInfo?.packageName }
-        } catch (_: Exception) { }
+            ).mapNotNullTo(mutableSetOf()) { it.serviceInfo?.packageName }
+        } catch (_: Exception) {
+            emptySet()
+        }
+    }
+    private val dynamicProtectedPackages by lazy {
+        val protected = mutableSetOf<String>()
         try {
             val homeIntent = android.content.Intent(android.content.Intent.ACTION_MAIN)
                 .addCategory(android.content.Intent.CATEGORY_HOME)
@@ -409,8 +413,11 @@ internal class TvManagerPackageController(
         return try {
             val app = packageManager.getApplicationInfo(packageName, 0)
             val packageInfo = packageManager.getPackageInfo(packageName, 0)
-            packageInfo.sharedUserId == "android.uid.system" ||
-                (app.flags and ApplicationInfo.FLAG_PERSISTENT) != 0
+            PackageAnalysisPolicy.isHardProtectedMetadata(
+                sharedUserId = packageInfo.sharedUserId,
+                isPersistent = (app.flags and ApplicationInfo.FLAG_PERSISTENT) != 0,
+                providesTvInputService = packageName in tvInputServicePackages
+            )
         } catch (_: Exception) {
             // Missing/unreadable metadata must never be treated as a positive safety signal.
             true
