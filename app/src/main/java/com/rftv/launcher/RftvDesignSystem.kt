@@ -194,7 +194,7 @@ internal object RftvDesignSystem {
         const val SETTINGS_SIDEBAR_WIDTH_FRACTION = 0.255f
         const val SETTINGS_PANEL_WIDTH_FRACTION = 0.92f
         const val SETTINGS_PANEL_HEIGHT_FRACTION = 0.88f
-        const val CONTROL_CENTER_WIDTH_FRACTION = 0.43f
+        const val CONTROL_CENTER_WIDTH_FRACTION = 0.40f
         const val CONTROL_CENTER_HEIGHT_FRACTION = 0.91f
         const val CONTROL_CENTER_HEADER_TEXT_SP = 23f
         const val CONTROL_CENTER_ICON_TEXT_SP = 29f
