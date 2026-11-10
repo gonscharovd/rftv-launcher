@@ -148,6 +148,7 @@ class MainActivity : Activity() {
     private var overlayBlurBitmap: Bitmap? = null
     private var overlayBlurGeneration = 0
     private var catalogFocusedPackage: String? = null
+    private var catalogLaunchPending = false
     private var returnFocusToCatalogButton = false
     private var glassBackdropCacheKey: String? = null
     private var glassBackdropLoadingKey: String? = null
@@ -380,6 +381,14 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (catalogLaunchPending) {
+            catalogLaunchPending = false
+            if (page == "panel" && activePanelTitle == "Каталог приложений") {
+                returnFocusToCatalogButton = true
+                showHome()
+                return
+            }
+        }
         if (page == "home") {
             startClock()
             resetIdleScreensaverTimer()
@@ -1004,7 +1013,8 @@ class MainActivity : Activity() {
         handler.postDelayed(homeWeatherTask, 15 * 60_000L)
         if (returnFocusToCatalogButton) {
             returnFocusToCatalogButton = false
-            root.findViewWithTag<View>("rftv-all-apps-trigger")?.requestFocus()
+            val allApps = root.findViewWithTag<View>(CatalogReturnPolicy.ALL_APPS_DOCK_TAG)
+            if (allApps?.requestFocus() != true) focusFirstApp()
         } else {
             focusFirstApp()
         }
@@ -1056,6 +1066,7 @@ class MainActivity : Activity() {
                 isFocusableInTouchMode = true
                 isClickable = true
                 contentDescription = label
+                tag = packageName ?: CatalogReturnPolicy.ALL_APPS_DOCK_TAG
                 background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused = false)
                 clipChildren = false
                 clipToPadding = false
@@ -3713,7 +3724,10 @@ class MainActivity : Activity() {
             setTextColor(Color.WHITE)
         }
         header.addView(heading, LinearLayout.LayoutParams(0, dp(RftvDesignSystem.Size.PANEL_HEADER_HEIGHT), 1f))
-        header.addView(glassButton("Закрыть  ✕") { showHome() }, LinearLayout.LayoutParams(-2, dp(RftvDesignSystem.Size.PANEL_CLOSE_HEIGHT)))
+        header.addView(glassButton("Закрыть  ✕") {
+            if (title == "Каталог приложений") returnFocusToCatalogButton = true
+            showHome()
+        }, LinearLayout.LayoutParams(-2, dp(RftvDesignSystem.Size.PANEL_CLOSE_HEIGHT)))
         shell.addView(header)
 
         val scroll = ScrollView(this).apply {
@@ -4111,9 +4125,12 @@ class MainActivity : Activity() {
         val intent = packageManager.getLeanbackLaunchIntentForPackage(packageName)
             ?: packageManager.getLaunchIntentForPackage(packageName)
         if (intent != null) {
+            val launchedFromCatalog = page == "panel" && activePanelTitle == "Каталог приложений"
+            if (launchedFromCatalog) catalogLaunchPending = true
             try {
                 startActivity(intent)
             } catch (_: Exception) {
+                if (launchedFromCatalog) catalogLaunchPending = false
                 // App may be disabled by the vendor firmware.
             }
         }
