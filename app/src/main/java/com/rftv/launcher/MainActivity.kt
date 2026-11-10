@@ -1566,6 +1566,7 @@ class MainActivity : Activity() {
             topMargin = controlCenterTop
         })
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
+        logOverlayOpen("control_center", overlayOpenedAt)
         card.animate()
             .alpha(1f)
             .translationX(0f)
