@@ -20,6 +20,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Rect
+import android.graphics.Paint
 import android.os.SystemClock
 import android.util.Log
 import android.util.LruCache
@@ -2023,6 +2024,8 @@ class MainActivity : Activity() {
         // not a screenshot of the panel that is being replaced.
         root.findViewWithTag<View>("rftv-control-center")?.visibility = View.GONE
         val settingsBackdropSnapshot = captureBackdropSnapshot()
+        homeDockBackdropView = null
+        dockBackdropGeneration++
         releaseOverlayBackdrop()
         settingsNavigationActive = true
         settingsHubVisible = true
@@ -2699,6 +2702,7 @@ class MainActivity : Activity() {
         params.width = calculateDockWidthPx(dockTileCount)
         params.height = dp(dockHeightDp)
         dock.layoutParams = params
+        dock.post { refreshDockGlassBackdrop() }
         dockTooltip?.let { tooltip ->
             (tooltip.layoutParams as? FrameLayout.LayoutParams)?.let { tooltipParams ->
                 tooltipParams.bottomMargin = dp(dockHeightDp + RftvDesignSystem.Spacing.DOCK_BOTTOM_INSET + 5)
