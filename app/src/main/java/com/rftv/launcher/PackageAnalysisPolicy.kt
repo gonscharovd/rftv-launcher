@@ -143,13 +143,20 @@ internal object PackageAnalysisPolicy {
     fun isProtectedPackage(packageName: String): Boolean =
         isCriticalIdentity(packageName.lowercase())
 
+    internal fun isHardProtectedMetadata(
+        sharedUserId: String?,
+        isPersistent: Boolean,
+        providesTvInputService: Boolean
+    ): Boolean = sharedUserId == "android.uid.system" || isPersistent || providesTvInputService
+
     fun analyze(signals: Signals): Report {
         val id = signals.packageName.lowercase()
         val permissions = signals.requestedPermissions.toSet()
         val evidence = mutableListOf<String>()
 
-        val hardPlatformProtection = signals.sharedUserId == "android.uid.system" ||
-            signals.isPersistent || signals.providesTvInputService
+        val hardPlatformProtection = isHardProtectedMetadata(
+            signals.sharedUserId, signals.isPersistent, signals.providesTvInputService
+        )
         if (isCriticalIdentity(id) || signals.isProtected || hardPlatformProtection) {
             if (signals.sharedUserId == "android.uid.system") evidence += "Пакет использует защищённый sharedUserId android.uid.system."
             if (signals.isPersistent) evidence += "Пакет помечен ApplicationInfo.FLAG_PERSISTENT."
