@@ -58,7 +58,7 @@ gradle --no-daemon assembleDebug
 
 Debug APK: app/build/outputs/apk/debug/app-debug.apk
 
-Stable Release APKs are published through [GitHub Releases](https://github.com/gonscharovd/rftv-launcher/releases). Candidate v0.9.1 uses versionCode 13. Use the in-app OTA updater for upgrades; it verifies SHA-256, package identity, increasing versionCode, ARMv7 compatibility when native libraries are present, and the installed signing certificate before opening Android's installer.
+Stable Release APKs are published through [GitHub Releases](https://github.com/gonscharovd/rftv-launcher/releases). Stable v0.9.1 uses versionCode 13; Iteration 2 candidate v0.9.2 uses versionCode 14 and remains unreleased on its feature PR. Use the in-app OTA updater for upgrades; it verifies SHA-256, package identity, increasing versionCode, ARMv7 compatibility when native libraries are present, and the installed signing certificate before opening Android's installer.
 
 GitHub Actions builds pushes to main and feature/** branches and pull requests targeting main.
 
