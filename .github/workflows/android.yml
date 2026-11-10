@@ -77,6 +77,22 @@ jobs:
             grep "^native-code:" <<< "$BADGING" | grep -q "armeabi-v7a"
           fi
 
+      - name: Verify all 20 bundled wallpaper assets in Debug APK
+        run: |
+          python3 - <<'PY'
+          import zipfile
+          apk = "app/build/outputs/apk/debug/app-debug.apk"
+          with zipfile.ZipFile(apk) as archive:
+              names = [name for name in archive.namelist()
+                       if name.startswith("assets/wallpapers/") and name.endswith(".jpg")]
+              assert len(names) == 20, f"Expected 20 bundled wallpapers, found {len(names)}"
+              for name in names:
+                  data = archive.read(name)
+                  assert len(data) > 10_000, f"{name} is too small"
+                  assert data[:3] == bytes((0xFF, 0xD8, 0xFF)), f"{name} is not JPEG"
+              print(f"Verified {len(names)} packaged JPEG wallpapers")
+          PY
+
       - name: Upload internal Debug diagnostics
         if: always() && github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
@@ -138,6 +154,22 @@ jobs:
 
       - name: Build signed Release
         run: gradle --no-daemon --stacktrace assembleRelease
+
+      - name: Verify all 20 bundled wallpaper assets in signed Release APK
+        run: |
+          python3 - <<'PY'
+          import zipfile
+          apk = "app/build/outputs/apk/release/app-release.apk"
+          with zipfile.ZipFile(apk) as archive:
+              names = [name for name in archive.namelist()
+                       if name.startswith("assets/wallpapers/") and name.endswith(".jpg")]
+              assert len(names) == 20, f"Expected 20 bundled wallpapers, found {len(names)}"
+              for name in names:
+                  data = archive.read(name)
+                  assert len(data) > 10_000, f"{name} is too small"
+                  assert data[:3] == bytes((0xFF, 0xD8, 0xFF)), f"{name} is not JPEG"
+              print(f"Verified {len(names)} packaged JPEG wallpapers")
+          PY
 
       - name: Verify Release APK identity, SDK, ABI, signature and checksum
         shell: bash
