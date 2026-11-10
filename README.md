@@ -90,7 +90,7 @@ All 20 photographs are linked to their original Unsplash photo pages and used un
 
 ## Next implementation order
 
-1. Measure the current v0.9.0 baseline on the target Sber TV: memory, frame pacing, cold launch, overlay opening and blur cost. No physical measurements are claimed yet.
+1. After installing the next verified stable Release, complete the Iteration 4 physical checklist on the target Sber TV: catalog exit paths, DPAD focus, responsive Dock and glass surfaces. No physical measurements or acceptance are claimed yet.
 2. Deliver and measure full-screen blur for All Apps and Control Center.
 3. Implement 3–5 layered photographic scenes and the clock-between-layers composition.
 4. Complete tvOS-style Settings focus restoration.
