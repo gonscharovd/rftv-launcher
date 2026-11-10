@@ -2212,7 +2212,7 @@ class MainActivity : Activity() {
             val sectionGlyphs = SettingsNavigationSpec.SECTION_GLYPHS
             val item = TextView(this).apply {
                 id = View.generateViewId()
-                text = "${sectionGlyphs[index]}    ${section.first}"; textSize = 16f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                text = "${SettingsNavigationSpec.glyphFor(index)}    ${section.first}"; textSize = 16f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                 gravity = Gravity.CENTER_VERTICAL; isFocusable = true; isFocusableInTouchMode = true
                 setPadding(dp(12), 0, dp(10), 0)
                 background = RftvDesignSystem.settingsNavigationSurface(this@MainActivity, focused = false, selected = false)

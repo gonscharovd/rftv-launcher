@@ -11,6 +11,11 @@ class SettingsNavigationSpecTest {
     }
 
     @Test
+    fun missingFutureGlyphUsesSafeFallbackInsteadOfThrowing() {
+        assertEquals("•", SettingsNavigationSpec.glyphFor(8))
+    }
+
+    @Test
     fun settingsGlyphsAreNotBlank() {
         assertFalse(SettingsNavigationSpec.SECTION_GLYPHS.any { it.isBlank() })
     }
