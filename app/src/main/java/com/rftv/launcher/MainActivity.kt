@@ -829,6 +829,7 @@ class MainActivity : Activity() {
             clipToPadding = false
         }
 
+        val weatherIcon = RftvControlIconView(this, "weather")
         val weatherPill = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -847,6 +848,7 @@ class MainActivity : Activity() {
                     if (focused) 220 else 48
                 )
                 homeWeatherText.setTextColor(if (focused) 0xFF17191F.toInt() else Color.WHITE)
+                weatherIcon.setTint(if (focused) 0xFF17191F.toInt() else Color.WHITE)
                 RftvDesignSystem.applyFocusScale(view, focused, 1.035f)
             }
         }
@@ -859,7 +861,7 @@ class MainActivity : Activity() {
             setShadowLayer(4f, 0f, 1f, 0x66000000)
             isFocusable = false
         }
-        weatherPill.addView(RftvControlIconView(this, "weather"), LinearLayout.LayoutParams(dp(30), dp(30)).apply {
+        weatherPill.addView(weatherIcon, LinearLayout.LayoutParams(dp(30), dp(30)).apply {
             rightMargin = dp(12)
         })
         weatherPill.addView(homeWeatherText, LinearLayout.LayoutParams(-2, -2))
