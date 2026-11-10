@@ -306,9 +306,9 @@ internal object RftvWeatherRepository {
 
     private fun formatDate(date: String): String {
         return try {
-            val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(date) ?: return date
+            val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone(TIME_ZONE) }.parse(date) ?: return date
             SimpleDateFormat("EEEE, d MMMM", Locale("ru")).format(parsed)
-                .replaceFirstChar { it.uppercase(Locale("ru")) }
+                .replaceFirstChar { it.uppercase() }
         } catch (_: Exception) {
             date
         }
