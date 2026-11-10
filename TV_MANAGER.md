@@ -1,8 +1,12 @@
 # RFTV TV Manager
 
-## Current implementation status
+## Priority and current implementation status
 
-Stable implementation included in **RFTV Launcher v0.8.0** (versionCode 11), merged into `main` and published as a stable [GitHub Release](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0). The physical Shizuku/provider and package-operation flow has not yet been validated on the target Sber TV; initial acceptance is read-only.
+**Priority: deferred.** TV Manager is retained as an existing subsystem but feature development is paused while the primary launcher work (measured blur, layered Home scenes, Settings focus and screensaver polish) is completed. The requirements below are the safety contract for later work; they are not a request to expand TV Manager now.
+
+
+
+Existing implementation shipped in **RFTV Launcher v0.9.0** (versionCode 12), merged into `main` and published as a stable [GitHub Release](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0). The physical Shizuku/provider and package-operation flow has not yet been validated on the target Sber TV; initial acceptance is read-only.
 
 - Device and package inventory through Android PackageManager.
 - Package details: requested permissions, granted/denied state, declared services/receivers/activities, category, risk, confidence and analysis limitations.
@@ -101,3 +105,14 @@ A new profile must be based on a traceable source and a verified inventory from 
 - source URL, author attribution and applicable license.
 
 A reference-only profile may identify a model, but it must not enable automatic cleanup without an independently tested optional-package list.
+
+
+## Owner-required safety gaps to close before any future enable/disable release
+
+The source audit as of 2026-11-10 found explicit protected package IDs/prefixes and dynamic HOME/Settings/input/screen-saver protection, but did not find explicit hard-protection checks for shared UID `android.uid.system`, `ApplicationInfo.FLAG_PERSISTENT`, or TvInputService role. The current package policy must not be described as fully implementing the owner's red-rule set until these are covered by code and tests.
+
+Unknown packages must be yellow, and green must require verified evidence. Current heuristic analysis uses low-confidence/informational and review severities; do not equate this automatically with the owner's exact three-color policy.
+
+There is no signed online profile database in the current implementation. The imported CleanYourTV profiles are local reference data and do not match SDX-50U4123B / Android 9 / MT9632. No green or automatic candidates are available for that target. Any future online source must be signature-verified, cached for offline use and subordinate to local red protections.
+
+Without a verified Shizuku privileged channel, package modification must remain unavailable and analysis must remain read-only. The existing Shizuku bridge has not been validated on the physical target TV.
