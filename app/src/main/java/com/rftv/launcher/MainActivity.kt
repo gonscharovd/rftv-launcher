@@ -2019,6 +2019,10 @@ class MainActivity : Activity() {
     }
 
     private fun showLauncherSettings() {
+        // Hide Control Center before capture so the Settings backdrop contains the Home scene,
+        // not a screenshot of the panel that is being replaced.
+        root.findViewWithTag<View>("rftv-control-center")?.visibility = View.GONE
+        val settingsBackdropSnapshot = captureBackdropSnapshot()
         releaseOverlayBackdrop()
         settingsNavigationActive = true
         settingsHubVisible = true
@@ -2027,7 +2031,7 @@ class MainActivity : Activity() {
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
         root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
-        addWallpaperGlassBackdrop(root)
+        addGlassBackdrop(root, settingsBackdropSnapshot)
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             background = RftvDesignSystem.settingsShellSurface(this@MainActivity)
