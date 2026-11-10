@@ -852,7 +852,7 @@ class MainActivity : Activity() {
         }
         homeWeatherText = TextView(this).apply {
             text = "Челябинск\nПолучаем погоду…"
-            textSize = 18f
+            textSize = RftvDesignSystem.Size.HOME_WEATHER_TEXT_SP
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             maxLines = 2
@@ -876,7 +876,7 @@ class MainActivity : Activity() {
         }
         clockText = TextView(this).apply {
             text = "09:41"
-            textSize = 122f
+            textSize = RftvDesignSystem.Size.CLOCK_TEXT_SP
             letterSpacing = -0.065f
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
@@ -884,7 +884,7 @@ class MainActivity : Activity() {
             setShadowLayer(24f, 0f, 4f, 0x99000000.toInt())
         }
         dateText = TextView(this).apply {
-            textSize = 20f
+            textSize = RftvDesignSystem.Size.DATE_TEXT_SP
             letterSpacing = 0.025f
             setTextColor(0xE8FFFFFF.toInt())
             gravity = Gravity.CENTER
