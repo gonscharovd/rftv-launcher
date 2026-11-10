@@ -135,7 +135,8 @@ internal object RftvDesignSystem {
         const val CONTROL = 18
         const val CARD = 20
         const val BUTTON = 28
-        const val DOCK = 42
+        const val DOCK = 30
+        const val DOCK_PILL = 76
         const val DOCK_TILE = 19
         const val CONTROL_CENTER_PANEL = 34
         const val CONTROL_CENTER_TILE = 32
@@ -257,7 +258,7 @@ internal object RftvDesignSystem {
     fun dockSurface(context: Context): GradientDrawable = gradientSurface(
         context,
         intArrayOf(0xC21B2028.toInt(), 0xB50D1118.toInt()),
-        Radius.DOCK,
+        Radius.DOCK_PILL,
         0x42FFFFFF
     )
 
