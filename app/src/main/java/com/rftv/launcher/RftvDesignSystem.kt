@@ -74,7 +74,10 @@ internal object RftvDesignSystem {
         const val HOME_WALLPAPER_RIGHT_INSET = 56
         const val HOME_WALLPAPER_DOCK_GAP = 38
         const val DOCK_CONTENT_PADDING = 10
-        const val DOCK_BOTTOM_INSET = 22
+        const val DOCK_TILE_GAP = 10
+        const val DOCK_EDGE_INSET = 13
+        const val DOCK_CONTENT_HORIZONTAL_PADDING = 13
+        const val DOCK_BOTTOM_INSET = 14
         const val DOCK_TILE_HORIZONTAL_MARGIN = 4
         const val CONTROL_PANEL_TOP = 16
         const val CONTROL_PANEL_BOTTOM = 18
@@ -137,7 +140,7 @@ internal object RftvDesignSystem {
         const val BUTTON = 28
         const val DOCK = 30
         const val DOCK_PILL = 76
-        const val DOCK_TILE = 19
+        const val DOCK_TILE = 13
         const val CONTROL_CENTER_PANEL = 34
         const val CONTROL_CENTER_TILE = 32
         const val SCREENSAVER_DETAILS = 24
@@ -154,13 +157,14 @@ internal object RftvDesignSystem {
     }
 
     object Size {
-        const val DOCK_ICON = 64
+        const val DOCK_ICON = 26
+        const val DOCK_TILE_SIZE = 54
         const val DOCK_TILE_WIDTH = 112
         const val DOCK_TILE_HEIGHT = 122
-        const val DOCK_LABEL_TEXT_SP = 14f
+        const val DOCK_LABEL_TEXT_SP = 11.5f
         const val DOCK_LABEL_WIDTH = 100
         const val DOCK_LABEL_HEIGHT = 28
-        const val DOCK_FOCUS_SCALE = 1.10f
+        const val DOCK_FOCUS_SCALE = 1.13f
         const val CLOCK_LETTER_SPACING = -0.045f
         const val CLOCK_SHADOW_RADIUS = 22f
         const val CLOCK_SHADOW_DY = 4f
@@ -217,6 +221,7 @@ internal object RftvDesignSystem {
         const val HOME_FADE_DURATION_MS = 220L
         const val SURFACE_FADE_DURATION_MS = 180L
         const val DOCK_REVEAL_DURATION_MS = 180L
+        const val DOCK_FOCUS_DURATION_MS = 190L
         const val SECONDARY_REVEAL_DURATION_MS = 220L
         const val CONTROL_CENTER_REVEAL_DURATION_MS = 220L
         const val SCREENSAVER_REVEAL_DURATION_MS = 280L
@@ -257,15 +262,15 @@ internal object RftvDesignSystem {
 
     fun dockSurface(context: Context): GradientDrawable = gradientSurface(
         context,
-        intArrayOf(0xC21B2028.toInt(), 0xB50D1118.toInt()),
-        Radius.DOCK_PILL,
-        0x42FFFFFF
+        intArrayOf(0x541E141C, 0x541E141C),
+        23,
+        0x2EFFFFFF
     )
 
     fun dockTileSurface(context: Context, focused: Boolean): GradientDrawable =
         GradientDrawable().apply {
             setColor(if (focused) 0xDDF8FAFF.toInt() else Color.TRANSPARENT)
-            cornerRadius = dp(context, 25).toFloat()
+            cornerRadius = dp(context, Radius.DOCK_TILE).toFloat()
             if (focused) setStroke(dp(context, 2), 0xF2FFFFFF.toInt())
         }
 

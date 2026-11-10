@@ -90,3 +90,16 @@ Iteration 2 also studies three narrowly scoped design/performance patterns from 
 - `SceneHome.java`: a separate floating Dock name tooltip above the glass Dock container.
 
 RFTV reimplements these ideas in its own Kotlin/Android Views architecture; no donor Java source, fonts, icons, or unrelated launcher features are copied or bundled. The upstream project remains the design/performance reference, not a source of new RFTV product features.
+
+
+### Dock, Control Center and Settings UI reference (Iteration 3)
+
+The RFTV UI in Iteration 3 reimplements measured layout and focus styling from the Apache-2.0 tvOS Launcher project:
+
+- Project: [techgenius1/tvOS-Launcher](https://github.com/techgenius1/tvOS-Launcher)
+- License: Apache License 2.0; upstream LICENSE and NOTICE are preserved in `third_party/tvos-launcher/`.
+- `SceneHome.java`: `buildBottomDock()` — 23dp glass radius, 13dp/10dp horizontal/vertical padding, 14dp bottom inset; `rebuildDock()` — 54dp app tiles, 10dp gaps, 13dp squircle radius, 26dp glyphs, 1.13 focus scale and 190ms focus animation; `updateDockTooltip()` — separate 11.5sp name tooltip, 12dp/5dp padding, 340dp width, 26dp + 5dp pointer height and 5dp Dock gap.
+- `ControlPanelOverlay.java`: 141dp columns, 11dp row/column gap, 56dp capsule height, 25dp icon, 12.5sp title, 10.5sp status, 14dp/12dp horizontal padding, 10dp icon-to-label gap, 18dp weather capsule radius; panel placement 36dp from top and 28dp from right. RFTV adapts these values to its existing actions only.
+- `MainActivity.java`: shared LiquidGlass and focus treatment reference. Settings retains RFTV sections and DPAD behavior while adopting compact 56dp navigation rhythm, subtle 0x38FFFFFF borders and bright focused surfaces.
+
+All values are ported into Kotlin/Android Views. No donor Java implementation, fonts, icons, or donor-only product features are copied.

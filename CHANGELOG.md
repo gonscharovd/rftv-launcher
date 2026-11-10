@@ -1,3 +1,11 @@
+# Changelog
+
+## 0.9.3
+- Fixed the crash when opening Launcher Settings: all eight sections now have navigation glyphs, with a regression test.
+- Reworked Dock geometry and focus to match measured tvOS Launcher values while retaining RFTV favorites, app catalog and installed-app refresh.
+- Refined Control Center capsules and Settings navigation surfaces using donor-measured dimensions and colors.
+- Updated Apache-2.0 attribution for Dock, Control Center and Settings UI references.
+
 ## 0.9.2 (2026-11-10) — Iteration 2 candidate
 
 - Overlay capture now draws the Home root directly into a <=480 px wide bitmap using a scaled Canvas; it no longer allocates a full-resolution screenshot on the UI thread or downsamples it again on the worker.

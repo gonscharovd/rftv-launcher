@@ -24,8 +24,8 @@ android {
         applicationId = "com.rftv.launcher"
         minSdk = 24
         targetSdk = 28
-        versionCode = 14
-        versionName = "0.9.2"
+        versionCode = 15
+        versionName = "0.9.3"
         manifestPlaceholders["appLabel"] = "RFTV Launcher"
     }
 

@@ -203,7 +203,7 @@ class MainActivity : Activity() {
     private var darkCarousel = false
     private var carouselIntervalMinutes = 5
     private var dockWidthPercent = 88
-    private var dockHeightDp = 154
+    private var dockHeightDp = 74
     private var screensaverTimeoutMinutes = 15
     private val idleScreensaverTask = object : Runnable {
         override fun run() {
@@ -324,7 +324,7 @@ class MainActivity : Activity() {
         darkCarousel = prefs.getBoolean("wallpaper_dark_carousel", false)
         carouselIntervalMinutes = prefs.getInt("wallpaper_interval", 5).coerceIn(1, 60)
         dockWidthPercent = prefs.getInt("dock_width", 88)
-        dockHeightDp = prefs.getInt("dock_height", 154)
+        dockHeightDp = prefs.getInt("dock_height", 74).coerceIn(70, 110)
         screensaverTimeoutMinutes = prefs.getInt("screensaver_timeout_minutes", 15).coerceIn(0, 60)
         favoritePackages.addAll(prefs.getString("favorite_packages_order", "")!!.split("|").filter { it.isNotBlank() })
         hiddenPackages.addAll(prefs.getStringSet("hidden_packages", emptySet()) ?: emptySet())
@@ -952,7 +952,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             background = RftvDesignSystem.dockSurface(this@MainActivity)
-            setPadding(dp(18), dp(12), dp(18), dp(12))
+            setPadding(dp(13), dp(10), dp(13), dp(10))
             clipChildren = false
             clipToPadding = false
             elevation = dp(20).toFloat()
@@ -979,22 +979,22 @@ class MainActivity : Activity() {
         }
         root.addView(dock, dockParams)
         dockTooltip = TextView(this).apply {
-            textSize = 13f
+            textSize = 11.5f
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
-            maxWidth = dp(320)
-            setPadding(dp(14), dp(6), dp(14), dp(6))
+            maxWidth = dp(340)
+            setPadding(dp(12), dp(5), dp(12), dp(5))
             background = RftvDesignSystem.surface(this@MainActivity, 0xE51A1E26.toInt(), 18, 72)
             elevation = dp(26).toFloat()
             visibility = View.INVISIBLE
             alpha = 0f
             isFocusable = false
         }
-        root.addView(dockTooltip, FrameLayout.LayoutParams(-2, dp(34), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
-            bottomMargin = dp(dockHeightDp + RftvDesignSystem.Spacing.DOCK_BOTTOM_INSET + 7)
+        root.addView(dockTooltip, FrameLayout.LayoutParams(dp(340), dp(31), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+            bottomMargin = dp(dockHeightDp + RftvDesignSystem.Spacing.DOCK_BOTTOM_INSET + 5)
         })
 
         setContentView(root)
@@ -1021,95 +1021,76 @@ class MainActivity : Activity() {
         dockContent.removeAllViews()
         val visibleApps = installedApps.filter { it.packageName !in hiddenPackages }
         val favorites = visibleApps.filter { it.packageName in favoritePackages }
-        // A single adaptive row: favorites first, followed by a dedicated App Library entry.
+        // Keep RFTV's favorites ordering and the dedicated All Apps entry.
         val firstRow = favorites.ifEmpty { visibleApps }
-        dockContent.addView(buildAppRow(firstRow), LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)))
+        dockContent.addView(buildAppRow(firstRow), LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_SIZE)))
     }
 
     private fun buildAppRow(items: List<TvApp>): HorizontalScrollView {
+        val availableWidthDp = (resources.displayMetrics.widthPixels /
+            resources.displayMetrics.density * dockWidthPercent / 100f).toInt()
+        val tileSize = dp(RftvDesignSystem.Size.DOCK_TILE_SIZE)
+        val iconSize = dp(RftvDesignSystem.Size.DOCK_ICON)
+        val tileGap = dp(RftvDesignSystem.Spacing.DOCK_TILE_GAP)
+        val edgeInset = dp(RftvDesignSystem.Spacing.DOCK_EDGE_INSET)
         val scroll = HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
+            isFillViewport = true
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
             clipChildren = false
             clipToPadding = false
+            setPadding(edgeInset, 0, edgeInset, 0)
         }
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+            gravity = Gravity.CENTER
             clipChildren = false
             clipToPadding = false
+            minimumWidth = dp((availableWidthDp - 2 * RftvDesignSystem.Spacing.DOCK_CONTENT_HORIZONTAL_PADDING).coerceAtLeast(1))
         }
-        val availableWidthDp = (resources.displayMetrics.widthPixels / resources.displayMetrics.density * dockWidthPercent / 100f).toInt()
-        val tileWidthDp = ((availableWidthDp - 44) / (items.size + 1).coerceAtLeast(1)).coerceIn(82, RftvDesignSystem.Size.DOCK_TILE_WIDTH)
-        val iconSizeDp = (tileWidthDp * 0.56f).toInt().coerceIn(44, RftvDesignSystem.Size.DOCK_ICON)
-        items.forEach { app ->
-            var dockIcon: ImageView? = null
-            val tile = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER
-                tag = app.packageName
+
+        fun addTile(label: String, packageName: String?, drawable: android.graphics.drawable.Drawable?, glyph: String? = null) {
+            val tile = FrameLayout(this).apply {
                 isFocusable = true
                 isFocusableInTouchMode = true
+                isClickable = true
+                contentDescription = label
                 background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused = false)
-                setPadding(dp(7), dp(7), dp(7), dp(7))
-                clipChildren = true
-                clipToPadding = true
-                contentDescription = app.label
+                clipChildren = false
+                clipToPadding = false
                 setOnFocusChangeListener { view, focused ->
                     view.background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused)
-                    dockIcon?.animate()?.scaleX(if (focused) 1.07f else 1f)
-                        ?.scaleY(if (focused) 1.07f else 1f)
-                        ?.setDuration(RftvDesignSystem.Motion.FOCUS_DURATION_MS)?.start()
+                    view.animate().scaleX(if (focused) RftvDesignSystem.Size.DOCK_FOCUS_SCALE else 1f)
+                        .scaleY(if (focused) RftvDesignSystem.Size.DOCK_FOCUS_SCALE else 1f)
+                        .setDuration(RftvDesignSystem.Motion.DOCK_FOCUS_DURATION_MS).start()
                     view.elevation = if (focused) dp(RftvDesignSystem.Elevation.FOCUSED_TILE_DP).toFloat() else 0f
-                    updateDockTooltip(app.label, focused, view)
+                    updateDockTooltip(label, focused, view)
                 }
-                setOnClickListener { launchApp(app.packageName) }
-                setOnLongClickListener { showAppActions(app); true }
+                setOnClickListener { packageName?.let(::launchApp) ?: showAppCatalog() }
             }
-            val icon = ImageView(this).apply { setImageDrawable(app.icon); scaleType = ImageView.ScaleType.FIT_CENTER }
-            dockIcon = icon
-            tile.addView(icon, LinearLayout.LayoutParams(dp(iconSizeDp), dp(iconSizeDp)))
-            row.addView(tile, LinearLayout.LayoutParams(dp(tileWidthDp), dp(100)).apply {
-                leftMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
-                rightMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
+            if (glyph != null) {
+                tile.addView(TextView(this).apply {
+                    text = glyph
+                    textSize = 25f
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.WHITE)
+                }, FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER))
+            } else {
+                tile.addView(ImageView(this).apply {
+                    setImageDrawable(drawable)
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                }, FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER))
+            }
+            row.addView(tile, LinearLayout.LayoutParams(tileSize, tileSize).apply {
+                leftMargin = tileGap / 2
+                rightMargin = tileGap / 2
             })
         }
-        var catalogGlyph: TextView? = null
-        val catalogTile = LinearLayout(this).apply {
-            tag = "rftv-all-apps-trigger"
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            isFocusable = true
-            isFocusableInTouchMode = true
-            contentDescription = "Все приложения"
-            background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused = false)
-            setPadding(dp(7), dp(7), dp(7), dp(7))
-            clipChildren = true
-            clipToPadding = true
-            setOnFocusChangeListener { view, focused ->
-                view.background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused)
-                catalogGlyph?.animate()?.scaleX(if (focused) 1.07f else 1f)
-                    ?.scaleY(if (focused) 1.07f else 1f)
-                    ?.setDuration(RftvDesignSystem.Motion.FOCUS_DURATION_MS)?.start()
-                view.elevation = if (focused) dp(RftvDesignSystem.Elevation.FOCUSED_TILE_DP).toFloat() else 0f
-                updateDockTooltip("Все приложения", focused, view)
-            }
-            setOnClickListener { showAppCatalog() }
-        }
-        val glyph = TextView(this).apply {
-            text = "▦"
-            textSize = 38f
-            gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-        }
-        catalogGlyph = glyph
-        catalogTile.addView(glyph, LinearLayout.LayoutParams(dp(iconSizeDp), dp(iconSizeDp)))
-        row.addView(catalogTile, LinearLayout.LayoutParams(dp(tileWidthDp), dp(100)).apply {
-            leftMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
-            rightMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
-        })
-        scroll.addView(row)
+
+        items.forEach { app -> addTile(app.label, app.packageName, app.icon) }
+        addTile("Все приложения", null, null, "▦")
+        scroll.addView(row, ViewGroup.LayoutParams(-2, tileSize))
         return scroll
     }
 
@@ -1125,10 +1106,8 @@ class MainActivity : Activity() {
                 val rootLocation = IntArray(2)
                 val anchorLocation = IntArray(2)
                 root.getLocationOnScreen(rootLocation)
-                anchor?.getLocationOnScreen(anchorLocation)
-                val centerX = if (anchor != null) {
-                    anchorLocation[0] - rootLocation[0] + anchor.width / 2f
-                } else root.width / 2f
+                anchor.getLocationOnScreen(anchorLocation)
+                val centerX = anchorLocation[0] - rootLocation[0] + anchor.width / 2f
                 val halfTooltip = tooltip.width / 2f
                 val minCenter = halfTooltip + dp(8)
                 val maxCenter = root.width - halfTooltip - dp(8)
@@ -1140,7 +1119,6 @@ class MainActivity : Activity() {
             }.start()
         }
     }
-
 
     private fun focusFirstApp() {
         if (!::dockContent.isInitialized) return
@@ -2141,7 +2119,7 @@ class MainActivity : Activity() {
                         updateDockSize()
                     })
                     detail.addView(sectionLabel("ВЫСОТА DOCK · $dockHeightDp dp"))
-                    detail.addView(settingSlider(130, 210, dockHeightDp) { value ->
+                    detail.addView(settingSlider(70, 110, dockHeightDp) { value ->
                         dockHeightDp = value
                         prefs.edit().putInt("dock_height", value).apply()
                         updateDockSize()
@@ -2228,7 +2206,7 @@ class MainActivity : Activity() {
             }
         }
         sections.forEachIndexed { index, section ->
-            val sectionGlyphs = listOf("⌂", "◉", "▣", "◷", "▦", "▤", "ⓘ")
+            val sectionGlyphs = SettingsNavigationSpec.SECTION_GLYPHS
             val item = TextView(this).apply {
                 id = View.generateViewId()
                 text = "${sectionGlyphs[index]}    ${section.first}"; textSize = 16f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
@@ -2284,7 +2262,7 @@ class MainActivity : Activity() {
                 updateDockSize()
             })
             body.addView(sectionLabel("ВЫСОТА DOCK · $dockHeightDp dp"))
-            body.addView(settingSlider(130, 210, dockHeightDp) { value ->
+            body.addView(settingSlider(70, 110, dockHeightDp) { value ->
                 dockHeightDp = value
                 prefs.edit().putInt("dock_height", value).apply()
                 updateDockSize()
