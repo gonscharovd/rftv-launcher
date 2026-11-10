@@ -1,6 +1,6 @@
 # RFTV Launcher
 
-**Current stable release: [0.9.1](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.1) · versionCode 13.** Signed APK SHA-256: `ef03ecf77a13604ec3834bc47ad8c93ccfe1df615522f81c271235a704944167`. Release signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`. Physical acceptance on the target Sber TV is still pending; see [DEVICE_TESTING.md](DEVICE_TESTING.md).
+**Current stable release: [0.9.3](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.3) · versionCode 15.** Signed APK SHA-256: `ce7bfcd6639ab9df57b1982518a867089ecd99bd0fac339dda3cb5840f11240e`. Release signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`. Physical acceptance on the target Sber TV is still pending; see [DEVICE_TESTING.md](DEVICE_TESTING.md).
 
 A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direction.
 
@@ -58,7 +58,7 @@ gradle --no-daemon assembleDebug
 
 Debug APK: app/build/outputs/apk/debug/app-debug.apk
 
-Stable Release APKs are published through [GitHub Releases](https://github.com/gonscharovd/rftv-launcher/releases). Stable v0.9.1 uses versionCode 13; Iteration 2 candidate v0.9.2 uses versionCode 14 and remains unreleased on its feature PR. Use the in-app OTA updater for upgrades; it verifies SHA-256, package identity, increasing versionCode, ARMv7 compatibility when native libraries are present, and the installed signing certificate before opening Android's installer.
+Stable Release APKs are published through [GitHub Releases](https://github.com/gonscharovd/rftv-launcher/releases). Stable v0.9.3 uses versionCode 15. Iteration 4A candidate v0.9.4 / versionCode 16 is being verified; it is not a published Release. Use the in-app OTA updater for upgrades; it verifies SHA-256, package identity, increasing versionCode, ARMv7 compatibility when native libraries are present, and the installed signing certificate before opening Android's installer.
 
 GitHub Actions builds pushes to main and feature/** branches and pull requests targeting main.
 
