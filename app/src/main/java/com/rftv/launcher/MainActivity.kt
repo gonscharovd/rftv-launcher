@@ -18,6 +18,12 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Rect
+import android.os.SystemClock
+import android.util.Log
+import android.util.LruCache
+import android.widget.GridLayout
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.BitmapDrawable
@@ -69,6 +75,19 @@ class MainActivity : Activity() {
         val icon: android.graphics.drawable.Drawable
     )
 
+    private data class OverlayPerfMetrics(
+        val overlay: String,
+        val openedAt: Long,
+        val openCount: Int,
+        val javaHeapBeforeBytes: Long,
+        val nativeHeapBeforeBytes: Long,
+        val diagnosticRecord: OverlayDiagnosticRecord,
+        var captureMs: Long = 0L,
+        var screenshotWidthPx: Int = 0,
+        var screenshotHeightPx: Int = 0,
+        var screenshotBitmapBytes: Int = 0
+    )
+
     private lateinit var prefs: SharedPreferences
     private lateinit var root: FrameLayout
     private lateinit var dock: LinearLayout
@@ -118,7 +137,15 @@ class MainActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private val wallpaperExecutor = Executors.newSingleThreadExecutor()
     private val glassBlurExecutor = Executors.newSingleThreadExecutor()
+    private val appIconExecutor = Executors.newFixedThreadPool(2)
+    private val appIconCache = object : LruCache<String, Bitmap>(4 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap): Int = (value.byteCount / 1024).coerceAtLeast(1)
+    }
     private var glassBackdropBitmap: Bitmap? = null
+    private var overlayBlurBitmap: Bitmap? = null
+    private var overlayBlurGeneration = 0
+    private var catalogFocusedPackage: String? = null
+    private var returnFocusToCatalogButton = false
     private var glassBackdropCacheKey: String? = null
     private var glassBackdropLoadingKey: String? = null
     private var activeGlassBackdropView: ImageView? = null
@@ -137,6 +164,7 @@ class MainActivity : Activity() {
     private val packageChangeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val changedPackage = intent?.data?.schemeSpecificPart
+            changedPackage?.let { appIconCache.remove(it) }
             if (!PackageChangePolicy.shouldRefresh(
                     intent?.action,
                     changedPackage,
@@ -389,7 +417,10 @@ class MainActivity : Activity() {
             packageReceiverRegistered = false
         }
         wallpaperExecutor.shutdownNow()
+        appIconExecutor.shutdownNow()
         glassBlurExecutor.shutdownNow()
+        overlayBlurBitmap?.takeIf { !it.isRecycled }?.recycle()
+        overlayBlurBitmap = null
         glassBackdropBitmap?.recycle()
         glassBackdropBitmap = null
         networkExecutor.shutdownNow()
@@ -418,7 +449,10 @@ class MainActivity : Activity() {
                 }
                 if (page == "panel") {
                     if (settingsNavigationActive && !settingsHubVisible) showLauncherSettings()
-                    else showHome()
+                    else {
+                        if (activePanelTitle == "Каталог приложений") returnFocusToCatalogButton = true
+                        showHome()
+                    }
                     return true
                 }
             }
@@ -795,6 +829,7 @@ class MainActivity : Activity() {
         settingsSelectedIndex = 0
         page = "home"
         activePanelTitle = ""
+        releaseOverlayBackdrop()
         root = FrameLayout(this).apply {
             setBackgroundColor(RftvDesignSystem.ColorTokens.HOME_BACKDROP)
             clipChildren = false
@@ -945,7 +980,12 @@ class MainActivity : Activity() {
         refreshHomeWeather()
         handler.removeCallbacks(homeWeatherTask)
         handler.postDelayed(homeWeatherTask, 15 * 60_000L)
-        focusFirstApp()
+        if (returnFocusToCatalogButton) {
+            returnFocusToCatalogButton = false
+            root.findViewWithTag<View>("rftv-all-apps-trigger")?.requestFocus()
+        } else {
+            focusFirstApp()
+        }
     }
 
     private fun startClock() {
@@ -1022,6 +1062,7 @@ class MainActivity : Activity() {
         }
         var catalogLabel: TextView? = null
         val catalogTile = LinearLayout(this).apply {
+            tag = "rftv-all-apps-trigger"
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             isFocusable = true
@@ -1289,12 +1330,14 @@ class MainActivity : Activity() {
     private fun showControlCenter() {
         if (page != "home") return
         val existingOverlay = root.findViewWithTag<View>("rftv-control-center")
+        if (existingOverlay != null) root.removeView(existingOverlay)
+        val perf = beginOverlayPerf("control_center")
+        val backdropSnapshot = captureBackdropSnapshot(perf)
+        releaseOverlayBackdrop()
         if (existingOverlay == null) {
             controlCenterReturnFocus = currentFocus
                 ?.takeIf { it.tag != "rftv-control-center-trigger" }
                 ?: root.findViewWithTag("rftv-control-center-trigger")
-        } else {
-            root.removeView(existingOverlay)
         }
 
         val overlay = FrameLayout(this).apply {
@@ -1303,7 +1346,7 @@ class MainActivity : Activity() {
             isFocusable = false
             isFocusableInTouchMode = false
         }
-        addGlassBackdrop(overlay)
+        addGlassBackdrop(overlay, backdropSnapshot, perf)
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = RftvDesignSystem.gradientSurface(
@@ -1536,6 +1579,7 @@ class MainActivity : Activity() {
             topMargin = controlCenterTop
         })
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
+        overlay.post { logOverlayOpen(perf) }
         card.animate()
             .alpha(1f)
             .translationX(0f)
@@ -1575,12 +1619,78 @@ class MainActivity : Activity() {
     private fun closeControlCenter() {
         val overlay = root.findViewWithTag<View>("rftv-control-center") ?: return
         root.removeView(overlay)
+        releaseOverlayBackdrop()
         val previous = controlCenterReturnFocus
         controlCenterReturnFocus = null
         if (previous != null && previous.isShown && previous.isFocusable && previous.requestFocus()) return
         root.findViewWithTag<View>("rftv-control-center-trigger")?.requestFocus()
     }
 
+
+    private fun showDiagnosticsScreen() {
+        fun render() {
+            showPanel("Диагностика") { body ->
+                val packageInfo = packageManager.getPackageInfo(packageName, 0)
+                val versionCode = if (Build.VERSION.SDK_INT >= 28) {
+                    packageInfo.longVersionCode
+                } else {
+                    packageInfo.versionCode.toLong()
+                }
+                val memoryClass = (getSystemService(ACTIVITY_SERVICE) as ActivityManager).memoryClass
+                val abi = Build.SUPPORTED_ABIS.joinToString(", ").ifBlank { Build.CPU_ABI }
+                body.addView(infoCard(
+                    "УСТРОЙСТВО",
+                    "RFTV ${packageInfo.versionName} · ${versionCode}",
+                    "Модель: ${Build.MANUFACTURER} ${Build.MODEL}\nAndroid: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\nABI: $abi\nMemory class: $memoryClass MB"
+                ))
+                body.addView(sectionLabel("ПОСЛЕДНИЕ 10 ОТКРЫТИЙ"))
+                val records = OverlayDiagnosticsStore.latest()
+                if (records.isEmpty()) {
+                    body.addView(infoCard("ПОКА НЕТ ДАННЫХ", "Открой каталог или Control Center", "После открытия здесь появятся замеры времени, bitmap и использования памяти."))
+                } else {
+                    records.forEachIndexed { index, record ->
+                        val title = if (record.overlay == "app_catalog") "Каталог приложений" else "Control Center"
+                        val blur = if (record.blurMs >= 0) "${record.blurMs} мс" else "ожидается"
+                        val card = LinearLayout(this).apply {
+                            orientation = LinearLayout.VERTICAL
+                            background = RftvDesignSystem.settingsNavigationSurface(this@MainActivity, false, false)
+                            setPadding(dp(18), dp(14), dp(18), dp(14))
+                            isFocusable = false
+                        }
+                        card.addView(TextView(this).apply {
+                            text = "#${record.openCount} · $title · ${if (record.temperature == "cold") "холодное" else "повторное"}"
+                            textSize = 22f
+                            typeface = Typeface.DEFAULT_BOLD
+                            setTextColor(Color.WHITE)
+                        })
+                        val details = listOf(
+                            "capture: ${record.captureMs} мс · показ: ${record.openToVisibleMs} мс · blur: $blur",
+                            "Bitmap: исходный ${record.sourceBitmapBytes} Б · размытый ${record.blurredBitmapBytes} Б",
+                            "Java heap: ${record.javaHeapBeforeBytes} → ${record.javaHeapAfterBytes} Б",
+                            "Native heap: ${record.nativeHeapBeforeBytes} → ${record.nativeHeapAfterBytes} Б",
+                            if (record.blurMs >= 0) "Blur: ${if (record.blurSucceeded) "готов" else "fallback"}" else "Blur: обработка ещё не завершена"
+                        )
+                        card.addView(TextView(this).apply {
+                            text = details.joinToString("\n")
+                            textSize = 18f
+                            setTextColor(0xFFE4EAF2.toInt())
+                            setPadding(0, dp(8), 0, 0)
+                        })
+                        body.addView(card, LinearLayout.LayoutParams(-1, -2).apply {
+                            bottomMargin = dp(10)
+                        })
+                    }
+                }
+                body.addView(glassButton("Очистить историю диагностики") {
+                    OverlayDiagnosticsStore.clear()
+                    render()
+                }, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(10) })
+                body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
+                    LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(8) })
+            }
+        }
+        render()
+    }
 
     private fun showAboutSystem() {
         showPanel("О системе") { body ->
@@ -1894,6 +2004,7 @@ class MainActivity : Activity() {
     }
 
     private fun showLauncherSettings() {
+        releaseOverlayBackdrop()
         settingsNavigationActive = true
         settingsHubVisible = true
         page = "panel"
@@ -1901,7 +2012,7 @@ class MainActivity : Activity() {
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
         root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
-        addGlassBackdrop(root)
+        addWallpaperGlassBackdrop(root)
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             background = RftvDesignSystem.settingsShellSurface(this@MainActivity)
@@ -1965,6 +2076,7 @@ class MainActivity : Activity() {
             Triple("Заставка", "Таймер и экран ожидания", { showScreensaverSettings() }),
             Triple("Приложения", "Каталог, избранное и скрытые", { showAppSettings() }),
             Triple("TV Manager", "Устройство и анализ пакетов", { showTvManager() }),
+            Triple("Диагностика", "Показатели открытия каталога и Control Center", { showDiagnosticsScreen() }),
             Triple("О системе", "Версия и OTA-обновления", { showAboutSystem() })
         )
         val navItems = mutableListOf<TextView>()
@@ -1998,13 +2110,13 @@ class MainActivity : Activity() {
             val label = when (index) {
                 0 -> "ЦЕНТР НАСТРОЕК"; 1 -> "ВНЕШНИЙ ВИД"; 2 -> "ПАНЕЛЬ ПРИЛОЖЕНИЙ"
                 3 -> "ЭКРАН ОЖИДАНИЯ"; 4 -> "УПРАВЛЕНИЕ ПРИЛОЖЕНИЯМИ"
-                5 -> "ДИАГНОСТИКА УСТРОЙСТВА"; else -> "СИСТЕМА И ОБНОВЛЕНИЯ"
+                5 -> "ДИАГНОСТИКА УСТРОЙСТВА"; 6 -> "ДИАГНОСТИКА RFTV"; else -> "СИСТЕМА И ОБНОВЛЕНИЯ"
             }
             detail.addView(infoCard(label, section.first, section.second))
             when (index) {
                 0 -> {
                     detail.addView(sectionLabel("БЫСТРЫЙ ДОСТУП"))
-                    for (target in 1..6) {
+                    for (target in 1..7) {
                         val entry = sections[target]
                         detail.addView(controlTile(entry.first, entry.second) {
                             renderSection(target)
@@ -2086,6 +2198,12 @@ class MainActivity : Activity() {
                         settingsHubVisible = false
                         showTvOperationLog()
                     }, LinearLayout.LayoutParams(-1, dp(68)))
+                }
+                6 -> {
+                    detail.addView(controlTile("Открыть диагностику", "Последние 10 открытий · память и скорость") {
+                        settingsHubVisible = false
+                        showDiagnosticsScreen()
+                    }, LinearLayout.LayoutParams(-1, dp(76)))
                 }
                 else -> {
                     detail.addView(controlTile("О системе и обновления", "Версия RFTV · скачать и установить OTA") {
@@ -2284,26 +2402,114 @@ class MainActivity : Activity() {
                 "${visibleApps.size} доступно",
                 "Нажми OK для запуска. Удерживай OK, чтобы изменить избранное или скрыть приложение."
             ))
-
             if (visibleApps.isEmpty()) {
                 body.addView(infoCard("Каталог пуст", "Нет доступных приложений", "Обнови список приложений или проверь их установку в настройках Android."))
-            } else {
-                visibleApps.forEach { app ->
-                    val subtitle = if (app.packageName in favoritePackages) {
-                        "В избранном · ${app.packageName}"
-                    } else {
-                        app.packageName
+                return@showPanel
+            }
+
+            val screenWidth = resources.displayMetrics.widthPixels
+            val panelWidth = (screenWidth * RftvDesignSystem.Size.PANEL_WIDTH_FRACTION).toInt()
+            val contentWidth = (panelWidth - dp(64)).coerceAtLeast(dp(420))
+            val columns = (contentWidth / dp(178)).coerceIn(3, 6)
+            val cellWidth = contentWidth / columns
+            val grid = GridLayout(this).apply {
+                columnCount = columns
+                orientation = GridLayout.HORIZONTAL
+                useDefaultMargins = false
+                alignmentMode = GridLayout.ALIGN_BOUNDS
+                setPadding(dp(4), dp(8), dp(4), dp(12))
+                descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+            }
+            val tiles = mutableListOf<View>()
+            visibleApps.forEachIndexed { index, app ->
+                val tile = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    isFocusable = true
+                    isFocusableInTouchMode = true
+                    isClickable = true
+                    tag = app.packageName
+                    contentDescription = app.label
+                    background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused = false)
+                    setPadding(dp(8), dp(10), dp(8), dp(10))
+                    setOnFocusChangeListener { view, focused ->
+                        view.background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused)
+                        RftvDesignSystem.applyFocusScale(view, focused, 1.045f)
+                        if (focused) catalogFocusedPackage = app.packageName
                     }
-                    val tile = controlTile(app.label, subtitle) {
-                        launchApp(app.packageName)
-                    }
-                    tile.setOnLongClickListener {
-                        showAppActions(app)
-                        true
-                    }
-                    body.addView(tile, LinearLayout.LayoutParams(-1, dp(68)).apply {
-                        bottomMargin = dp(8)
-                    })
+                    setOnClickListener { launchApp(app.packageName) }
+                    setOnLongClickListener { showAppActions(app); true }
+                }
+                val icon = ImageView(this).apply {
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    contentDescription = app.label
+                    isFocusable = false
+                }
+                val label = TextView(this).apply {
+                    text = app.label
+                    textSize = 14f
+                    setTextColor(Color.WHITE)
+                    gravity = Gravity.CENTER
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setPadding(0, dp(8), 0, 0)
+                }
+                tile.addView(icon, LinearLayout.LayoutParams(dp(76), dp(76)))
+                tile.addView(label, LinearLayout.LayoutParams(-1, dp(42)))
+                val id = View.generateViewId()
+                tile.id = id
+                tiles += tile
+                grid.addView(tile, GridLayout.LayoutParams(
+                    GridLayout.spec(index / columns),
+                    GridLayout.spec(index % columns)
+                ).apply {
+                    width = cellWidth
+                    height = dp(142)
+                    setMargins(dp(2), dp(3), dp(2), dp(3))
+                })
+                loadCatalogIcon(app.packageName, icon)
+            }
+            tiles.forEachIndexed { index, tile ->
+                val column = index % columns
+                tile.nextFocusLeftId = tiles.getOrNull(if (column > 0) index - 1 else index)?.id ?: tile.id
+                tile.nextFocusRightId = tiles.getOrNull(if (column < columns - 1 && index + 1 < tiles.size) index + 1 else index)?.id ?: tile.id
+                tile.nextFocusUpId = tiles.getOrNull(index - columns)?.id ?: tile.id
+                tile.nextFocusDownId = tiles.getOrNull(index + columns)?.id ?: tile.id
+            }
+            body.addView(grid, LinearLayout.LayoutParams(-1, -2))
+            body.post {
+                val target = tiles.firstOrNull { it.tag == catalogFocusedPackage } ?: tiles.firstOrNull()
+                target?.requestFocus()
+                if (target != null) {
+                    val rect = Rect(0, 0, target.width, target.height)
+                    target.requestRectangleOnScreen(rect, false)
+                }
+            }
+        }
+    }
+
+    private fun loadCatalogIcon(packageId: String, target: ImageView) {
+        val cached = appIconCache.get(packageId)
+        if (cached != null && !cached.isRecycled) {
+            target.setImageBitmap(cached)
+            return
+        }
+        appIconExecutor.execute {
+            val bitmap = try {
+                val drawable = packageManager.getApplicationIcon(packageId)
+                val size = dp(96)
+                Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { output ->
+                    val canvas = Canvas(output)
+                    drawable.setBounds(0, 0, size, size)
+                    drawable.draw(canvas)
+                }
+            } catch (_: Exception) {
+                null
+            }
+            if (bitmap != null) {
+                appIconCache.put(packageId, bitmap)
+                handler.post {
+                    if (!bitmap.isRecycled && target.parent != null) target.setImageBitmap(bitmap)
                 }
             }
         }
@@ -2743,6 +2949,14 @@ class MainActivity : Activity() {
                 serviceCount = packageInfo.services?.size ?: 0,
                 receiverCount = packageInfo.receivers?.size ?: 0,
                 activityCount = packageInfo.activities?.size ?: 0,
+                sharedUserId = packageInfo.sharedUserId,
+                isPersistent = app.flags and ApplicationInfo.FLAG_PERSISTENT != 0,
+                providesTvInputService = try {
+                    packageManager.queryIntentServices(
+                        Intent("android.media.tv.TvInputService"),
+                        PackageManager.MATCH_DISABLED_COMPONENTS
+                    ).any { it.serviceInfo?.packageName == app.packageName }
+                } catch (_: Exception) { false },
                 profilePurpose = matchedProfileEntry?.note,
                 profileRisk = matchedProfileEntry?.risk,
                 isProtected = tvManagerController.preview(
@@ -3450,6 +3664,9 @@ class MainActivity : Activity() {
     }
 
     private fun showPanel(title: String, content: (LinearLayout) -> Unit) {
+        val perf = if (title == "Каталог приложений") beginOverlayPerf("app_catalog") else null
+        val backdropSnapshot = perf?.let { captureBackdropSnapshot(it) }
+        releaseOverlayBackdrop()
         page = "panel"
         activePanelTitle = title
         handler.removeCallbacks(clockTask)
@@ -3457,7 +3674,8 @@ class MainActivity : Activity() {
         handler.removeCallbacks(homeWeatherTask)
 
         root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
-        addGlassBackdrop(root)
+        if (perf != null) addGlassBackdrop(root, backdropSnapshot, perf)
+        else addWallpaperGlassBackdrop(root)
         val panelBackground = View(this).apply {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
@@ -3502,15 +3720,65 @@ class MainActivity : Activity() {
             Gravity.CENTER
         ))
         setContentView(root)
+        if (perf != null) root.post { logOverlayOpen(perf) }
         // Start on the first actionable item, not the close button. This keeps
         // the panel usable immediately with a TV remote; fall back to Close
         // only for informational panels without focusable controls.
         body.post {
+            if (title == "Каталог приложений") return@post
             if (!requestFirstFocusable(body)) header.getChildAt(1)?.requestFocus()
         }
     }
 
-    private fun addGlassBackdrop(container: FrameLayout) {
+    private fun isDebugBuild(): Boolean =
+        applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+
+    private fun javaHeapUsedBytes(): Long {
+        val runtime = Runtime.getRuntime()
+        return runtime.totalMemory() - runtime.freeMemory()
+    }
+
+    private fun beginOverlayPerf(name: String): OverlayPerfMetrics {
+        val javaHeapBefore = javaHeapUsedBytes()
+        val nativeHeapBefore = android.os.Debug.getNativeHeapAllocatedSize()
+        val diagnosticRecord = OverlayDiagnosticsStore.begin(name, javaHeapBefore, nativeHeapBefore)
+        val metrics = OverlayPerfMetrics(
+            overlay = name,
+            openedAt = SystemClock.uptimeMillis(),
+            openCount = diagnosticRecord.openCount,
+            javaHeapBeforeBytes = javaHeapBefore,
+            nativeHeapBeforeBytes = nativeHeapBefore,
+            diagnosticRecord = diagnosticRecord
+        )
+        if (isDebugBuild()) {
+            Log.d(
+                "RFTV_PERF",
+                "event=opening overlay=$name open_count=${metrics.openCount} java_heap_before_bytes=${metrics.javaHeapBeforeBytes} native_heap_before_bytes=${metrics.nativeHeapBeforeBytes}"
+            )
+        }
+        return metrics
+    }
+
+    // Called on the UI thread before replacing the Home content. The snapshot
+    // therefore contains the complete RFTV content view (wallpaper, clock and Dock).
+    private fun captureBackdropSnapshot(metrics: OverlayPerfMetrics): Bitmap? {
+        if (!::root.isInitialized || root.width <= 0 || root.height <= 0) return null
+        val startedAt = SystemClock.elapsedRealtime()
+        return try {
+            metrics.screenshotWidthPx = root.width
+            metrics.screenshotHeightPx = root.height
+            Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888).also { bitmap ->
+                root.draw(Canvas(bitmap))
+                metrics.screenshotBitmapBytes = bitmap.allocationByteCount
+                metrics.captureMs = SystemClock.elapsedRealtime() - startedAt
+            }
+        } catch (_: Throwable) {
+            metrics.captureMs = SystemClock.elapsedRealtime() - startedAt
+            null
+        }
+    }
+
+    private fun addWallpaperGlassBackdrop(container: FrameLayout) {
         val selectionKey = lastAppliedWallpaperKey ?: return
         val backdrop = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
@@ -3525,6 +3793,106 @@ class MainActivity : Activity() {
         activeGlassBackdropView = backdrop
         activeGlassBackdropKey = selectionKey
         refreshGlassBackdrop()
+    }
+
+    private fun addGlassBackdrop(container: FrameLayout, snapshot: Bitmap?, metrics: OverlayPerfMetrics) {
+        val backdrop = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = "Размытый снимок экрана Liquid Glass"
+            isFocusable = false
+            setBackgroundColor(Color.rgb(16, 20, 28))
+        }
+        container.addView(backdrop, 0, FrameLayout.LayoutParams(-1, -1))
+        container.addView(View(this).apply {
+            setBackgroundColor(Color.argb(154, 5, 11, 22))
+            isFocusable = false
+        }, 1, FrameLayout.LayoutParams(-1, -1))
+        activeGlassBackdropView = backdrop
+        if (snapshot == null) {
+            logBlurResult(metrics, 0L, 0, 0, false)
+            return
+        }
+
+        val generation = ++overlayBlurGeneration
+        glassBlurExecutor.execute {
+            var downscaled: Bitmap? = null
+            var downscaledBytes = 0
+            val blurStartedAt = SystemClock.elapsedRealtime()
+            val blurred = try {
+                val width = min(480, (snapshot.width / 2).coerceAtLeast(240))
+                val height = (width * snapshot.height.toFloat() / snapshot.width).toInt().coerceAtLeast(135)
+                val scaled = Bitmap.createScaledBitmap(snapshot, width, height, true)
+                downscaled = scaled
+                downscaledBytes = scaled.allocationByteCount
+                if (scaled !== snapshot && !snapshot.isRecycled) snapshot.recycle()
+                GlassBackdrop.createBlurredSnapshot(
+                    scaled, scaled.width, scaled.height, radius = 7, passes = 3
+                )
+            } catch (_: Throwable) {
+                null
+            } finally {
+                downscaled?.takeIf { it !== snapshot && !it.isRecycled }?.recycle()
+                if (!snapshot.isRecycled) snapshot.recycle()
+            }
+            val blurElapsed = SystemClock.elapsedRealtime() - blurStartedAt
+            val blurredBytes = blurred?.allocationByteCount ?: 0
+            handler.post {
+                if (generation != overlayBlurGeneration || isFinishing || activeGlassBackdropView !== backdrop) {
+                    blurred?.takeIf { !it.isRecycled }?.recycle()
+                    return@post
+                }
+                if (blurred != null) {
+                    overlayBlurBitmap?.takeIf { !it.isRecycled }?.recycle()
+                    overlayBlurBitmap = blurred
+                    backdrop.setImageBitmap(blurred)
+                }
+                logBlurResult(metrics, blurElapsed, downscaledBytes, blurredBytes, blurred != null)
+            }
+        }
+    }
+
+    private fun logOverlayOpen(metrics: OverlayPerfMetrics) {
+        val openToVisibleMs = SystemClock.uptimeMillis() - metrics.openedAt
+        val javaHeapAfter = javaHeapUsedBytes()
+        val nativeHeapAfter = android.os.Debug.getNativeHeapAllocatedSize()
+        OverlayDiagnosticsStore.opened(
+            metrics.diagnosticRecord,
+            metrics.captureMs,
+            openToVisibleMs,
+            metrics.screenshotBitmapBytes,
+            javaHeapAfter,
+            nativeHeapAfter
+        )
+        if (!isDebugBuild()) return
+        Log.d(
+            "RFTV_PERF",
+            "event=opened overlay=${metrics.overlay} open_count=${metrics.openCount} open_to_visible_ms=$openToVisibleMs capture_ms=${metrics.captureMs} screenshot_width_px=${metrics.screenshotWidthPx} screenshot_height_px=${metrics.screenshotHeightPx} screenshot_bitmap_bytes=${metrics.screenshotBitmapBytes} java_heap_before_bytes=${metrics.javaHeapBeforeBytes} java_heap_after_bytes=$javaHeapAfter native_heap_before_bytes=${metrics.nativeHeapBeforeBytes} native_heap_after_bytes=$nativeHeapAfter"
+        )
+    }
+
+    private fun logBlurResult(
+        metrics: OverlayPerfMetrics,
+        blurMs: Long,
+        downscaledBytes: Int,
+        blurredBytes: Int,
+        success: Boolean
+    ) {
+        OverlayDiagnosticsStore.blurCompleted(
+            metrics.diagnosticRecord, blurMs, blurredBytes, success
+        )
+        if (!isDebugBuild()) return
+        Log.d(
+            "RFTV_PERF",
+            "event=blur_complete overlay=${metrics.overlay} open_count=${metrics.openCount} blur_ms=$blurMs downscaled_bitmap_bytes=$downscaledBytes blurred_bitmap_bytes=$blurredBytes success=$success"
+        )
+    }
+
+    private fun releaseOverlayBackdrop() {
+        overlayBlurGeneration++
+        activeGlassBackdropView?.setImageDrawable(null)
+        activeGlassBackdropView = null
+        overlayBlurBitmap?.takeIf { !it.isRecycled }?.recycle()
+        overlayBlurBitmap = null
     }
 
     private fun refreshGlassBackdrop() {

@@ -1,6 +1,6 @@
 # RFTV Launcher
 
-**Current stable release: [0.9.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0) · versionCode 12.** Android CI and signed Release publication passed. Physical acceptance on the target Sber TV is still pending; see [DEVICE_TESTING.md](DEVICE_TESTING.md).
+**Next stable release: 0.9.1 · versionCode 13 (prepared in PR #39; publication pending).** Current published stable remains [0.9.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0) · versionCode 12 until the verified Release workflow publishes v0.9.1. Physical acceptance on the target Sber TV is still pending; see [DEVICE_TESTING.md](DEVICE_TESTING.md).
 
 A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direction.
 
@@ -16,7 +16,7 @@ The screensaver is available from Control Center and, where supported by firmwar
 
 TV Manager is retained as an existing, lower-priority subsystem. Do not expand it while the primary launcher work is in progress. Its future safety requirements are documented in [TV_MANAGER.md](TV_MANAGER.md).
 
-## Implemented features (v0.9.0 shipped state)
+## Implemented features (v0.9.1 candidate; release pending)
 
 - Native Kotlin Android Views (no Compose and no third-party UI dependencies).
 - Home screen with a large centered clock/date over a full-screen photograph, a compact weather status pill, a five-day forecast overlay, and the Control Center entry point. The shipped clock is not yet interleaved between a separate background and transparent foreground layer.
@@ -29,7 +29,7 @@ TV Manager is retained as an existing, lower-priority subsystem. Do not expand i
 - Dock width and height controls saved locally.
 - TV Cleaner lists user-installed apps and delegates uninstall to Android's confirmation screen.
 - Existing RFTV TV Manager code provides package inventory/analysis and Shizuku-backed reversible package operations. Further TV Manager development is deferred behind the launcher priorities; physical Shizuku validation has not been performed.
-- Remote-control focus states and large TV-friendly controls.
+- Remote-control focus states and large TV-friendly controls.\n- All Apps uses a responsive icon grid over a full-screen blurred Home snapshot; Control Center also blurs the full-screen snapshot while remaining a right-side panel.\n- Settings include a local Diagnostics screen with the last 10 All Apps/Control Center openings, capture/blur/open timings, bitmap sizes, Java/native heap deltas and device/build details. Data is held in a process-memory ring buffer only; it is not written to disk and requires no new permissions.
 - Manual screensaver dashboard uses the active Home wallpaper with a blurred backdrop, clock, CBR currency rates, current weather, and separate Russia/World RSS columns. Android DreamService also uses the active Home wallpaper. Burn-in prevention by slow clock movement is not implemented.
 
 ## Target device
@@ -58,7 +58,7 @@ gradle --no-daemon assembleDebug
 
 Debug APK: app/build/outputs/apk/debug/app-debug.apk
 
-Stable Release APKs are published through [GitHub Releases](https://github.com/gonscharovd/rftv-launcher/releases). Use the in-app OTA updater for upgrades; it verifies SHA-256, package identity, versionCode, ABI and signing certificate before opening Android's installer.
+Stable Release APKs are published through [GitHub Releases](https://github.com/gonscharovd/rftv-launcher/releases). Candidate v0.9.1 uses versionCode 13. Use the in-app OTA updater for upgrades; it verifies SHA-256, package identity, increasing versionCode, ARMv7 compatibility when native libraries are present, and the installed signing certificate before opening Android's installer.
 
 GitHub Actions builds pushes to main and feature/** branches and pull requests targeting main.
 

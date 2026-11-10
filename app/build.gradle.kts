@@ -24,8 +24,9 @@ android {
         applicationId = "com.rftv.launcher"
         minSdk = 24
         targetSdk = 28
-        versionCode = 12
-        versionName = "0.9.0"
+        versionCode = 13
+        versionName = "0.9.1"
+        manifestPlaceholders["appLabel"] = "RFTV Launcher"
     }
 
     compileOptions {
@@ -54,6 +55,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            manifestPlaceholders["appLabel"] = "RFTV Launcher Debug"
+        }
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("release")

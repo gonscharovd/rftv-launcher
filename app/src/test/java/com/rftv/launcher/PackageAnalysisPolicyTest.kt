@@ -143,4 +143,75 @@ class PackageAnalysisPolicyTest {
         assertEquals(PackageAnalysisPolicy.Confidence.HIGH, report.confidence)
         assertTrue(report.limitation.contains("другой версии прошивки"))
     }
+    @Test
+    fun systemSharedUserIdOverridesAnExternalDisableProfile() {
+        val report = PackageAnalysisPolicy.analyze(
+            PackageAnalysisPolicy.Signals(
+                packageName = "com.example.shared.system",
+                label = "System shared app",
+                isSystemApp = true,
+                enabled = true,
+                sharedUserId = "android.uid.system",
+                profilePurpose = "Профиль предлагает отключение",
+                profileRisk = "Низкий"
+            )
+        )
+        assertEquals(PackageAnalysisPolicy.Severity.CRITICAL, report.severity)
+        assertTrue(report.evidence.any { it.contains("android.uid.system") })
+    }
+
+    @Test
+    fun persistentApplicationOverridesAnExternalDisableProfile() {
+        val report = PackageAnalysisPolicy.analyze(
+            PackageAnalysisPolicy.Signals(
+                packageName = "com.example.persistent",
+                label = "Persistent service",
+                isSystemApp = true,
+                enabled = true,
+                isPersistent = true,
+                profilePurpose = "Профиль предлагает отключение",
+                profileRisk = "Низкий"
+            )
+        )
+        assertEquals(PackageAnalysisPolicy.Severity.CRITICAL, report.severity)
+        assertTrue(report.evidence.any { it.contains("FLAG_PERSISTENT") })
+    }
+
+    @Test
+    fun tvInputServiceOverridesAnExternalDisableProfile() {
+        val report = PackageAnalysisPolicy.analyze(
+            PackageAnalysisPolicy.Signals(
+                packageName = "com.example.tvinput",
+                label = "TV Input",
+                isSystemApp = true,
+                enabled = true,
+                providesTvInputService = true,
+                profilePurpose = "Профиль предлагает отключение",
+                profileRisk = "Низкий"
+            )
+        )
+        assertEquals(PackageAnalysisPolicy.Severity.CRITICAL, report.severity)
+        assertTrue(report.evidence.any { it.contains("TvInputService") })
+    }
+
+    @Test
+    fun eachPlatformMetadataRuleIsAnAbsoluteOperationDeny() {
+        assertTrue(PackageAnalysisPolicy.isHardProtectedMetadata(
+            sharedUserId = "android.uid.system",
+            isPersistent = false,
+            providesTvInputService = false
+        ))
+        assertTrue(PackageAnalysisPolicy.isHardProtectedMetadata(
+            sharedUserId = null,
+            isPersistent = true,
+            providesTvInputService = false
+        ))
+        assertTrue(PackageAnalysisPolicy.isHardProtectedMetadata(
+            sharedUserId = null,
+            isPersistent = false,
+            providesTvInputService = true
+        ))
+        assertTrue(!PackageAnalysisPolicy.isHardProtectedMetadata(null, false, false))
+    }
+
 }

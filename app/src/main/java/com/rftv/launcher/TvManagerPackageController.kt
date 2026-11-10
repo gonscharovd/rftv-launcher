@@ -48,6 +48,16 @@ internal class TvManagerPackageController(
     private val profileEntries by lazy {
         matchingProfiles.flatMap { it.packages }.associateBy { it.packageId }
     }
+    private val tvInputServicePackages: Set<String>? by lazy {
+        try {
+            packageManager.queryIntentServices(
+                android.content.Intent("android.media.tv.TvInputService"),
+                PackageManager.MATCH_DISABLED_COMPONENTS
+            ).mapNotNull { it.serviceInfo?.packageName }.toSet()
+        } catch (_: Exception) {
+            null
+        }
+    }
     private val dynamicProtectedPackages by lazy {
         val protected = mutableSetOf<String>()
         try {
@@ -394,9 +404,25 @@ internal class TvManagerPackageController(
 
     private fun isHardProtected(packageName: String): Boolean {
         val id = packageName.lowercase()
-        return id == appContext.packageName ||
+        if (id == appContext.packageName ||
             PackageAnalysisPolicy.isProtectedPackage(id) ||
             packageName in dynamicProtectedPackages
+        ) return true
+
+        // These platform identities are hard-deny rules, independent of donor profiles.
+        return try {
+            val tvInputPackages = tvInputServicePackages ?: return true
+            val app = packageManager.getApplicationInfo(packageName, 0)
+            val packageInfo = packageManager.getPackageInfo(packageName, 0)
+            PackageAnalysisPolicy.isHardProtectedMetadata(
+                sharedUserId = packageInfo.sharedUserId,
+                isPersistent = (app.flags and ApplicationInfo.FLAG_PERSISTENT) != 0,
+                providesTvInputService = packageName in tvInputPackages
+            )
+        } catch (_: Exception) {
+            // Missing/unreadable metadata must never be treated as a positive safety signal.
+            true
+        }
     }
 
     private companion object {
