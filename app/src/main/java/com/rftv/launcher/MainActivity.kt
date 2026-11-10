@@ -830,10 +830,10 @@ class MainActivity : Activity() {
         }
 
         val weatherPill = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             background = RftvDesignSystem.surface(this@MainActivity, 0x7A171B22, 26, 48)
-            setPadding(dp(22), dp(11), dp(26), dp(11))
+            setPadding(dp(18), dp(10), dp(22), dp(10))
             isFocusable = true
             isFocusableInTouchMode = true
             isClickable = true
@@ -859,10 +859,14 @@ class MainActivity : Activity() {
             setShadowLayer(4f, 0f, 1f, 0x66000000)
             isFocusable = false
         }
+        weatherPill.addView(RftvControlIconView(this, "weather"), LinearLayout.LayoutParams(dp(30), dp(30)).apply {
+            rightMargin = dp(12)
+        })
         weatherPill.addView(homeWeatherText, LinearLayout.LayoutParams(-2, -2))
-        top.addView(weatherPill, LinearLayout.LayoutParams(-2, dp(66)))
-
         top.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
+        top.addView(weatherPill, LinearLayout.LayoutParams(-2, dp(66)).apply {
+            rightMargin = dp(12)
+        })
         top.addView(glassButton("⚙") { showControlCenter() }.apply {
             tag = "rftv-control-center-trigger"
         }, LinearLayout.LayoutParams(dp(62), dp(62)))
