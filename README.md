@@ -1,5 +1,7 @@
 # RFTV Launcher
 
+**Current stable release: [0.8.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0) · versionCode 11.** PR #34 is merged into `main`; Android CI and signed Release publication passed. Physical acceptance on the target Sber TV is still pending. See [DEVICE_TESTING.md](DEVICE_TESTING.md) for the complete owner checklist.
+
 A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direction.
 
 ## Implemented features

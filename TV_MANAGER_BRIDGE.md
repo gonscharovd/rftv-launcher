@@ -2,7 +2,7 @@
 
 ## Status
 
-This document defines the implementation boundary for reversible package management. Stable implementation: **RFTV Launcher v0.6.0**, merged into `main` and published as a stable GitHub Release. The release contains a Shizuku UserService bridge, durable snapshots/journal, a transactional per-package controller, manual cleanup UI and automatic batch orchestration. Automatic cleanup remains intentionally unavailable until a target-specific profile has explicitly validated the full device fingerprint, optional packages and dependencies.
+This document defines the implementation boundary for reversible package management. Stable implementation is included in **RFTV Launcher v0.8.0** (versionCode 11), merged into `main` and published as a stable [GitHub Release](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0). The release contains a Shizuku UserService bridge, durable snapshots/journal, a transactional per-package controller, manual cleanup UI and automatic batch orchestration. Automatic cleanup remains intentionally unavailable until a target-specific profile has explicitly validated the full device fingerprint, optional packages and dependencies.
 
 The bridge and package-operation flow have passed automated CI, but have not yet been physically tested on Sber SDX-50U4123B / StarOS 1.103.91 / Android 9 / MT9632. The first device test must be read-only.
 

@@ -1,6 +1,10 @@
 # RFTV Launcher — Changelog
 
-## Unreleased
+## 0.8.0 (2026-11-09)
+
+- Стабильный Release опубликован: [v0.8.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0), versionCode 11. PR #34 слит в main (merge `86b9d3d`).
+- Android CI run `42619490305` и Release publisher run `42619792984` завершились успешно. Опубликованный APK: 817 577 байт; SHA-256 `1ab18c47b66bf3b45636b7e4fa97c516397be5105a66aa71a790917ec2df2f0a`; постоянный certificate SHA-256 `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`.
+- OTA `/releases/latest` обнаруживает стабильный v0.8.0 (не draft/prerelease). Установка и физическое поведение на ТВ ещё не подтверждены.
 
 - Добавлен live CI-аудит всех 20 фотообоев. Run 42618685512 на PR HEAD подтвердил 10/10 дневных и 10/10 ночных URL: HTTP 200, image/jpeg, полное Pillow decode и 1920×1080 для каждого изображения.
 - Добавлен технический отчёт [V0.8.0_IMPLEMENTATION_AUDIT.md](docs/V0.8.0_IMPLEMENTATION_AUDIT.md) с архитектурой, результатами донорского аудита, проверками APK и списком физической приёмки.
