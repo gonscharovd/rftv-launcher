@@ -987,7 +987,7 @@ class MainActivity : Activity() {
             ellipsize = android.text.TextUtils.TruncateAt.END
             maxWidth = dp(340)
             setPadding(dp(12), dp(5), dp(12), dp(5))
-            background = RftvDesignSystem.surface(this@MainActivity, 0xE51A1E26.toInt(), 18, 72)
+            background = DockTooltipDrawable(this@MainActivity, 0f)
             elevation = dp(26).toFloat()
             visibility = View.INVISIBLE
             alpha = 0f
@@ -1059,6 +1059,7 @@ class MainActivity : Activity() {
                 background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused = false)
                 clipChildren = false
                 clipToPadding = false
+                clipToOutline = true
                 setOnFocusChangeListener { view, focused ->
                     view.background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused)
                     view.animate().scaleX(if (focused) RftvDesignSystem.Size.DOCK_FOCUS_SCALE else 1f)
@@ -1079,8 +1080,8 @@ class MainActivity : Activity() {
             } else {
                 tile.addView(ImageView(this).apply {
                     setImageDrawable(drawable)
-                    scaleType = ImageView.ScaleType.FIT_CENTER
-                }, FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER))
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                }, FrameLayout.LayoutParams(tileSize, tileSize, Gravity.CENTER))
             }
             row.addView(tile, LinearLayout.LayoutParams(tileSize, tileSize).apply {
                 leftMargin = tileGap / 2
@@ -1099,6 +1100,7 @@ class MainActivity : Activity() {
         tooltip.animate().cancel()
         if (visible) {
             tooltip.text = label
+            tooltip.background = DockTooltipDrawable(this, tooltip.paint.measureText(label))
             tooltip.visibility = View.VISIBLE
             tooltip.alpha = 1f
             tooltip.post {
