@@ -121,7 +121,7 @@ internal object RftvWeatherRepository {
             "thunder" in value -> 95
             "snow" in value -> if (value.startsWith("heavy")) 75 else if (value.startsWith("light")) 71 else 73
             "sleet" in value -> 66
-            "rain" in value && "showers" in value -> if (value.startsWith("heavy")) 82 else 80
+            "showers" in value -> if (value.startsWith("heavy")) 82 else if (value.startsWith("light")) 80 else 80
             "rain" in value -> if (value.startsWith("heavy")) 65 else if (value.startsWith("light")) 61 else 63
             value == "clearsky" -> 0
             value == "fair" -> 1
