@@ -23,6 +23,26 @@ internal object RftvDesignSystem {
         const val PANEL_GRADIENT_END = 0xE60D1118.toInt()
         const val PANEL_SURFACE = 0xD91A1D25.toInt()
         const val CONTROL_CENTER_SURFACE = 0xE61B1F28.toInt()
+        const val INTERACTIVE_FOCUSED_TOP = 0xF2FFFFFF.toInt()
+        const val INTERACTIVE_FOCUSED_BOTTOM = 0xDFFFFFFF.toInt()
+        const val INTERACTIVE_RESTING_TOP = 0x32FFFFFF
+        const val INTERACTIVE_RESTING_BOTTOM = 0x18FFFFFF
+        const val DOCK_SURFACE = 0x541E141C
+        const val DOCK_SURFACE_STROKE = 0x38FFFFFF
+        const val DOCK_TILE_FOCUSED = 0xDDF8FAFF.toInt()
+        const val DOCK_TILE_FOCUSED_STROKE = 0xF2FFFFFF.toInt()
+        const val SETTINGS_NAV_FOCUSED_FILL = 0xF7FFFFFF.toInt()
+        const val SETTINGS_SHELL_START = 0xEA222634.toInt()
+        const val SETTINGS_SHELL_END = 0xDE161924.toInt()
+        const val SETTINGS_SIDEBAR_START = 0x9412141E.toInt()
+        const val SETTINGS_SIDEBAR_END = 0x800E1018.toInt()
+        const val SETTINGS_HINT_SURFACE = 0xD916161F.toInt()
+        const val SETTINGS_HINT_STROKE = 0x26FFFFFF
+        const val SETTINGS_ICON_FOCUSED = 0x14000000
+        const val SETTINGS_ICON_RESTING = 0x1AFFFFFF
+        const val CARD_SURFACE_START = 0x36FFFFFF
+        const val CARD_SURFACE_END = 0x1EFFFFFF
+        const val CARD_SURFACE_STROKE = 0x30FFFFFF
         const val RISK_CRITICAL = -41130
         const val RISK_REVIEW = -16826
         const val GLASS_STROKE = 0x30FFFFFF
@@ -139,6 +159,7 @@ internal object RftvDesignSystem {
         const val CARD = 20
         const val BUTTON = 28
         const val DOCK = 30
+        const val DOCK_SURFACE = 23
         const val DOCK_PILL = 76
         const val DOCK_TILE = 13
         const val CONTROL_CENTER_PANEL = 26
@@ -147,6 +168,8 @@ internal object RftvDesignSystem {
         const val SETTINGS_SHELL = 26
         const val SETTINGS_SIDEBAR = 18
         const val SETTINGS_NAV = 12
+        const val SETTINGS_HINT = 12
+        const val SETTINGS_NAV_ICON = 7
     }
 
     object Elevation {
@@ -255,24 +278,24 @@ internal object RftvDesignSystem {
 
     fun interactiveSurface(context: Context, focused: Boolean, radiusDp: Int): GradientDrawable = gradientSurface(
         context,
-        if (focused) intArrayOf(0xF2FFFFFF.toInt(), 0xDFFFFFFF.toInt())
-        else intArrayOf(0x32FFFFFF, 0x18FFFFFF),
+        if (focused) intArrayOf(ColorTokens.INTERACTIVE_FOCUSED_TOP, ColorTokens.INTERACTIVE_FOCUSED_BOTTOM)
+        else intArrayOf(ColorTokens.INTERACTIVE_RESTING_TOP, ColorTokens.INTERACTIVE_RESTING_BOTTOM),
         radiusDp,
-        if (focused) ColorTokens.SETTINGS_NAV_FOCUSED_STROKE else 0x38FFFFFF
+        if (focused) ColorTokens.SETTINGS_NAV_FOCUSED_STROKE else ColorTokens.DOCK_SURFACE_STROKE
     )
 
     fun dockSurface(context: Context): GradientDrawable = gradientSurface(
         context,
-        intArrayOf(0x541E141C, 0x541E141C),
-        23,
-        0x38FFFFFF
+        intArrayOf(ColorTokens.DOCK_SURFACE, ColorTokens.DOCK_SURFACE),
+        Radius.DOCK_SURFACE,
+        ColorTokens.DOCK_SURFACE_STROKE
     )
 
     fun dockTileSurface(context: Context, focused: Boolean): GradientDrawable =
         GradientDrawable().apply {
-            setColor(if (focused) 0xDDF8FAFF.toInt() else Color.TRANSPARENT)
+            setColor(if (focused) ColorTokens.DOCK_TILE_FOCUSED else Color.TRANSPARENT)
             cornerRadius = dp(context, Radius.DOCK_TILE).toFloat()
-            if (focused) setStroke(dp(context, 2), 0xF2FFFFFF.toInt())
+            if (focused) setStroke(dp(context, 2), ColorTokens.DOCK_TILE_FOCUSED_STROKE)
         }
 
     fun controlCenterSurface(context: Context): GradientDrawable =
@@ -280,49 +303,49 @@ internal object RftvDesignSystem {
 
     fun settingsShellSurface(context: Context): GradientDrawable = gradientSurface(
         context,
-        intArrayOf(0xEA222634.toInt(), 0xDE161924.toInt()),
+        intArrayOf(ColorTokens.SETTINGS_SHELL_START, ColorTokens.SETTINGS_SHELL_END),
         Radius.SETTINGS_SHELL,
         ColorTokens.CONTROL_CENTER_STROKE
     )
 
     fun settingsSidebarSurface(context: Context): GradientDrawable = gradientSurface(
         context,
-        intArrayOf(0x9412141E.toInt(), 0x800E1018.toInt()),
+        intArrayOf(ColorTokens.SETTINGS_SIDEBAR_START, ColorTokens.SETTINGS_SIDEBAR_END),
         Radius.SETTINGS_SIDEBAR,
         Color.argb(GlassAlpha.SURFACE_STROKE, 255, 255, 255)
     )
 
     fun settingsNavigationSurface(context: Context, focused: Boolean, selected: Boolean): GradientDrawable {
         val colors = when {
-            focused -> intArrayOf(0xF7FFFFFF.toInt(), 0xF7FFFFFF.toInt())
-            selected -> intArrayOf(0x28FFFFFF, 0x1CFFFFFF)
-            else -> intArrayOf(0x00FFFFFF, 0x00FFFFFF)
+            focused -> intArrayOf(ColorTokens.SETTINGS_NAV_FOCUSED_FILL, ColorTokens.SETTINGS_NAV_FOCUSED_FILL)
+            selected -> intArrayOf(ColorTokens.SETTINGS_NAV_SELECTED_TOP, ColorTokens.SETTINGS_NAV_SELECTED_BOTTOM)
+            else -> intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT)
         }
         return gradientSurface(
             context,
             colors,
             Radius.SETTINGS_NAV,
-            if (focused) ColorTokens.SETTINGS_NAV_FOCUSED_STROKE else 0x38FFFFFF
+            if (focused) ColorTokens.SETTINGS_NAV_FOCUSED_STROKE else ColorTokens.DOCK_SURFACE_STROKE
         )
     }
 
     fun settingsHintSurface(context: Context): GradientDrawable = gradientSurface(
         context,
-        intArrayOf(0xD916161F.toInt(), 0xD916161F.toInt()),
-        12,
-        0x26FFFFFF
+        intArrayOf(ColorTokens.SETTINGS_HINT_SURFACE, ColorTokens.SETTINGS_HINT_SURFACE),
+        Radius.SETTINGS_HINT,
+        ColorTokens.SETTINGS_HINT_STROKE
     )
 
     fun settingsNavIconSurface(context: Context, focused: Boolean): GradientDrawable = GradientDrawable().apply {
-        cornerRadius = dp(context, 7).toFloat()
-        setColor(if (focused) 0x14000000 else 0x1AFFFFFF)
+        cornerRadius = dp(context, Radius.SETTINGS_NAV_ICON).toFloat()
+        setColor(if (focused) ColorTokens.SETTINGS_ICON_FOCUSED else ColorTokens.SETTINGS_ICON_RESTING)
     }
 
     fun panelSurface(context: Context): GradientDrawable =
         surface(context, ColorTokens.PANEL_SURFACE, Radius.DOCK, GlassAlpha.PANEL_STROKE)
 
     fun cardSurface(context: Context): GradientDrawable =
-        gradientSurface(context, intArrayOf(0x36FFFFFF, 0x1EFFFFFF), Radius.CARD, 0x30FFFFFF)
+        gradientSurface(context, intArrayOf(ColorTokens.CARD_SURFACE_START, ColorTokens.CARD_SURFACE_END), Radius.CARD, ColorTokens.CARD_SURFACE_STROKE)
 
     fun focusSurface(
         context: Context,
