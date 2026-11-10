@@ -1350,6 +1350,7 @@ class MainActivity : Activity() {
         }
 
         fun makeTile(icon: String, title: String, subtitle: String, action: () -> Unit): LinearLayout {
+            val iconView = RftvControlIconView(this@MainActivity, icon)
             val tile = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
@@ -1386,6 +1387,7 @@ class MainActivity : Activity() {
                         else RftvDesignSystem.ColorTokens.CONTROL_CENTER_STROKE,
                         if (focused) 2 else 1
                     )
+                    iconView.setTint(if (focused) RftvDesignSystem.ColorTokens.CONTROL_CENTER_FOCUSED_TEXT else RftvDesignSystem.ColorTokens.CONTROL_CENTER_ICON)
                     val labels = (view as LinearLayout).getChildAt(1) as LinearLayout
                     for (i in 0 until labels.childCount) {
                         (labels.getChildAt(i) as? TextView)?.setTextColor(
@@ -1398,7 +1400,7 @@ class MainActivity : Activity() {
                 setOnClickListener { action() }
             }
             tile.addView(
-                RftvControlIconView(this@MainActivity, icon),
+                iconView,
                 LinearLayout.LayoutParams(
                     dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ICON_WIDTH),
                     dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ICON_WIDTH)
