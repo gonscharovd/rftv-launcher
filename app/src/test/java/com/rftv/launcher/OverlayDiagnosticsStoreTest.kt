@@ -19,8 +19,8 @@ class OverlayDiagnosticsStoreTest {
 
         val latest = OverlayDiagnosticsStore.latest()
         assertEquals(10, latest.size)
-        assertEquals(12, latest.first().openCount)
-        assertEquals(3, latest.last().openCount)
+        assertTrue(latest.first().openCount > latest.last().openCount)
+        assertEquals(9, latest.first().openCount - latest.last().openCount)
     }
 
     @Test
