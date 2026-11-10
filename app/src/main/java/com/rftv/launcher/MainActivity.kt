@@ -2743,6 +2743,14 @@ class MainActivity : Activity() {
                 serviceCount = packageInfo.services?.size ?: 0,
                 receiverCount = packageInfo.receivers?.size ?: 0,
                 activityCount = packageInfo.activities?.size ?: 0,
+                sharedUserId = packageInfo.sharedUserId,
+                isPersistent = app.flags and ApplicationInfo.FLAG_PERSISTENT != 0,
+                providesTvInputService = try {
+                    packageManager.queryIntentServices(
+                        Intent("android.media.tv.TvInputService"),
+                        PackageManager.MATCH_DISABLED_COMPONENTS
+                    ).any { it.serviceInfo?.packageName == app.packageName }
+                } catch (_: Exception) { false },
                 profilePurpose = matchedProfileEntry?.note,
                 profileRisk = matchedProfileEntry?.risk,
                 isProtected = tvManagerController.preview(
