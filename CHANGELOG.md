@@ -1,6 +1,9 @@
-## 0.9.1 (2026-11-10) — release candidate
+## 0.9.1 (2026-11-10) — stable Release
 
-- Prepared candidate versionName 0.9.1, versionCode 13; stable publication is pending successful main CI and signed Release verification.
+- [Stable Release v0.9.1](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.1) published after successful main CI and signed Release verification (CI run 42822789300; publisher run 42823200090).
+- APK: `com.rftv.launcher`, versionName `0.9.1`, versionCode `13`, minSdk `24`, targetSdk `28`, 7,985,259 bytes; no native libraries (ABI-independent).
+- APK SHA-256: `ef03ecf77a13604ec3834bc47ad8c93ccfe1df615522f81c271235a704944167`.
+- Release signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`.
 - Iteration 1: hard protection for system shared UID, persistent applications and TV input services; All Apps icon grid with DPAD/focus restoration; asynchronous full-screen snapshot blur for All Apps and Control Center.
 - Added a release-visible Diagnostics screen with the latest 10 overlay openings, cold/repeat classification, capture/blur/open timings, source/blurred bitmap sizes, Java/native heap before/after, open counter, and device/build details. Data is process-memory-only; no new permissions, disk writes or network access.
 - Debug-only RFTV_PERF log format remains unchanged.

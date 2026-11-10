@@ -1,6 +1,6 @@
 # RFTV Launcher
 
-**Next stable release: 0.9.1 · versionCode 13 (prepared in PR #39; publication pending).** Current published stable remains [0.9.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0) · versionCode 12 until the verified Release workflow publishes v0.9.1. Physical acceptance on the target Sber TV is still pending; see [DEVICE_TESTING.md](DEVICE_TESTING.md).
+**Current stable release: [0.9.1](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.1) · versionCode 13.** Signed APK SHA-256: `ef03ecf77a13604ec3834bc47ad8c93ccfe1df615522f81c271235a704944167`. Release signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`. Physical acceptance on the target Sber TV is still pending; see [DEVICE_TESTING.md](DEVICE_TESTING.md).
 
 A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direction.
 
@@ -16,7 +16,7 @@ The screensaver is available from Control Center and, where supported by firmwar
 
 TV Manager is retained as an existing, lower-priority subsystem. Do not expand it while the primary launcher work is in progress. Its future safety requirements are documented in [TV_MANAGER.md](TV_MANAGER.md).
 
-## Implemented features (v0.9.1 candidate; release pending)
+## Implemented features (v0.9.1 shipped state)
 
 - Native Kotlin Android Views (no Compose and no third-party UI dependencies).
 - Home screen with a large centered clock/date over a full-screen photograph, a compact weather status pill, a five-day forecast overlay, and the Control Center entry point. The shipped clock is not yet interleaved between a separate background and transparent foreground layer.
