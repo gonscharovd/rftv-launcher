@@ -36,11 +36,11 @@ internal object RftvDesignSystem {
         const val CONTROL_CENTER_GRADIENT_START = 0xE91C2028.toInt()
         const val CONTROL_CENTER_GRADIENT_MID = 0xE31A1E26.toInt()
         const val CONTROL_CENTER_GRADIENT_END = 0xEA0D1118.toInt()
-        const val CONTROL_CENTER_STROKE = 0x42FFFFFF
-        const val CONTROL_CENTER_TILE_START = 0x32FFFFFF
-        const val CONTROL_CENTER_TILE_END = 0x18FFFFFF
-        const val CONTROL_CENTER_TILE_FOCUSED_START = 0xF2FFFFFF.toInt()
-        const val CONTROL_CENTER_TILE_FOCUSED_END = 0xDFFFFFFF.toInt()
+        const val CONTROL_CENTER_STROKE = 0x38FFFFFF
+        const val CONTROL_CENTER_TILE_START = 0x24FFFFFF
+        const val CONTROL_CENTER_TILE_END = 0x24FFFFFF
+        const val CONTROL_CENTER_TILE_FOCUSED_START = 0xF7FFFFFF.toInt()
+        const val CONTROL_CENTER_TILE_FOCUSED_END = 0xF7FFFFFF.toInt()
         const val CONTROL_CENTER_ICON = 0xFFFFFFFF.toInt()
         const val CONTROL_CENTER_SUBTITLE = 0xB8FFFFFF.toInt()
         const val CONTROL_CENTER_FOCUSED_TEXT = 0xFF17191F.toInt()
@@ -74,7 +74,10 @@ internal object RftvDesignSystem {
         const val HOME_WALLPAPER_RIGHT_INSET = 56
         const val HOME_WALLPAPER_DOCK_GAP = 38
         const val DOCK_CONTENT_PADDING = 10
-        const val DOCK_BOTTOM_INSET = 22
+        const val DOCK_TILE_GAP = 10
+        const val DOCK_EDGE_INSET = 13
+        const val DOCK_CONTENT_HORIZONTAL_PADDING = 13
+        const val DOCK_BOTTOM_INSET = 14
         const val DOCK_TILE_HORIZONTAL_MARGIN = 4
         const val CONTROL_PANEL_TOP = 16
         const val CONTROL_PANEL_BOTTOM = 18
@@ -92,7 +95,7 @@ internal object RftvDesignSystem {
         const val CONTROL_CENTER_RIGHT_INSET = 22
         const val CONTROL_CENTER_TOP_INSET = 18
         const val SETTINGS_SIDEBAR_PADDING = 14
-        const val SETTINGS_CONTENT_LEFT_PADDING = 24
+        const val SETTINGS_CONTENT_LEFT_PADDING = 18
         const val SCREENSAVER_HORIZONTAL_PADDING = 72
         const val SCREENSAVER_TOP_PADDING = 36
         const val SCREENSAVER_BOTTOM_PADDING = 44
@@ -137,13 +140,13 @@ internal object RftvDesignSystem {
         const val BUTTON = 28
         const val DOCK = 30
         const val DOCK_PILL = 76
-        const val DOCK_TILE = 19
-        const val CONTROL_CENTER_PANEL = 34
-        const val CONTROL_CENTER_TILE = 32
+        const val DOCK_TILE = 13
+        const val CONTROL_CENTER_PANEL = 26
+        const val CONTROL_CENTER_TILE = 28
         const val SCREENSAVER_DETAILS = 24
-        const val SETTINGS_SHELL = 30
-        const val SETTINGS_SIDEBAR = 24
-        const val SETTINGS_NAV = 16
+        const val SETTINGS_SHELL = 26
+        const val SETTINGS_SIDEBAR = 18
+        const val SETTINGS_NAV = 12
     }
 
     object Elevation {
@@ -154,13 +157,14 @@ internal object RftvDesignSystem {
     }
 
     object Size {
-        const val DOCK_ICON = 64
+        const val DOCK_ICON = 26
+        const val DOCK_TILE_SIZE = 54
         const val DOCK_TILE_WIDTH = 112
         const val DOCK_TILE_HEIGHT = 122
-        const val DOCK_LABEL_TEXT_SP = 14f
+        const val DOCK_LABEL_TEXT_SP = 11.5f
         const val DOCK_LABEL_WIDTH = 100
         const val DOCK_LABEL_HEIGHT = 28
-        const val DOCK_FOCUS_SCALE = 1.10f
+        const val DOCK_FOCUS_SCALE = 1.13f
         const val CLOCK_LETTER_SPACING = -0.045f
         const val CLOCK_SHADOW_RADIUS = 22f
         const val CLOCK_SHADOW_DY = 4f
@@ -192,11 +196,12 @@ internal object RftvDesignSystem {
         const val PANEL_HEADER_HEIGHT = 56
         const val PANEL_CLOSE_HEIGHT = 48
         const val PANEL_WIDTH_FRACTION = 0.88f
-        const val SETTINGS_NAV_ITEM_HEIGHT = 58
+        const val SETTINGS_NAV_ITEM_HEIGHT = 35
         const val SETTINGS_SIDEBAR_WIDTH_FRACTION = 0.255f
         const val SETTINGS_PANEL_WIDTH_FRACTION = 0.92f
         const val SETTINGS_PANEL_HEIGHT_FRACTION = 0.88f
         const val CONTROL_CENTER_WIDTH_FRACTION = 0.40f
+        const val CONTROL_CENTER_PANEL_WIDTH = 293
         const val CONTROL_CENTER_HEIGHT_FRACTION = 0.91f
         const val CONTROL_CENTER_HEADER_TEXT_SP = 23f
         const val CONTROL_CENTER_ICON_TEXT_SP = 29f
@@ -217,6 +222,7 @@ internal object RftvDesignSystem {
         const val HOME_FADE_DURATION_MS = 220L
         const val SURFACE_FADE_DURATION_MS = 180L
         const val DOCK_REVEAL_DURATION_MS = 180L
+        const val DOCK_FOCUS_DURATION_MS = 190L
         const val SECONDARY_REVEAL_DURATION_MS = 220L
         const val CONTROL_CENTER_REVEAL_DURATION_MS = 220L
         const val SCREENSAVER_REVEAL_DURATION_MS = 280L
@@ -257,15 +263,15 @@ internal object RftvDesignSystem {
 
     fun dockSurface(context: Context): GradientDrawable = gradientSurface(
         context,
-        intArrayOf(0xC21B2028.toInt(), 0xB50D1118.toInt()),
-        Radius.DOCK_PILL,
-        0x42FFFFFF
+        intArrayOf(0x541E141C, 0x541E141C),
+        23,
+        0x2EFFFFFF
     )
 
     fun dockTileSurface(context: Context, focused: Boolean): GradientDrawable =
         GradientDrawable().apply {
             setColor(if (focused) 0xDDF8FAFF.toInt() else Color.TRANSPARENT)
-            cornerRadius = dp(context, 25).toFloat()
+            cornerRadius = dp(context, Radius.DOCK_TILE).toFloat()
             if (focused) setStroke(dp(context, 2), 0xF2FFFFFF.toInt())
         }
 
@@ -274,30 +280,42 @@ internal object RftvDesignSystem {
 
     fun settingsShellSurface(context: Context): GradientDrawable = gradientSurface(
         context,
-        intArrayOf(ColorTokens.SETTINGS_SHELL_TOP, ColorTokens.SETTINGS_SHELL_BOTTOM),
+        intArrayOf(0xEA222634.toInt(), 0xDE161924.toInt()),
         Radius.SETTINGS_SHELL,
         ColorTokens.CONTROL_CENTER_STROKE
     )
 
     fun settingsSidebarSurface(context: Context): GradientDrawable = gradientSurface(
         context,
-        intArrayOf(ColorTokens.SETTINGS_SIDEBAR_TOP, ColorTokens.SETTINGS_SIDEBAR_BOTTOM),
+        intArrayOf(0x9412141E.toInt(), 0x800E1018.toInt()),
         Radius.SETTINGS_SIDEBAR,
         Color.argb(GlassAlpha.SURFACE_STROKE, 255, 255, 255)
     )
 
     fun settingsNavigationSurface(context: Context, focused: Boolean, selected: Boolean): GradientDrawable {
         val colors = when {
-            focused -> intArrayOf(0xF2FFFFFF.toInt(), 0xDFFFFFFF.toInt())
-            selected -> intArrayOf(ColorTokens.SETTINGS_NAV_SELECTED_TOP, ColorTokens.SETTINGS_NAV_SELECTED_BOTTOM)
-            else -> intArrayOf(0x16FFFFFF, 0x08FFFFFF)
+            focused -> intArrayOf(0xF7FFFFFF.toInt(), 0xF7FFFFFF.toInt())
+            selected -> intArrayOf(0x28FFFFFF, 0x1CFFFFFF)
+            else -> intArrayOf(0x00FFFFFF, 0x00FFFFFF)
         }
         return gradientSurface(
             context,
             colors,
             Radius.SETTINGS_NAV,
-            if (focused) ColorTokens.SETTINGS_NAV_FOCUSED_STROKE else Color.argb(if (selected) 110 else 28, 255, 255, 255)
+            if (focused) ColorTokens.SETTINGS_NAV_FOCUSED_STROKE else 0x38FFFFFF
         )
+    }
+
+    fun settingsHintSurface(context: Context): GradientDrawable = gradientSurface(
+        context,
+        intArrayOf(0xD916161F.toInt(), 0xD916161F.toInt()),
+        12,
+        0x26FFFFFF
+    )
+
+    fun settingsNavIconSurface(context: Context, focused: Boolean): GradientDrawable = GradientDrawable().apply {
+        cornerRadius = dp(context, 7).toFloat()
+        setColor(if (focused) 0x14000000 else 0x1AFFFFFF)
     }
 
     fun panelSurface(context: Context): GradientDrawable =

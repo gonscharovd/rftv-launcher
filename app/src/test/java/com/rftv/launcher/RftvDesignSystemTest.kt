@@ -29,7 +29,7 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Size.SETTINGS_SIDEBAR_WIDTH_FRACTION in 0.20f..0.32f)
         assertTrue(RftvDesignSystem.Size.SETTINGS_PANEL_WIDTH_FRACTION in 0.88f..0.96f)
         assertTrue(RftvDesignSystem.Size.SETTINGS_PANEL_HEIGHT_FRACTION in 0.82f..0.94f)
-        assertTrue(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT in 48..72)
+        assertTrue(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT in 32..48)
     }
 
     @Test
@@ -37,7 +37,7 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Size.FOCUS_SCALE > 1f)
         assertTrue(RftvDesignSystem.Size.FOCUS_SCALE <= 1.1f)
         assertTrue(RftvDesignSystem.Size.DOCK_FOCUS_SCALE > 1f)
-        assertTrue(RftvDesignSystem.Size.DOCK_FOCUS_SCALE <= 1.1f)
+        assertTrue(RftvDesignSystem.Size.DOCK_FOCUS_SCALE <= 1.15f)
         assertTrue(RftvDesignSystem.Radius.DOCK_TILE > 0)
         assertTrue(RftvDesignSystem.GlassAlpha.DOCK_TILE_RESTING < RftvDesignSystem.GlassAlpha.DOCK_TILE_FOCUSED)
         assertTrue(RftvDesignSystem.GlassAlpha.DOCK_TILE_FOCUSED <= 255)
@@ -56,7 +56,10 @@ class RftvDesignSystemTest {
 
     @Test
     fun controlCenterAndScreensaverTokensStayWithinTvFriendlyRanges() {
-        assertTrue(RftvDesignSystem.Radius.CONTROL_CENTER_PANEL >= 28)
+        assertTrue(RftvDesignSystem.Radius.CONTROL_CENTER_PANEL >= 24)
+        assertEquals(54, RftvDesignSystem.Size.DOCK_TILE_SIZE)
+        assertEquals(26, RftvDesignSystem.Size.DOCK_ICON)
+        assertEquals(293, RftvDesignSystem.Size.CONTROL_CENTER_PANEL_WIDTH)
         assertTrue(RftvDesignSystem.Radius.CONTROL_CENTER_TILE >= 24)
         assertTrue(RftvDesignSystem.Size.CONTROL_CENTER_WIDTH_FRACTION in 0.38f..0.48f)
         assertTrue(RftvDesignSystem.Size.CONTROL_CENTER_HEIGHT_FRACTION in 0.85f..0.96f)
