@@ -80,4 +80,13 @@ RFTV's multi-provider weather fallback and WMO condition-code mapping are adapte
 - Upstream files: `src/com/techgenius/tvoslauncher/Weather.java`
 - RFTV adaptation: `app/src/main/java/com/rftv/launcher/RftvWeatherRepository.kt` (adapted and modified for RFTV's fixed Chelyabinsk location, Home/forecast/screensaver cache, and current app architecture).
 
-The upstream license and NOTICE are preserved in `third_party/tvos-launcher/`. No upstream UI, fonts, icons, launcher screens, or other application features are bundled.
+The upstream license and NOTICE are preserved in `third_party/tvos-launcher/`.
+
+### UI and performance reference
+
+Iteration 2 also studies three narrowly scoped design/performance patterns from the same Apache-2.0 project:
+- `MainActivity.java`: scaled-canvas quarter-resolution overlay capture and the cached LiquidGlass Drawable/shader approach.
+- `ControlPanelOverlay.java`: compact capsule geometry, concise single-line labels and focused tile treatment.
+- `SceneHome.java`: a separate floating Dock name tooltip above the glass Dock container.
+
+RFTV reimplements these ideas in its own Kotlin/Android Views architecture; no donor Java source, fonts, icons, or unrelated launcher features are copied or bundled. The upstream project remains the design/performance reference, not a source of new RFTV product features.

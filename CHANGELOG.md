@@ -1,3 +1,12 @@
+## 0.9.2 (2026-11-10) — Iteration 2 candidate
+
+- Overlay capture now draws the Home root directly into a <=480 px wide bitmap using a scaled Canvas; it no longer allocates a full-resolution screenshot on the UI thread or downsamples it again on the worker.
+- Added separate debug performance markers for synchronous overlay view construction (build_ms) and first pre-draw (layout_ms); existing release Diagnostics UI and stored fields are unchanged.
+- Control Center reorganized into compact full-width connectivity pills and two-column action rows; existing Wi-Fi, Bluetooth, theme, RAM, screensaver, launcher settings and TV settings actions are retained. RAM alone receives a quantitative progress indicator. No VPN or Recent Apps action was added because neither is part of the current RFTV Control Center behavior.
+- Dock app tiles no longer contain expanding labels or scale as a whole. Icons scale within fixed-height tiles; focused app names appear in a separate tooltip above the Dock pill.
+- Settings now has a fixed bottom remote-control hint that changes with the active section.
+- Version candidate: com.rftv.launcher, versionName 0.9.2, versionCode 14. This is not a published Release; 0.9.1 remains the latest stable version until PR approval, merge, and verified publication.
+
 ## 0.9.1 (2026-11-10) — stable Release
 
 - [Stable Release v0.9.1](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.1) published after successful main CI and signed Release verification (CI run 42822789300; publisher run 42823200090).
