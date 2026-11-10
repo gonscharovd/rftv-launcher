@@ -3841,9 +3841,13 @@ class MainActivity : Activity() {
         return metrics
     }
 
-    // Draw directly into the <=480px target on the UI thread; never render full-resolution first.
+    // Draw only the photographic layer into the <=480px target. Drawing the whole root
+    // bakes the clock, weather controls and Dock into the blur, creating visible ghosting
+    // underneath Control Center, catalog and Settings.
     private fun captureBackdropSnapshot(metrics: OverlayPerfMetrics? = null): Bitmap? {
-        if (!::root.isInitialized || root.width <= 0 || root.height <= 0) return null
+        if (!::root.isInitialized || root.width <= 0 || root.height <= 0 ||
+            !::wallpaperView.isInitialized || wallpaperView.width <= 0 || wallpaperView.height <= 0
+        ) return null
         val startedAt = SystemClock.elapsedRealtime()
         return try {
             val size = OverlaySnapshotSizing.fit(root.width, root.height)
@@ -3853,8 +3857,8 @@ class MainActivity : Activity() {
             metrics?.screenshotHeightPx = height
             Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
                 val canvas = Canvas(bitmap)
-                canvas.scale(width / root.width.toFloat(), height / root.height.toFloat())
-                root.draw(canvas)
+                canvas.scale(width / wallpaperView.width.toFloat(), height / wallpaperView.height.toFloat())
+                wallpaperView.draw(canvas)
                 metrics?.screenshotBitmapBytes = bitmap.allocationByteCount
                 metrics?.captureMs = SystemClock.elapsedRealtime() - startedAt
             }
