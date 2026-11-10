@@ -386,13 +386,16 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        if (catalogLaunchPending) {
-            catalogLaunchPending = false
-            if (page == "panel" && activePanelTitle == "Каталог приложений") {
-                returnFocusToCatalogButton = true
-                showHome()
-                return
-            }
+        val shouldRestoreCatalogReturn = CatalogReturnPolicy.shouldReturnHomeAfterAppLaunch(
+            launchPending = catalogLaunchPending,
+            page = page,
+            activePanelTitle = activePanelTitle
+        )
+        catalogLaunchPending = false
+        if (shouldRestoreCatalogReturn) {
+            returnFocusToCatalogButton = true
+            showHome()
+            return
         }
         if (page == "home") {
             startClock()
