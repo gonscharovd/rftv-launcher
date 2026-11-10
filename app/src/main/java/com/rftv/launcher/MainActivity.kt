@@ -966,6 +966,7 @@ class MainActivity : Activity() {
         val tileWidthDp = ((availableWidthDp - 44) / (items.size + 1).coerceAtLeast(1)).coerceIn(82, RftvDesignSystem.Size.DOCK_TILE_WIDTH)
         val iconSizeDp = (tileWidthDp * 0.56f).toInt().coerceIn(44, RftvDesignSystem.Size.DOCK_ICON)
         items.forEach { app ->
+            var dockLabelView: TextView? = null
             val tile = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
@@ -977,8 +978,10 @@ class MainActivity : Activity() {
                 contentDescription = app.label
                 setOnFocusChangeListener { view, focused ->
                     view.background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused)
-                    RftvDesignSystem.applyFocusScale(view, focused, RftvDesignSystem.Size.DOCK_FOCUS_SCALE)
+                    RftvDesignSystem.applyFocusScale(view, focused, 1.12f)
                     view.elevation = if (focused) dp(RftvDesignSystem.Elevation.FOCUSED_TILE_DP).toFloat() else 0f
+                    dockLabelView?.animate()?.alpha(if (focused) 1f else 0f)
+                        ?.setDuration(RftvDesignSystem.Motion.FOCUS_DURATION_MS)?.start()
                 }
                 setOnClickListener { launchApp(app.packageName) }
                 setOnLongClickListener { showAppActions(app); true }
@@ -995,8 +998,10 @@ class MainActivity : Activity() {
                 setShadowLayer(5f, 0f, 1f, 0x99000000.toInt())
                 gravity = Gravity.CENTER
                 maxLines = 1
+                alpha = 0f
                 setPadding(0, dp(RftvDesignSystem.Size.DOCK_LABEL_TOP_PADDING), 0, 0)
             }
+            dockLabelView = label
             tile.addView(label, LinearLayout.LayoutParams(dp(tileWidthDp - 8), dp(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT)))
             row.addView(tile, LinearLayout.LayoutParams(dp(tileWidthDp), dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)).apply {
                 leftMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
@@ -1013,7 +1018,9 @@ class MainActivity : Activity() {
             setPadding(dp(6), dp(5), dp(6), dp(4))
             setOnFocusChangeListener { view, focused ->
                 view.background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused)
-                RftvDesignSystem.applyFocusScale(view, focused, RftvDesignSystem.Size.DOCK_FOCUS_SCALE)
+                RftvDesignSystem.applyFocusScale(view, focused, 1.12f)
+                catalogLabel.animate().alpha(if (focused) 1f else 0f)
+                    .setDuration(RftvDesignSystem.Motion.FOCUS_DURATION_MS).start()
             }
             setOnClickListener { showAppCatalog() }
         }
@@ -1023,13 +1030,15 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
         }, LinearLayout.LayoutParams(dp(iconSizeDp), dp(iconSizeDp)))
-        catalogTile.addView(TextView(this).apply {
+        val catalogLabel = TextView(this).apply {
             text = "Все приложения"
             textSize = RftvDesignSystem.Size.DOCK_LABEL_TEXT_SP
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
             maxLines = 1
-        }, LinearLayout.LayoutParams(dp(tileWidthDp - 8), dp(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT)))
+            alpha = 0f
+        }
+        catalogTile.addView(catalogLabel, LinearLayout.LayoutParams(dp(tileWidthDp - 8), dp(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT)))
         row.addView(catalogTile, LinearLayout.LayoutParams(dp(tileWidthDp), dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)).apply {
             leftMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
             rightMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
@@ -1495,17 +1504,19 @@ class MainActivity : Activity() {
         card.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         card.alpha = 0f
         card.translationX = dp(18).toFloat()
-        // The Control Center occupies the full available screen height and overlays the Dock.
-        val controlCenterTop = dp(12)
+        // Floating tvOS-style panel. Keep a deliberate clear zone above the Dock:
+        // the overlay must never cover app labels or steal their visible area.
+        val controlCenterTop = dp(24)
+        val dockClearance = dp(dockHeightDp + RftvDesignSystem.Spacing.DOCK_BOTTOM_INSET + 22)
         val controlCenterHeight = (
-            resources.displayMetrics.heightPixels - controlCenterTop - dp(12)
-        ).coerceAtLeast(dp(360))
+            resources.displayMetrics.heightPixels - controlCenterTop - dockClearance
+        ).coerceAtLeast(dp(320))
         overlay.addView(card, FrameLayout.LayoutParams(
             (resources.displayMetrics.widthPixels * RftvDesignSystem.Size.CONTROL_CENTER_WIDTH_FRACTION).toInt(),
             controlCenterHeight,
             Gravity.TOP or Gravity.RIGHT
         ).apply {
-            rightMargin = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_RIGHT_INSET)
+            rightMargin = dp(28)
             topMargin = controlCenterTop
         })
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
