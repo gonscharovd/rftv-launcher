@@ -8,9 +8,9 @@ A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direc
 
 - Native Kotlin Android Views (no Compose and no third-party UI dependencies).
 - Home screen with a large centered clock/date over a full-screen photograph, a compact weather status pill, a five-day forecast overlay, and the Control Center entry point.
-- Single-row adaptive translucent app dock with focus scaling and a dedicated All Apps entry; DPAD Down does not expand the dock.
+- Single-row adaptive tvOS-inspired glass Dock capsule with focus lift, focused-app label and a dedicated All Apps entry; DPAD Down does not expand the dock.
 - Dock and catalog refresh automatically after app installation, removal or replacement, without restarting the launcher; focus and favorite ordering are preserved.
-- 10 photographic daytime and 10 photographic nighttime landscape wallpapers from Unsplash.
+- 10 real daytime and 10 real nighttime landscape photographs from Unsplash, bundled in the APK for reliable first-run and offline display.
 - Separate day/night wallpaper selection and carousel modes, with a configurable 1–60 minute interval.
 - Wallpaper photographs are validated and packaged at build time, then restored into app-private cache; TV runtime access to Unsplash is not required.
 - Floating right-side dark-glass Control Center with vector icons, grouped Wi-Fi/Bluetooth, theme, RAM, screensaver and settings actions; it stays clear of the Dock.
