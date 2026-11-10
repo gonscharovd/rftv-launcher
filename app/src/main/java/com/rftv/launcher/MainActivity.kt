@@ -151,6 +151,7 @@ class MainActivity : Activity() {
     private val packageChangeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val changedPackage = intent?.data?.schemeSpecificPart
+            changedPackage?.let { appIconCache.remove(it) }
             if (!PackageChangePolicy.shouldRefresh(
                     intent?.action,
                     changedPackage,
