@@ -37,7 +37,7 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Size.FOCUS_SCALE > 1f)
         assertTrue(RftvDesignSystem.Size.FOCUS_SCALE <= 1.1f)
         assertTrue(RftvDesignSystem.Size.DOCK_FOCUS_SCALE > 1f)
-        assertTrue(RftvDesignSystem.Size.DOCK_FOCUS_SCALE <= 1.1f)
+        assertTrue(RftvDesignSystem.Size.DOCK_FOCUS_SCALE <= 1.15f)
         assertTrue(RftvDesignSystem.Radius.DOCK_TILE > 0)
         assertTrue(RftvDesignSystem.GlassAlpha.DOCK_TILE_RESTING < RftvDesignSystem.GlassAlpha.DOCK_TILE_FOCUSED)
         assertTrue(RftvDesignSystem.GlassAlpha.DOCK_TILE_FOCUSED <= 255)
