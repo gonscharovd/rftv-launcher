@@ -2386,7 +2386,6 @@ class MainActivity : Activity() {
                 loadCatalogIcon(app.packageName, icon)
             }
             tiles.forEachIndexed { index, tile ->
-                val row = index / columns
                 val column = index % columns
                 tile.nextFocusLeftId = tiles.getOrNull(if (column > 0) index - 1 else index)?.id ?: tile.id
                 tile.nextFocusRightId = tiles.getOrNull(if (column < columns - 1 && index + 1 < tiles.size) index + 1 else index)?.id ?: tile.id
@@ -2426,8 +2425,7 @@ class MainActivity : Activity() {
             if (bitmap != null) {
                 appIconCache.put(packageId, bitmap)
                 handler.post {
-                    if (!bitmap.isRecycled && target.tag == null) target.setImageBitmap(bitmap)
-                    else if (!bitmap.isRecycled && target.parent != null) target.setImageBitmap(bitmap)
+                    if (!bitmap.isRecycled && target.parent != null) target.setImageBitmap(bitmap)
                 }
             }
         }
