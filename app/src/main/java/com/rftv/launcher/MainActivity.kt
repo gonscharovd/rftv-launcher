@@ -1438,13 +1438,15 @@ class MainActivity : Activity() {
         }
         val header = TextView(this).apply {
             text = "Пункт управления"
-            textSize = 16f
+            textSize = RftvDesignSystem.Size.CONTROL_CENTER_HEADER_TEXT_SIZE_SP
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(RftvDesignSystem.ColorTokens.TEXT_PRIMARY)
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14), 0, dp(14), dp(8))
+            setPadding(dp(RftvDesignSystem.Spacing.CONTROL_CENTER_HEADER_HORIZONTAL_PADDING), 0,
+                dp(RftvDesignSystem.Spacing.CONTROL_CENTER_HEADER_HORIZONTAL_PADDING),
+                dp(RftvDesignSystem.Spacing.CONTROL_CENTER_HEADER_BOTTOM_PADDING))
         }
-        card.addView(header, LinearLayout.LayoutParams(-1, dp(42)))
+        card.addView(header, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.CONTROL_CENTER_HEADER_HEIGHT)))
         val scroll = ScrollView(this).apply {
             isFillViewport = true
             isFocusable = false
@@ -1463,7 +1465,8 @@ class MainActivity : Activity() {
             val tile = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(14), 0, dp(12), 0)
+                setPadding(dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TILE_PADDING_START), 0,
+                    dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TILE_PADDING_END), 0)
                 background = RftvDesignSystem.gradientSurface(
                     this@MainActivity,
                     intArrayOf(RftvDesignSystem.ColorTokens.CONTROL_CENTER_TILE_START,
@@ -1498,18 +1501,21 @@ class MainActivity : Activity() {
                             else RftvDesignSystem.ColorTokens.TEXT_PRIMARY
                         )
                     }
-                    RftvDesignSystem.applyFocusScale(view, focused, 1.05f)
+                    RftvDesignSystem.applyFocusScale(view, focused, RftvDesignSystem.Size.CONTROL_CENTER_FOCUS_SCALE)
                 }
                 setOnClickListener { action() }
             }
-            tile.addView(iconView, LinearLayout.LayoutParams(dp(25), dp(25)).apply { rightMargin = dp(10) })
+            tile.addView(iconView, LinearLayout.LayoutParams(
+                dp(RftvDesignSystem.Size.CONTROL_CENTER_TILE_ICON_SIZE),
+                dp(RftvDesignSystem.Size.CONTROL_CENTER_TILE_ICON_SIZE)
+            ).apply { rightMargin = dp(RftvDesignSystem.Spacing.CONTROL_CENTER_ICON_LABEL_GAP) })
             val labels = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_VERTICAL
             }
             labels.addView(TextView(this).apply {
                 text = title
-                textSize = 12.5f
+                textSize = RftvDesignSystem.Size.CONTROL_CENTER_TILE_TITLE_SP
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                 setTextColor(RftvDesignSystem.ColorTokens.TEXT_PRIMARY)
                 maxLines = 1
@@ -1518,7 +1524,7 @@ class MainActivity : Activity() {
             })
             labels.addView(TextView(this).apply {
                 text = subtitle
-                textSize = 10.5f
+                textSize = RftvDesignSystem.Size.CONTROL_CENTER_TILE_SUBTITLE_SP
                 setTextColor(RftvDesignSystem.ColorTokens.CONTROL_CENTER_SUBTITLE)
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
@@ -1558,21 +1564,31 @@ class MainActivity : Activity() {
         val tvSettings = makeTile("tv", "Настройки ТВ", "Системные параметры") { openSettings(Settings.ACTION_SETTINGS) }
 
         fun addFull(tile: View) {
-            content.addView(tile, LinearLayout.LayoutParams(-1, dp(56)).apply { bottomMargin = dp(7) })
+            content.addView(tile, LinearLayout.LayoutParams(-1,
+                dp(RftvDesignSystem.Size.CONTROL_CENTER_COMPACT_TILE_HEIGHT)).apply {
+                bottomMargin = dp(RftvDesignSystem.Size.CONTROL_CENTER_TILE_BOTTOM_GAP)
+            })
         }
         fun addPair(left: View, right: View) {
             val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-            row.addView(left, LinearLayout.LayoutParams(0, dp(56), 1f).apply { rightMargin = dp(4) })
-            row.addView(right, LinearLayout.LayoutParams(0, dp(56), 1f).apply { leftMargin = dp(4) })
-            content.addView(row, LinearLayout.LayoutParams(-1, dp(56)).apply { bottomMargin = dp(7) })
+            val tileHeight = dp(RftvDesignSystem.Size.CONTROL_CENTER_COMPACT_TILE_HEIGHT)
+            val columnGap = RftvDesignSystem.Spacing.CONTROL_CENTER_COLUMN_GAP
+            row.addView(left, LinearLayout.LayoutParams(0, tileHeight, 1f).apply {
+                rightMargin = dp(columnGap / 2)
+            })
+            row.addView(right, LinearLayout.LayoutParams(0, tileHeight, 1f).apply {
+                leftMargin = dp((columnGap + 1) / 2)
+            })
+            content.addView(row, LinearLayout.LayoutParams(-1, tileHeight).apply {
+                bottomMargin = dp(RftvDesignSystem.Size.CONTROL_CENTER_TILE_BOTTOM_GAP)
+            })
         }
-        addFull(wifi)
-        addFull(bluetooth)
+        addPair(wifi, bluetooth)
         addPair(theme, ram)
         addPair(saver, launcherSettings)
         addFull(tvSettings)
 
-        val focusRows = listOf(listOf(wifi), listOf(bluetooth), listOf(theme, ram),
+        val focusRows = listOf(listOf(wifi, bluetooth), listOf(theme, ram),
             listOf(saver, launcherSettings), listOf(tvSettings))
         focusRows.flatten().forEach { it.id = View.generateViewId() }
         focusRows.forEachIndexed { rowIndex, row ->
