@@ -159,7 +159,7 @@ internal object RftvDesignSystem {
         const val DOCK_LABEL_TEXT_SP = 14f
         const val DOCK_LABEL_WIDTH = 100
         const val DOCK_LABEL_HEIGHT = 28
-        const val DOCK_FOCUS_SCALE = 1.07f
+        const val DOCK_FOCUS_SCALE = 1.10f
         const val CLOCK_LETTER_SPACING = -0.045f
         const val CLOCK_SHADOW_RADIUS = 22f
         const val CLOCK_SHADOW_DY = 4f
