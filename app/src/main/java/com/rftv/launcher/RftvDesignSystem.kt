@@ -135,7 +135,7 @@ internal object RftvDesignSystem {
         const val CONTROL = 18
         const val CARD = 20
         const val BUTTON = 28
-        const val DOCK = 30
+        const val DOCK = 42
         const val DOCK_TILE = 19
         const val CONTROL_CENTER_PANEL = 34
         const val CONTROL_CENTER_TILE = 32
@@ -172,8 +172,9 @@ internal object RftvDesignSystem {
         const val EMPTY_DOCK_TEXT_SP = 14f
         const val EMPTY_DOCK_HEIGHT = 122
         const val HOME_DATE_LEFT_PADDING = 4
-        const val CLOCK_TEXT_SP = 96f
-        const val DATE_TEXT_SP = 18f
+        const val CLOCK_TEXT_SP = 122f
+        const val DATE_TEXT_SP = 20f
+        const val HOME_WEATHER_TEXT_SP = 18f
         const val PAGE_TITLE_SP = 29f
         const val CONTROL_CENTER_TITLE_SP = 21f
         const val CARD_TITLE_SP = 19f
