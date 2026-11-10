@@ -1008,6 +1008,7 @@ class MainActivity : Activity() {
                 rightMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
             })
         }
+        var catalogLabel: TextView? = null
         val catalogTile = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -1019,8 +1020,8 @@ class MainActivity : Activity() {
             setOnFocusChangeListener { view, focused ->
                 view.background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused)
                 RftvDesignSystem.applyFocusScale(view, focused, 1.12f)
-                catalogLabel.animate().alpha(if (focused) 1f else 0f)
-                    .setDuration(RftvDesignSystem.Motion.FOCUS_DURATION_MS).start()
+                catalogLabel?.animate()?.alpha(if (focused) 1f else 0f)
+                    ?.setDuration(RftvDesignSystem.Motion.FOCUS_DURATION_MS)?.start()
             }
             setOnClickListener { showAppCatalog() }
         }
@@ -1030,7 +1031,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setTextColor(Color.WHITE)
         }, LinearLayout.LayoutParams(dp(iconSizeDp), dp(iconSizeDp)))
-        val catalogLabel = TextView(this).apply {
+        val catalogLabelView = TextView(this).apply {
             text = "Все приложения"
             textSize = RftvDesignSystem.Size.DOCK_LABEL_TEXT_SP
             setTextColor(Color.WHITE)
@@ -1038,7 +1039,8 @@ class MainActivity : Activity() {
             maxLines = 1
             alpha = 0f
         }
-        catalogTile.addView(catalogLabel, LinearLayout.LayoutParams(dp(tileWidthDp - 8), dp(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT)))
+        catalogLabel = catalogLabelView
+        catalogTile.addView(catalogLabelView, LinearLayout.LayoutParams(dp(tileWidthDp - 8), dp(RftvDesignSystem.Size.DOCK_LABEL_HEIGHT)))
         row.addView(catalogTile, LinearLayout.LayoutParams(dp(tileWidthDp), dp(RftvDesignSystem.Size.DOCK_TILE_HEIGHT)).apply {
             leftMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
             rightMargin = dp(RftvDesignSystem.Spacing.DOCK_TILE_HORIZONTAL_MARGIN)
