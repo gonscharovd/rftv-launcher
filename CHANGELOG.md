@@ -1,6 +1,18 @@
 # Changelog
 
-## 0.9.3
+## 0.9.4 (candidate) — Iteration 4A
+
+- Fixes the missing All Apps Dock focus tag: the Back/Close return path now finds the actual Dock tile and explicitly requests focus, with a fallback to the first app tile.
+- Returning from an app launched from the catalog is now treated as a catalog-exit lifecycle transition in `onResume()`: the catalog is closed, Home is rebuilt, and focus returns to the All Apps tile.
+- Added a pure catalog-return policy and unit regression tests for the lifecycle return condition and stable Dock tag.
+- Candidate: `com.rftv.launcher`, versionName `0.9.4`, versionCode `16`. Not a published Release. 4B Dock content sizing and 4C unified frosted-glass material remain pending.
+
+## 0.9.3 (2026-11-10) — stable Release
+
+- [Stable Release v0.9.3](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.3) published after successful Android CI #42865839755 and Publisher #42866314971.
+- APK: `com.rftv.launcher`, versionName `0.9.3`, versionCode `15`, 7,990,843 bytes; no native libraries (ABI-independent).
+- APK SHA-256: `ce7bfcd6639ab9df57b1982518a867089ecd99bd0fac339dda3cb5840f11240e`.
+- Release certificate SHA-256 remains `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`.
 - Fixed the crash when opening Launcher Settings: all eight sections now have navigation glyphs, with a regression test.
 - Reworked Dock geometry and focus to match measured tvOS Launcher values while retaining RFTV favorites, app catalog and installed-app refresh.
 - Refined Control Center capsules and Settings navigation surfaces using donor-measured dimensions and colors.
