@@ -3,7 +3,7 @@
 - Repository: `gonscharovd/rftv-launcher`; `main` HEAD: `2038bd822961772773affae63aa7119f4c1fa889`.
 - Latest stable Release: [v0.9.3](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.3), versionCode 15; APK SHA-256 `ce7bfcd6639ab9df57b1982518a867089ecd99bd0fac339dda3cb5840f11240e`.
 - Android CI #42865839755 and Publisher #42866314971 both succeeded. Signed artifact identity and persistent certificate were verified by the workflows.
-- Iteration 4 is not yet complete. 4A code fix is being prepared on `feature/iteration-4-catalog-focus-glass`: fix the missing All Apps focus tag and restore Home/focus after an app launched from the catalog returns. Candidate 0.9.4 / versionCode 16.
+- Iteration 4 is not yet complete. 4A code fix is committed on `feature/iteration-4-catalog-focus-glass`: the All Apps tile now has the required focus tag and returning from an app launched in the catalog rebuilds Home and restores focus. Unit tests and CI are running. Candidate 0.9.4 / versionCode 16. 4B and 4C remain unimplemented.
 - 4B (content-sized Dock) and 4C (consistent real frosted-glass material across Dock, Control Center, Settings and catalog) remain open; do not mark them complete.
 - PR #15 (`docs/project-memory-system`) is stale and not mergeable against current main; its state snapshot refers to an old commit/release. Reconcile or replace its documentation before treating it as current.
 - Physical acceptance on Sber SDX-50U4123B has not been confirmed. Do not claim TV testing.
