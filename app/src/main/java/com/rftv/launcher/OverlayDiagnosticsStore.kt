@@ -76,6 +76,5 @@ internal object OverlayDiagnosticsStore {
     @Synchronized
     fun clear() {
         records.clear()
-        seenOverlays.clear()
     }
 }
