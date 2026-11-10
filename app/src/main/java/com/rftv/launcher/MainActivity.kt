@@ -81,6 +81,7 @@ class MainActivity : Activity() {
         val openCount: Int,
         val javaHeapBeforeBytes: Long,
         val nativeHeapBeforeBytes: Long,
+        val diagnosticRecord: OverlayDiagnosticRecord,
         var captureMs: Long = 0L,
         var screenshotWidthPx: Int = 0,
         var screenshotHeightPx: Int = 0,
@@ -143,7 +144,6 @@ class MainActivity : Activity() {
     private var glassBackdropBitmap: Bitmap? = null
     private var overlayBlurBitmap: Bitmap? = null
     private var overlayBlurGeneration = 0
-    private var overlayOpenCount = 0
     private var catalogFocusedPackage: String? = null
     private var returnFocusToCatalogButton = false
     private var glassBackdropCacheKey: String? = null
@@ -1627,6 +1627,71 @@ class MainActivity : Activity() {
     }
 
 
+    private fun showDiagnosticsScreen() {
+        fun render() {
+            showPanel("Диагностика") { body ->
+                val packageInfo = packageManager.getPackageInfo(packageName, 0)
+                val versionCode = if (Build.VERSION.SDK_INT >= 28) {
+                    packageInfo.longVersionCode
+                } else {
+                    packageInfo.versionCode.toLong()
+                }
+                val memoryClass = (getSystemService(ACTIVITY_SERVICE) as ActivityManager).memoryClass
+                val abi = Build.SUPPORTED_ABIS.firstOrNull() ?: Build.CPU_ABI
+                body.addView(infoCard(
+                    "УСТРОЙСТВО",
+                    "RFTV ${packageInfo.versionName} · ${versionCode}",
+                    "Модель: ${Build.MANUFACTURER} ${Build.MODEL}\nAndroid: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\nABI: $abi\nMemory class: $memoryClass MB"
+                ))
+                body.addView(sectionLabel("ПОСЛЕДНИЕ 10 ОТКРЫТИЙ"))
+                val records = OverlayDiagnosticsStore.latest()
+                if (records.isEmpty()) {
+                    body.addView(infoCard("ПОКА НЕТ ДАННЫХ", "Открой каталог или Control Center", "После открытия здесь появятся замеры времени, bitmap и использования памяти."))
+                } else {
+                    records.forEachIndexed { index, record ->
+                        val title = if (record.overlay == "app_catalog") "Каталог приложений" else "Control Center"
+                        val blur = if (record.blurMs >= 0) "${record.blurMs} мс" else "ожидается"
+                        val card = LinearLayout(this).apply {
+                            orientation = LinearLayout.VERTICAL
+                            background = RftvDesignSystem.settingsNavigationSurface(this@MainActivity, false, false)
+                            setPadding(dp(18), dp(14), dp(18), dp(14))
+                            isFocusable = false
+                        }
+                        card.addView(TextView(this).apply {
+                            text = "#${record.openCount} · $title · ${if (record.temperature == "cold") "холодное" else "повторное"}"
+                            textSize = 22f
+                            typeface = Typeface.DEFAULT_BOLD
+                            setTextColor(Color.WHITE)
+                        })
+                        val details = listOf(
+                            "capture: ${record.captureMs} мс · показ: ${record.openToVisibleMs} мс · blur: $blur",
+                            "Bitmap: исходный ${record.sourceBitmapBytes} Б · размытый ${record.blurredBitmapBytes} Б",
+                            "Java heap: ${record.javaHeapBeforeBytes} → ${record.javaHeapAfterBytes} Б",
+                            "Native heap: ${record.nativeHeapBeforeBytes} → ${record.nativeHeapAfterBytes} Б",
+                            if (record.blurMs >= 0) "Blur: ${if (record.blurSucceeded) "готов" else "fallback"}" else "Blur: обработка ещё не завершена"
+                        )
+                        card.addView(TextView(this).apply {
+                            text = details.joinToString("\n")
+                            textSize = 18f
+                            setTextColor(0xFFE4EAF2.toInt())
+                            setPadding(0, dp(8), 0, 0)
+                        })
+                        body.addView(card, LinearLayout.LayoutParams(-1, -2).apply {
+                            bottomMargin = dp(10)
+                        })
+                    }
+                }
+                body.addView(glassButton("Очистить историю диагностики") {
+                    OverlayDiagnosticsStore.clear()
+                    render()
+                }, LinearLayout.LayoutParams(-1, dp(58)).apply { topMargin = dp(10) })
+                body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
+                    LinearLayout.LayoutParams(-1, dp(54)).apply { topMargin = dp(8) })
+            }
+        }
+        render()
+    }
+
     private fun showAboutSystem() {
         showPanel("О системе") { body ->
             val installedInfo = packageManager.getPackageInfo(packageName, 0)
@@ -2011,6 +2076,7 @@ class MainActivity : Activity() {
             Triple("Заставка", "Таймер и экран ожидания", { showScreensaverSettings() }),
             Triple("Приложения", "Каталог, избранное и скрытые", { showAppSettings() }),
             Triple("TV Manager", "Устройство и анализ пакетов", { showTvManager() }),
+            Triple("Диагностика", "Показатели открытия каталога и Control Center", { showDiagnosticsScreen() }),
             Triple("О системе", "Версия и OTA-обновления", { showAboutSystem() })
         )
         val navItems = mutableListOf<TextView>()
@@ -2044,13 +2110,13 @@ class MainActivity : Activity() {
             val label = when (index) {
                 0 -> "ЦЕНТР НАСТРОЕК"; 1 -> "ВНЕШНИЙ ВИД"; 2 -> "ПАНЕЛЬ ПРИЛОЖЕНИЙ"
                 3 -> "ЭКРАН ОЖИДАНИЯ"; 4 -> "УПРАВЛЕНИЕ ПРИЛОЖЕНИЯМИ"
-                5 -> "ДИАГНОСТИКА УСТРОЙСТВА"; else -> "СИСТЕМА И ОБНОВЛЕНИЯ"
+                5 -> "ДИАГНОСТИКА УСТРОЙСТВА"; 6 -> "ДИАГНОСТИКА RFTV"; else -> "СИСТЕМА И ОБНОВЛЕНИЯ"
             }
             detail.addView(infoCard(label, section.first, section.second))
             when (index) {
                 0 -> {
                     detail.addView(sectionLabel("БЫСТРЫЙ ДОСТУП"))
-                    for (target in 1..6) {
+                    for (target in 1..7) {
                         val entry = sections[target]
                         detail.addView(controlTile(entry.first, entry.second) {
                             renderSection(target)
@@ -2132,6 +2198,12 @@ class MainActivity : Activity() {
                         settingsHubVisible = false
                         showTvOperationLog()
                     }, LinearLayout.LayoutParams(-1, dp(68)))
+                }
+                6 -> {
+                    detail.addView(controlTile("Открыть диагностику", "Последние 10 открытий · память и скорость") {
+                        settingsHubVisible = false
+                        showDiagnosticsScreen()
+                    }, LinearLayout.LayoutParams(-1, dp(76)))
                 }
                 else -> {
                     detail.addView(controlTile("О системе и обновления", "Версия RFTV · скачать и установить OTA") {
@@ -3667,12 +3739,16 @@ class MainActivity : Activity() {
     }
 
     private fun beginOverlayPerf(name: String): OverlayPerfMetrics {
+        val javaHeapBefore = javaHeapUsedBytes()
+        val nativeHeapBefore = android.os.Debug.getNativeHeapAllocatedSize()
+        val diagnosticRecord = OverlayDiagnosticsStore.begin(name, javaHeapBefore, nativeHeapBefore)
         val metrics = OverlayPerfMetrics(
             overlay = name,
             openedAt = SystemClock.uptimeMillis(),
-            openCount = ++overlayOpenCount,
-            javaHeapBeforeBytes = javaHeapUsedBytes(),
-            nativeHeapBeforeBytes = android.os.Debug.getNativeHeapAllocatedSize()
+            openCount = diagnosticRecord.openCount,
+            javaHeapBeforeBytes = javaHeapBefore,
+            nativeHeapBeforeBytes = nativeHeapBefore,
+            diagnosticRecord = diagnosticRecord
         )
         if (isDebugBuild()) {
             Log.d(
@@ -3776,10 +3852,21 @@ class MainActivity : Activity() {
     }
 
     private fun logOverlayOpen(metrics: OverlayPerfMetrics) {
+        val openToVisibleMs = SystemClock.uptimeMillis() - metrics.openedAt
+        val javaHeapAfter = javaHeapUsedBytes()
+        val nativeHeapAfter = android.os.Debug.getNativeHeapAllocatedSize()
+        OverlayDiagnosticsStore.opened(
+            metrics.diagnosticRecord,
+            metrics.captureMs,
+            openToVisibleMs,
+            metrics.screenshotBitmapBytes,
+            javaHeapAfter,
+            nativeHeapAfter
+        )
         if (!isDebugBuild()) return
         Log.d(
             "RFTV_PERF",
-            "event=opened overlay=${metrics.overlay} open_count=${metrics.openCount} open_to_visible_ms=${SystemClock.uptimeMillis() - metrics.openedAt} capture_ms=${metrics.captureMs} screenshot_width_px=${metrics.screenshotWidthPx} screenshot_height_px=${metrics.screenshotHeightPx} screenshot_bitmap_bytes=${metrics.screenshotBitmapBytes} java_heap_before_bytes=${metrics.javaHeapBeforeBytes} java_heap_after_bytes=${javaHeapUsedBytes()} native_heap_before_bytes=${metrics.nativeHeapBeforeBytes} native_heap_after_bytes=${android.os.Debug.getNativeHeapAllocatedSize()}"
+            "event=opened overlay=${metrics.overlay} open_count=${metrics.openCount} open_to_visible_ms=$openToVisibleMs capture_ms=${metrics.captureMs} screenshot_width_px=${metrics.screenshotWidthPx} screenshot_height_px=${metrics.screenshotHeightPx} screenshot_bitmap_bytes=${metrics.screenshotBitmapBytes} java_heap_before_bytes=${metrics.javaHeapBeforeBytes} java_heap_after_bytes=$javaHeapAfter native_heap_before_bytes=${metrics.nativeHeapBeforeBytes} native_heap_after_bytes=$nativeHeapAfter"
         )
     }
 
@@ -3790,6 +3877,9 @@ class MainActivity : Activity() {
         blurredBytes: Int,
         success: Boolean
     ) {
+        OverlayDiagnosticsStore.blurCompleted(
+            metrics.diagnosticRecord, blurMs, blurredBytes, success
+        )
         if (!isDebugBuild()) return
         Log.d(
             "RFTV_PERF",
