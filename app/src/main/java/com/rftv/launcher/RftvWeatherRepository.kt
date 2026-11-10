@@ -1,3 +1,10 @@
+/*
+ * Adapted from tvOS Launcher Weather.java by techgenius (Copyright 2026 techgenius).
+ * Modified for RFTV: fixed Chelyabinsk coordinates, Android/Kotlin integration,
+ * app-wide cache and Home/forecast/screensaver consumers.
+ * Licensed under the Apache License, Version 2.0. See third_party/tvos-launcher/LICENSE.
+ */
+
 package com.rftv.launcher
 
 import android.content.Context
