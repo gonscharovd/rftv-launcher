@@ -19,4 +19,14 @@ class SettingsNavigationSpecTest {
     fun settingsGlyphsAreNotBlank() {
         assertFalse(SettingsNavigationSpec.SECTION_GLYPHS.any { it.isBlank() })
     }
+
+    @Test
+    fun nestedSettingsReturnTargetsAreStableAndUnique() {
+        assertEquals(8, SettingsNavigationSpec.SUBPAGE_RETURN_TAGS.size)
+        assertEquals(
+            SettingsNavigationSpec.SUBPAGE_RETURN_TAGS.size,
+            SettingsNavigationSpec.SUBPAGE_RETURN_TAGS.toSet().size
+        )
+        assertFalse(SettingsNavigationSpec.SUBPAGE_RETURN_TAGS.any { it.isBlank() })
+    }
 }

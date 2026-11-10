@@ -196,6 +196,9 @@ class MainActivity : Activity() {
     private var settingsNavigationActive = false
     private var settingsHubVisible = false
     private var settingsSelectedIndex = 0
+    private var settingsReturnFocusTag: String? = null
+    private var settingsSidebarScrollY = 0
+    private var settingsDetailScrollY = 0
     private var settingsSidebarView: View? = null
     private var settingsContentColumnView: View? = null
     private var settingsEntryFocusView: View? = null
@@ -855,6 +858,9 @@ class MainActivity : Activity() {
         settingsNavigationActive = false
         settingsHubVisible = false
         settingsSelectedIndex = 0
+        settingsReturnFocusTag = null
+        settingsSidebarScrollY = 0
+        settingsDetailScrollY = 0
         page = "home"
         activePanelTitle = ""
         releaseOverlayBackdrop()
@@ -2149,6 +2155,21 @@ class MainActivity : Activity() {
             return null
         }
 
+        fun nestedSettingsTile(
+            returnTag: String,
+            title: String,
+            subtitle: String,
+            action: () -> Unit
+        ): View = controlTile(title, subtitle) {
+            settingsReturnFocusTag = returnTag
+            settingsSidebarScrollY = navigationScroll.scrollY
+            settingsDetailScrollY = detailScroll.scrollY
+            settingsHubVisible = false
+            action()
+        }.apply {
+            tag = returnTag
+        }
+
         fun refreshNavigation() {
             navItems.forEachIndexed { index, item ->
                 val focused = item.hasFocus()
@@ -2163,6 +2184,10 @@ class MainActivity : Activity() {
             }
         }
         fun renderSection(index: Int) {
+            if (selectedIndex != index) {
+                settingsReturnFocusTag = null
+                settingsDetailScrollY = 0
+            }
             selectedIndex = index
             settingsSelectedIndex = index
             settingsHintFooter.text = when (index) {
@@ -2232,14 +2257,16 @@ class MainActivity : Activity() {
                     }, LinearLayout.LayoutParams(-1, dp(64)))
                 }
                 4 -> {
-                    detail.addView(controlTile("Каталог приложений", "Полный список · запуск и управление") {
-                        settingsHubVisible = false
-                        showAppCatalog()
-                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
-                    detail.addView(controlTile("Скрытые приложения", "Восстановить приложения, скрытые из Dock и каталога") {
-                        settingsHubVisible = false
-                        showHiddenAppsPage()
-                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(nestedSettingsTile(
+                        SettingsNavigationSpec.RETURN_APP_CATALOG,
+                        "Каталог приложений",
+                        "Полный список · запуск и управление"
+                    ) { showAppCatalog() }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(nestedSettingsTile(
+                        SettingsNavigationSpec.RETURN_HIDDEN_APPS,
+                        "Скрытые приложения",
+                        "Восстановить приложения, скрытые из Dock и каталога"
+                    ) { showHiddenAppsPage() }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
                     detail.addView(controlTile("Обновить список приложений", "Повторно прочитать установленные приложения Android") {
                         loadInstalledApps()
                         renderSection(4)
@@ -2253,34 +2280,40 @@ class MainActivity : Activity() {
                         "${Build.MANUFACTURER} ${Build.MODEL}",
                         "Android ${Build.VERSION.RELEASE} · API ${Build.VERSION.SDK_INT}\nСовпавших проверенных профилей: ${matchedProfiles.size}\nПакеты анализируются без изменения системного состояния."
                     ))
-                    detail.addView(controlTile("Данные по ТВ", "Характеристики устройства и установленные пакеты") {
-                        settingsHubVisible = false
-                        showTvDeviceInfo()
-                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
-                    detail.addView(controlTile("Очистка ТВ", "Подбор профиля и безопасный предварительный анализ") {
-                        settingsHubVisible = false
-                        showTvCleanup()
-                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
-                    detail.addView(controlTile("Отключённые пакеты", "Состояние и доступность восстановления") {
-                        settingsHubVisible = false
-                        showTvDisabledPackages()
-                    }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
-                    detail.addView(controlTile("Журнал операций", "История действий TV Manager") {
-                        settingsHubVisible = false
-                        showTvOperationLog()
-                    }, LinearLayout.LayoutParams(-1, dp(68)))
+                    detail.addView(nestedSettingsTile(
+                        SettingsNavigationSpec.RETURN_TV_DEVICE_INFO,
+                        "Данные по ТВ",
+                        "Характеристики устройства и установленные пакеты"
+                    ) { showTvDeviceInfo() }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(nestedSettingsTile(
+                        SettingsNavigationSpec.RETURN_TV_CLEANUP,
+                        "Очистка ТВ",
+                        "Подбор профиля и безопасный предварительный анализ"
+                    ) { showTvCleanup() }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(nestedSettingsTile(
+                        SettingsNavigationSpec.RETURN_TV_DISABLED,
+                        "Отключённые пакеты",
+                        "Состояние и доступность восстановления"
+                    ) { showTvDisabledPackages() }, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) })
+                    detail.addView(nestedSettingsTile(
+                        SettingsNavigationSpec.RETURN_TV_LOG,
+                        "Журнал операций",
+                        "История действий TV Manager"
+                    ) { showTvOperationLog() }, LinearLayout.LayoutParams(-1, dp(68)))
                 }
                 6 -> {
-                    detail.addView(controlTile("Открыть диагностику", "Последние 10 открытий · память и скорость") {
-                        settingsHubVisible = false
-                        showDiagnosticsScreen()
-                    }, LinearLayout.LayoutParams(-1, dp(76)))
+                    detail.addView(nestedSettingsTile(
+                        SettingsNavigationSpec.RETURN_DIAGNOSTICS,
+                        "Открыть диагностику",
+                        "Последние 10 открытий · память и скорость"
+                    ) { showDiagnosticsScreen() }, LinearLayout.LayoutParams(-1, dp(76)))
                 }
                 else -> {
-                    detail.addView(controlTile("О системе и обновления", "Версия RFTV · скачать и установить OTA") {
-                        settingsHubVisible = false
-                        showAboutSystem()
-                    }, LinearLayout.LayoutParams(-1, dp(76)))
+                    detail.addView(nestedSettingsTile(
+                        SettingsNavigationSpec.RETURN_ABOUT,
+                        "О системе и обновления",
+                        "Версия RFTV · скачать и установить OTA"
+                    ) { showAboutSystem() }, LinearLayout.LayoutParams(-1, dp(76)))
                 }
             }
             val firstRight = findFirstFocusable(detail)
@@ -2336,7 +2369,17 @@ class MainActivity : Activity() {
         root.addView(shell, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
         renderSection(settingsSelectedIndex)
-        sidebar.post { navItems.getOrNull(settingsSelectedIndex)?.requestFocus() }
+        sidebar.post {
+            navigationScroll.scrollTo(0, settingsSidebarScrollY)
+            detailScroll.scrollTo(0, settingsDetailScrollY)
+            val returnTag = settingsReturnFocusTag
+            val returnTarget = returnTag?.let { detail.findViewWithTag<View>(it) }
+            if (returnTarget?.requestFocus() == true) {
+                settingsReturnFocusTag = null
+            } else {
+                navItems.getOrNull(settingsSelectedIndex)?.requestFocus()
+            }
+        }
     }
 
     private fun showAppearanceSettings() {
