@@ -3740,12 +3740,14 @@ class MainActivity : Activity() {
         val generation = ++overlayBlurGeneration
         glassBlurExecutor.execute {
             var downscaled: Bitmap? = null
+            var downscaledBytes = 0
             val blurStartedAt = SystemClock.elapsedRealtime()
             val blurred = try {
                 val width = min(480, (snapshot.width / 2).coerceAtLeast(240))
                 val height = (width * snapshot.height.toFloat() / snapshot.width).toInt().coerceAtLeast(135)
                 val scaled = Bitmap.createScaledBitmap(snapshot, width, height, true)
                 downscaled = scaled
+                downscaledBytes = scaled.allocationByteCount
                 if (scaled !== snapshot && !snapshot.isRecycled) snapshot.recycle()
                 GlassBackdrop.createBlurredSnapshot(
                     scaled, scaled.width, scaled.height, radius = 7, passes = 3
@@ -3757,7 +3759,6 @@ class MainActivity : Activity() {
                 if (!snapshot.isRecycled) snapshot.recycle()
             }
             val blurElapsed = SystemClock.elapsedRealtime() - blurStartedAt
-            val downscaledBytes = downscaled?.allocationByteCount ?: 0
             val blurredBytes = blurred?.allocationByteCount ?: 0
             handler.post {
                 if (generation != overlayBlurGeneration || isFinishing || activeGlassBackdropView !== backdrop) {
