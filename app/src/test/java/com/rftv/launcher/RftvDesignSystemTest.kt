@@ -71,6 +71,24 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Size.SCREENSAVER_HINT_TEXT_SP in 12f..18f)
     }
 
+
+    @Test
+    fun sharedGlassMaterialsUseCentralizedBoundedTokens() {
+        val restingDock = RftvDesignSystem.ColorTokens.DOCK_SURFACE
+        val focusedDock = RftvDesignSystem.ColorTokens.DOCK_TILE_FOCUSED
+        val restingInteractive = RftvDesignSystem.ColorTokens.INTERACTIVE_RESTING_TOP
+        val focusedInteractive = RftvDesignSystem.ColorTokens.INTERACTIVE_FOCUSED_TOP
+
+        assertTrue((restingDock ushr 24 and 0xFF) in 0..255)
+        assertTrue((focusedDock ushr 24 and 0xFF) > (restingDock ushr 24 and 0xFF))
+        assertTrue((restingInteractive ushr 24 and 0xFF) < (focusedInteractive ushr 24 and 0xFF))
+        assertEquals(23, RftvDesignSystem.Radius.DOCK_SURFACE)
+        assertEquals(12, RftvDesignSystem.Radius.SETTINGS_HINT)
+        assertEquals(7, RftvDesignSystem.Radius.SETTINGS_NAV_ICON)
+        assertTrue((RftvDesignSystem.ColorTokens.DOCK_SURFACE_STROKE ushr 24 and 0xFF) == 0)
+        assertTrue((RftvDesignSystem.ColorTokens.SETTINGS_HINT_STROKE ushr 24 and 0xFF) == 0)
+    }
+
     @Test
     fun semanticRiskColorsRemainDistinct() {
         assertTrue(RftvDesignSystem.ColorTokens.RISK_CRITICAL != RftvDesignSystem.ColorTokens.RISK_REVIEW)
