@@ -324,8 +324,8 @@ internal object RftvWeatherRepository {
     private fun read(address: String, accept: String = "application/json"): String {
         val connection = URL(address).openConnection() as HttpURLConnection
         return try {
-            connection.connectTimeout = 9_000
-            connection.readTimeout = 12_000
+            connection.connectTimeout = 3_000
+            connection.readTimeout = 4_000
             connection.instanceFollowRedirects = true
             connection.useCaches = true
             connection.setRequestProperty("User-Agent", "RFTV-Launcher/0.9 (Android TV; github.com/gonscharovd/rftv-launcher)")
