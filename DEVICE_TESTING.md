@@ -6,7 +6,7 @@
 
 - Stable Release: [RFTV Launcher 0.9.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0)
 - Package: `com.rftv.launcher`
-- versionCode: `11`
+- versionCode: `12`
 - APK: `app-release.apk`, 7 972 147 bytes
 - SHA-256: `d4a2941add01cfb6c7c56845005f02939eceef3ed9c05c2e04b8c0839539e31c`
 - Signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`
