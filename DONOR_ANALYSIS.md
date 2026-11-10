@@ -1,12 +1,12 @@
 # Анализ донорских проектов и план переноса
 
-Дата анализа: 2026-11-09.
+Дата анализа: 2026-11-09. Уточнение продуктового направления владельцем: 2026-11-10.
 
 ## Источники и лицензии
 
 - [tvOS Launcher](https://github.com/techgenius1/tvOS-Launcher) — Apache License 2.0.
 - [CleanYourTV](https://github.com/Gathin23/cleanyourtv) — MIT License.
-- В RFTV 0.8.0 исходный код и бинарные компоненты этих проектов не копируются. Используются архитектурные идеи и ссылки на источники; адаптированные идентификаторы пакетов и описания CleanYourTV уже отмечены в `THIRD_PARTY_NOTICES.md`. tvOS Launcher распространяется по Apache-2.0 и содержит отдельный NOTICE; CleanYourTV — MIT. Если в будущем будет перенесён исходный код, необходимо добавить соответствующие LICENSE/NOTICE и авторские уведомления к конкретным файлам.
+- В рамках первоначального scope RFTV 0.8.0 исходный код и бинарные компоненты этих проектов не копировались. Используются архитектурные идеи и ссылки на источники; адаптированные идентификаторы пакетов и описания CleanYourTV уже отмечены в `THIRD_PARTY_NOTICES.md`. tvOS Launcher распространяется по Apache-2.0 и содержит отдельный NOTICE; CleanYourTV — MIT. Если в будущем будет перенесён исходный код, необходимо добавить соответствующие LICENSE/NOTICE и авторские уведомления к конкретным файлам.
 
 ## Что показал анализ исходного кода tvOS Launcher
 
@@ -69,7 +69,7 @@
 
 Совпадение бренда Sber не является совпадением платформы. Ни один из профилей не разрешается использовать для автоматической классификации или отключения пакетов целевого ТВ.
 
-## Реализация в RFTV
+## Реализация в RFTV — первоначальный scope v0.8.0 (исторический снимок)
 
 1. Настройки получают навигацию по категориям и отдельную область содержимого.
 2. TV Manager использует консервативный локальный анализ PackageManager metadata.
@@ -90,3 +90,35 @@ PackageManager metadata не раскрывает фактическую сет�
 - RFTV не переносит Recent Apps, Continue Watching, button mapper, системный overlay, или другие функции донора. Меняется только визуальная композиция существующих экранов.
 - Реализация weather fallback и WMO/WWO code mapping адаптирована из `Weather.java` tvOS Launcher; исходная Apache-2.0 LICENSE и NOTICE сохранены в `third_party/tvos-launcher/`, изменения отмечены в `RftvWeatherRepository.kt` и `THIRD_PARTY_NOTICES.md`.
 - Фотографии остаются настоящими Unsplash-работами с существующей атрибуцией `WALLPAPER_CREDITS.md`. Gradle извлекает 20 URL из каталога RFTV, скачивает, проверяет HTTP/content-type/JPEG header/размер и включает JPEG в APK. Телевизор больше не должен скачивать основной фон при первом запуске.
+
+
+## Owner clarification — product direction and implementation boundary (2026-11-10)
+
+The launcher, not TV Manager, is the primary product. The tvOS Launcher is a visual and interaction reference only: full-screen photographic composition, glass surfaces, blur, Dock focus behavior, sidebar/right-pane Settings and focus restoration. Do not import donor features simply because they exist upstream.
+
+The Home clock must be composed between two image layers: a full-screen photograph and a separate transparent foreground cut-out that partially overlaps the digits. The first delivery is 3–5 complete layered scenes. Existing v0.9.0 Unsplash photographs are flat backgrounds and do not satisfy this depth requirement. Donor imagery/assets must not be copied without checking their individual license; source and license notices remain mandatory for any adapted code.
+
+All Apps and Control Center require a full-screen blurred backdrop. A blur implementation in source code is not proof of acceptable performance: measure memory, frame pacing and blur latency on the target Sber TV (Android 9/API 28/MT9632/ARMv7).
+
+Weather must sit beside the Home clock and allow the owner to change city and provider configuration. The current fixed Chelyabinsk constants in `RftvWeatherRepository.kt` are shipped behavior, not the target product design.
+
+Settings must use a persistent sidebar and right content pane and restore the user's nested focus position when navigating back. The current sidebar implementation is a starting point, not evidence that all nested focus restoration is complete.
+
+The screensaver must show clock/date, weather, CBR currency rates and Russia/world news, and slowly move the clock to reduce burn-in. Manual and DreamService remote dismissal must be verified separately because Android DreamService may not receive remote key events on every firmware.
+
+## TV Manager priority and safety requirements
+
+TV Manager remains implemented in the repository but feature development is deferred until the primary launcher work is complete. Its existing code is not permission to expand the product scope.
+
+Future TV Manager work must preserve these owner requirements:
+- Inventory is discovered from PackageManager on the actual device, not assumed from a static app catalogue.
+- Red protections have absolute precedence over all external profiles and must include HOME, System UI, Settings, installer/package manager, networking/Wi-Fi/Bluetooth, remote and input components, TvInputService, `android.uid.system`, and persistent system components. A donor profile or online source must never downgrade a red rule.
+- Unknown packages are yellow. Green requires verified evidence. A permission or package name alone is not proof of behavior or safety.
+- Automatic disable is restricted to green candidates with exact device identity (model, board/hardware, Android API and firmware/build identity), verified optional status and checked dependencies. Yellow candidates are manual-only and require package-specific confirmation.
+- Preserve exact original enabled state, including packages already disabled before RFTV. Apply changes in small batches, verify read-back, stop on failure and roll back in reverse order.
+- CleanYourTV MIT profiles are external evidence that a package was disabled on a particular configuration, not universal safety approval. Functional components (assistant, Chromecast/casting, updates and platform services) are not automatic candidates.
+- An eventual online database must contain signed data, be generated automatically without requiring manual owner moderation, be signature-verified by the client and remain usable from cache.
+- No CleanYourTV profile currently matches Sber SDX-50U4123B / Android 9 / MT9632; it must have no green package candidates until exact-device evidence exists.
+- Package modification requires a verified privileged channel such as Shizuku. Without it, TV Manager is analysis-only.
+
+The current v0.9.0 implementation is not yet fully compliant with every future rule: in particular, the source audit found no explicit protection check for shared UID `android.uid.system`, `ApplicationInfo.FLAG_PERSISTENT`, or TvInputService role, and no signed online profile database. These are recorded gaps, not completed features. Do not develop them during the current launcher-first phase.

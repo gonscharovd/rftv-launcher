@@ -1,55 +1,59 @@
-## Актуальный статус на 2026-11-10 — RFTV 0.9.0
-
-- PR #36 merged в main; merge commit f4ab471e7f433e18ce96d507e9880ae5655379ee.
-- Android CI run 42810753407: success (unit tests, Lint, Debug build/metadata, signed Release verification, 20 JPEG assets).
-- Publisher run 42811138590: success; stable Release опубликован.
-- Release: [v0.9.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0), draft=false, prerelease=false.
-- APK: com.rftv.launcher, versionName 0.9.0, versionCode 12, minSdk 24, targetSdk 28, 7 972 147 bytes.
-- SHA-256: d4a2941add01cfb6c7c56845005f02939eceef3ed9c05c2e04b8c0839539e31c.
-- Постоянный сертификат: 22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917.
-- OTA /releases/latest возвращает v0.9.0.
-- Физическая приёмка v0.9.0 на Sber SDX-50U4123B не проведена. Установка v0.8.0 владельцем выявила плохой дизайн, неотображающиеся фото и погоду; исправления v0.9.0 проверены автоматически, но ждут повторной проверки на ТВ.
-- Подробности: [V0.9.0_RELEASE_AUDIT.md](docs/V0.9.0_RELEASE_AUDIT.md). Полный чек-лист: [DEVICE_TESTING.md](DEVICE_TESTING.md).
-
 # RFTV Launcher — Product Roadmap
 
-Дата фиксации: 2026-11-08
-Дата обновления: 2026-11-10
+## Owner-approved direction — 2026-11-10
 
-**Новый подтверждённый объём v0.8.0:** см. [POST_0.7.2_FEEDBACK_PLAN.md](docs/POST_0.7.2_FEEDBACK_PLAN.md). После установки v0.7.2 пользователь сообщил: фотографии обоев не отображаются; требуются крупные стеклянные часы и текущая погода с прогнозным overlay; одностраничный Dock с отдельным каталогом; удаление кнопки обоев и expand-on-down; полно-высотный Control Center с иконками; заставка с общей фотографией, часами, валютами, погодой и двумя новостными колонками; упрощённые Settings и исправление DPAD Left/Right. Это согласованный UI/UX scope, не разрешение на другие функции.
+The primary product is a lightweight, premium-feeling Android TV launcher for a range of Android TV devices. The Sber SDX-50U4123B / StarOS 1.103.91 / Android 9 / API 28 / MT9632 / ARMv7 / approximately 1.4 GB RAM is the main physical acceptance target, not the only supported device.
 
-**Текущий Release:** [v0.9.0 / versionCode 12](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0), опубликован 2026-11-10. Автоматические проверки и публикация успешны; физическая приёмка на Sber SDX-50U4123B ожидает владельца.
-Основной репозиторий: https://github.com/gonscharovd/rftv-launcher
+### Product requirements
 
-Документ — рабочий план развития. Приоритеты: стабильность → управление с пульта → визуальное качество → производительность → функции → безопасность OTA. Новые пользовательские функции вне согласованного объёма не добавлять без отдельного решения.
+- Home: large iOS-style clock embedded between a full-screen photo background and a separate transparent foreground cut-out that overlaps the clock. Start with 3–5 layered scenes, not a 20-photo flat library.
+- Weather beside the clock. City and provider sources must be configurable.
+- Dock: favourites plus All Apps. All Apps opens a grid over a full-screen blurred background.
+- Gear opens Control Center over a full-screen blurred background.
+- Settings: tvOS-style sidebar and right content area, with nested focus position restored on return.
+- Screensaver: clock/date, weather, CBR currency rates, Russia/world news; slow clock drift to reduce burn-in; launch manually from Control Center and through Android DreamService where firmware supports it; remote key dismisses it where key events are delivered.
+- TV Manager remains in the repository but is lower priority and frozen for feature development while launcher work proceeds.
 
-## Текущая точка
+### Agreed implementation order
 
-**Этап: физическая приёмка и стабилизация RFTV 0.9.0.** Дизайн существующих экранов обновлён в стиле tvOS; 20 фотографий включены в APK; погода получила три источника и общий кэш. Следующий шаг — проверка на телевизоре и исправление только обнаруженных дефектов.
+1. Measure current behavior on the target TV: memory, frame pacing, cold launch, overlay open time and blur cost. Distinguish measured values from estimates. No physical measurements are currently recorded.
+2. Full-screen blur for All Apps and Control Center.
+3. Layered photographic scenes and clock-between-layers composition.
+4. Settings focus restoration.
+5. Screensaver polish, including burn-in drift and DreamService remote behavior.
 
-Стабильность и физическая управляемость с пульта — текущий приоритет. Новые пользовательские функции и изменение концепции не добавлять до завершения приёмки. Дефекты исправлять отдельными fix PR и включать в следующий стабильный Release.
+Stability, remote navigation and performance remain constraints throughout. No new TV Manager feature work until the primary launcher scope is complete.
 
-Подтверждено по GitHub и CI:
-- Стабильный Release **v0.9.0 / versionCode 12** опубликован: [GitHub Release](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0). SHA-256 APK `d4a2941add01cfb6c7c56845005f02939eceef3ed9c05c2e04b8c0839539e31c`.
-- Постоянный Release certificate SHA-256 для v0.9.0: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`.
-- PR #34 слит в main 2026-11-09; merge commit `86b9d3db913f3abe512770fcb88a7058b8d0a50c`.
-- GitHub Actions run **42616040741** проверил 20/20 Unsplash URL: HTTP 200, image/jpeg, Pillow decode успешен, все 1920×1080. URL-список с этого запуска не менялся; финальный PR HEAD должен повторно пройти этот step.
-- Финальный main CI run **42810753407** на merge commit завершил оба job успешно. Signed Release APK прошёл проверку package/version/SDK/ABI/подписи/checksum и 20 встроенных фотографий. Publisher run **42811138590** успешно сверил Release asset с CI artifact и опубликовал stable v0.9.0.
-- Android CI run `42619490305` на main завершён success: wallpaper URL/decode, unit tests, lint, Debug build/metadata, signed Release verification. Publish workflow `42619792984` также success.
-- PR #7 (Control Center и заставка), PR #9 (Aerial TV audit), PR #10 (banner/Lint) и PR #11–#13 (Release workflow) ранее слиты в main.
-- Владелец установил v0.8.0 и сообщил о блокирующих визуальных/медиа-дефектах. v0.9.0 опубликован, но его физическая проверка на Sber SDX-50U4123B не проводилась.
-- Подробные технические решения и ограничения зафиксированы в [V0.8.0_IMPLEMENTATION_AUDIT.md](docs/V0.8.0_IMPLEMENTATION_AUDIT.md).
-## Правила прохождения этапов
+## Current release and verification baseline
 
-1. Не начинать следующий крупный этап, пока текущий не прошёл автоматические проверки и ревью.
-2. Любой Release: увеличенный versionCode, постоянный ключ подписи, проверка package/version/ABI/размера/SHA-256/сертификата и соответствия опубликованного APK собранному артефакту.
-3. Не перезаписывать существующий Release и не публиковать непроверенный APK.
-4. Debug APK не устанавливать на телевизор. Приёмочная установка — только подписанный Release через OTA.
-5. CI и физическое тестирование указывать раздельно. Физическую проверку считать завершённой только после подтверждения пользователя.
-6. Для пакетов ТВ — только консервативный анализ, сохранение исходных состояний, предпросмотр, явное подтверждение, обратимость и защита критических компонентов. Не удалять пакеты.
-7. Не считать возможности Sber/StarOS универсальными для других Android TV.
+- Stable Release: [v0.9.0 / versionCode 12](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0), published 2026-11-10.
+- Android CI run 42810753407 and publisher run 42811138590 are recorded as successful in the release audit.
+- APK SHA-256: `d4a2941add01cfb6c7c56845005f02939eceef3ed9c05c2e04b8c0839539e31c`.
+- Release certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`.
+- Physical acceptance of v0.9.0 on Sber SDX-50U4123B has not been confirmed. The owner reported v0.8.0 visual, wallpaper and weather failures; v0.9.0 contains automated remediation, but no claim is made that those issues are resolved on the TV.
+- Detailed artifact evidence: [docs/V0.9.0_RELEASE_AUDIT.md](docs/V0.9.0_RELEASE_AUDIT.md). Physical checklist: [DEVICE_TESTING.md](DEVICE_TESTING.md).
 
-## Дорожная карта
+## Shipped v0.9.0 versus target design
+
+v0.9.0 contains 20 flat bundled photographs, a centered clock over one photograph, a fixed Chelyabinsk weather location with three-provider fallback/cache, a snapshot blur implementation, a floating Control Center, a Settings sidebar, and a manual/system screensaver dashboard. These are existing implementation facts, not proof that the new owner-approved depth composition, configurable weather, measured blur performance, full nested focus restoration, or burn-in drift are complete.
+
+The prior roadmap's statement that development should stop after v0.9.0 acceptance and only fix regressions is superseded by the owner-approved implementation order above. The v0.8.0 and earlier release audit material below is retained as historical evidence only.
+
+## Safety and release rules
+
+- Keep CI verification separate from physical TV acceptance.
+- Never claim a physical test without owner confirmation.
+- Measure memory, frame pacing and blur cost on target hardware; do not infer them from source code or CI.
+- Keep minSdk 24 and native Kotlin Android Views unless a concrete compatibility reason requires change.
+- Release only with increased versionCode, the persistent signing certificate, and verified package/version/SDK/ABI/size/SHA-256/certificate/artifact identity.
+- Never replace the persistent signing key, delete user data, reset the TV or disable packages without the required safety process.
+- TV Manager's existing code is retained but is not the current development priority.
+
+
+
+## Архив предыдущих этапов
+
+Ниже сохранена прежняя дорожная карта и release-аудиты как историческая запись. Её старые планы и формулировки статуса не заменяют актуальное направление и порядок работ в начале этого файла.
 
 ## Исторический Release Audit — RFTV 0.8.0
 

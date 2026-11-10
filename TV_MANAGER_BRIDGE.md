@@ -2,7 +2,9 @@
 
 ## Status
 
-This document defines the implementation boundary for reversible package management. Stable implementation is included in **RFTV Launcher v0.8.0** (versionCode 11), merged into `main` and published as a stable [GitHub Release](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0). The release contains a Shizuku UserService bridge, durable snapshots/journal, a transactional per-package controller, manual cleanup UI and automatic batch orchestration. Automatic cleanup remains intentionally unavailable until a target-specific profile has explicitly validated the full device fingerprint, optional packages and dependencies.
+**Development priority: deferred.** This bridge is retained as existing code. Do not expand package-management features while the launcher-first roadmap is active. The first eventual device check remains read-only.
+
+This document defines the implementation boundary for reversible package management. Existing implementation shipped in **RFTV Launcher v0.9.0** (versionCode 12), merged into `main` and published as a stable [GitHub Release](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0). The release contains a Shizuku UserService bridge, durable snapshots/journal, a transactional per-package controller, manual cleanup UI and automatic batch orchestration. Automatic cleanup remains intentionally unavailable until a target-specific profile has explicitly validated the full device fingerprint, optional packages and dependencies.
 
 The bridge and package-operation flow have passed automated CI, but have not yet been physically tested on Sber SDX-50U4123B / StarOS 1.103.91 / Android 9 / MT9632. The first device test must be read-only.
 
@@ -117,3 +119,16 @@ If a snapshot cannot be saved and read back successfully, no change is allowed.
 - Added automatic-cleanup eligibility flags to profile entries. Donor entries default to unverified, so neither existing Sber donor profile is automatically executable. The current Sber SDX-50U4123B / Android 9 / MT9632 target has no matching profile.
 - Added/extended tests for protected package identities and donor-profile trust defaults.
 - The UI and provider have not yet been validated on physical hardware. OEM-specific Shizuku permissions and command behavior still require a device test; no package was disabled during development.
+
+
+## Owner clarification and audit gaps — 2026-11-10
+
+The hard-protection list must be absolute and must not be overridden by imported or online data. Required red rules include HOME, System UI, Settings, installer/package manager, network/Wi-Fi/Bluetooth, remote/input, TvInputService, shared UID `android.uid.system`, and persistent system components.
+
+The current source audit found package-ID/prefix protections and dynamic HOME/Settings/input/screen-saver protection, but did not find explicit checks for shared UID `android.uid.system`, `ApplicationInfo.FLAG_PERSISTENT`, or TvInputService role. Treat these as open safety defects before any future package-operation release.
+
+Unknown packages are yellow, not safe. Green requires verified evidence. Current local donor profile records are reference-only and no exact profile matches SDX-50U4123B / Android 9 / MT9632. Automatic cleanup must remain unavailable on that target.
+
+An eventual online profile service must distribute signed records, be generated automatically without manual owner moderation, verify signatures in the app and retain a verified cache for offline use. No such signed online database is implemented in v0.9.0.
+
+TV Manager development is paused until the primary launcher scope is delivered. Do not perform package changes during current physical acceptance.
