@@ -80,10 +80,11 @@ android.sourceSets.getByName("main").assets.srcDir(generatedWallpaperAssets)
 
 val packageWallpapers by tasks.registering {
     val wallpaperSource = layout.projectDirectory.file("src/main/java/com/rftv/launcher/MainActivity.kt")
+    val sceneSource = layout.projectDirectory.file("src/main/java/com/rftv/launcher/RftvHomeSceneSpec.kt")
     val donorLicense = rootProject.file("third_party/tvos-launcher/LICENSE")
     val donorNotice = rootProject.file("third_party/tvos-launcher/NOTICE")
     val notices = rootProject.file("THIRD_PARTY_NOTICES.md")
-    inputs.file(wallpaperSource)
+    inputs.files(wallpaperSource, sceneSource)
     inputs.files(donorLicense, donorNotice, notices)
     outputs.dir(generatedWallpaperAssets)
 
@@ -159,6 +160,101 @@ val packageWallpapers by tasks.registering {
 
         check(wallpaperDir.listFiles()?.count { it.extension.equals("jpg", ignoreCase = true) } == 20) {
             "Bundled wallpaper asset set is incomplete"
+        }
+
+        // Package upstream multi-layer scenes as offline assets. The upstream repository's
+        // Apache-2.0 LICENSE and NOTICE are copied above and shipped in the APK.
+        val sceneSourceText = sceneSource.asFile.readText()
+        val scenePattern = Regex("""SceneAsset\("([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*(null|"[^"]*"),\s*"([^"]+)",\s*(true|false)\)""")
+        val sceneMatches = scenePattern.findAll(sceneSourceText).toList()
+        check(sceneMatches.size == 5) {
+            "Expected exactly 5 layered scene definitions, found ${sceneMatches.size}"
+        }
+        val sceneDir = root.resolve("scenes")
+        sceneDir.mkdirs()
+
+        fun fetchSceneAsset(sourceName: String, targetName: String, webp: Boolean) {
+            val target = sceneDir.resolve(targetName)
+            if (!target.isFile || target.length() <= 10_000L) {
+                val address = "https://raw.githubusercontent.com/techgenius1/tvOS-Launcher/main/assets/backgrounds/$sourceName"
+                val connection = URL(address).openConnection() as HttpURLConnection
+                val part = sceneDir.resolve("$targetName.part")
+                try {
+                    connection.connectTimeout = 20_000
+                    connection.readTimeout = 30_000
+                    connection.instanceFollowRedirects = true
+                    connection.setRequestProperty("User-Agent", "RFTV-Launcher-Scene-Packager/1.0")
+                    connection.setRequestProperty("Accept", "image/webp,image/jpeg,image/*;q=0.9,*/*;q=0.5")
+                    val status = connection.responseCode
+                    check(status in 200..299) { "Scene asset $sourceName returned HTTP $status" }
+                    val contentType = connection.contentType.orEmpty()
+                    check(contentType.isBlank() || contentType.startsWith("image/", ignoreCase = true)) {
+                        "Scene asset $sourceName returned non-image content: $contentType"
+                    }
+                    connection.inputStream.use { input ->
+                        part.outputStream().buffered().use { output ->
+                            val buffer = ByteArray(32 * 1024)
+                            var total = 0L
+                            while (true) {
+                                val count = input.read(buffer)
+                                if (count < 0) break
+                                total += count
+                                check(total <= 12L * 1024L * 1024L) { "Scene asset $sourceName exceeds 12 MB" }
+                                output.write(buffer, 0, count)
+                            }
+                        }
+                    }
+                    check(part.length() > 10_000L) { "Scene asset $sourceName is empty or truncated" }
+                    val header = part.inputStream().use { it.readNBytes(12) }
+                    if (webp) {
+                        check(header.size == 12 &&
+                            String(header, 0, 4, Charsets.US_ASCII) == "RIFF" &&
+                            String(header, 8, 4, Charsets.US_ASCII) == "WEBP"
+                        ) { "Scene asset $sourceName is not a WebP image" }
+                    } else {
+                        check(header.size >= 3 &&
+                            header[0] == 0xFF.toByte() &&
+                            header[1] == 0xD8.toByte() &&
+                            header[2] == 0xFF.toByte()
+                        ) { "Scene asset $sourceName is not a JPEG image" }
+                    }
+                    if (target.exists()) target.delete()
+                    check(part.renameTo(target)) { "Could not write bundled scene asset $targetName" }
+                } finally {
+                    part.delete()
+                    connection.disconnect()
+                }
+            }
+            val header = target.inputStream().use { it.readNBytes(12) }
+            if (webp) {
+                check(header.size == 12 &&
+                    String(header, 0, 4, Charsets.US_ASCII) == "RIFF" &&
+                    String(header, 8, 4, Charsets.US_ASCII) == "WEBP"
+                ) { "Cached scene asset $targetName is not WebP" }
+            } else {
+                check(header.size >= 3 &&
+                    header[0] == 0xFF.toByte() &&
+                    header[1] == 0xD8.toByte() &&
+                    header[2] == 0xFF.toByte()
+                ) { "Cached scene asset $targetName is not JPEG" }
+            }
+        }
+
+        sceneMatches.forEach { match ->
+            val id = match.groupValues[1]
+            val background = match.groupValues[3]
+            val foregroundToken = match.groupValues[4]
+            val glass = match.groupValues[5]
+            fetchSceneAsset(background, "$id-bg.jpg", webp = false)
+            if (foregroundToken != "null") {
+                val foreground = foregroundToken.removeSurrounding("\"")
+                if (foreground.isNotBlank()) fetchSceneAsset(foreground, "$id-fg.webp", webp = true)
+            }
+            fetchSceneAsset(glass, "$id-glass.jpg", webp = false)
+        }
+        val expectedSceneAssets = sceneMatches.size * 2 + sceneMatches.count { it.groupValues[4] != "null" }
+        check(sceneDir.listFiles()?.count { it.isFile && !it.name.endsWith(".part") } == expectedSceneAssets) {
+            "Bundled scene asset set is incomplete"
         }
     }
 }

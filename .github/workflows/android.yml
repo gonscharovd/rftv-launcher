@@ -42,10 +42,11 @@ jobs:
         with:
           gradle-version: 8.9
 
-      - name: Validate all 20 wallpaper sources over HTTP and decode
+      - name: Validate wallpaper sources and package layered scene assets
         run: |
           python3 -m pip install --disable-pip-version-check pillow
           python3 scripts/check_wallpaper_urls.py
+          gradle --no-daemon --stacktrace :app:packageWallpapers
 
       - name: Run unit tests when test sources exist
         shell: bash
@@ -95,7 +96,17 @@ jobs:
                   data = archive.read(name)
                   assert len(data) > 10_000, f"{name} is too small"
                   assert data[:3] == bytes((0xFF, 0xD8, 0xFF)), f"{name} is not JPEG"
-              print(f"Verified {len(names)} packaged JPEG wallpapers")
+              scene_names = [name for name in archive.namelist()
+                             if name.startswith("assets/scenes/") and name.rsplit("/", 1)[-1].endswith((".jpg", ".webp"))]
+              assert len(scene_names) == 14, f"Expected 14 layered scene assets, found {len(scene_names)}"
+              for name in scene_names:
+                  data = archive.read(name)
+                  assert len(data) > 10_000, f"{name} is too small"
+                  if name.endswith(".webp"):
+                      assert data[:4] == b"RIFF" and data[8:12] == b"WEBP", f"{name} is not WebP"
+                  else:
+                      assert data[:3] == bytes((0xFF, 0xD8, 0xFF)), f"{name} is not JPEG"
+              print(f"Verified {len(names)} wallpapers and {len(scene_names)} layered scene assets")
           PY
 
       - name: Upload internal Debug diagnostics
@@ -177,7 +188,17 @@ jobs:
                   data = archive.read(name)
                   assert len(data) > 10_000, f"{name} is too small"
                   assert data[:3] == bytes((0xFF, 0xD8, 0xFF)), f"{name} is not JPEG"
-              print(f"Verified {len(names)} packaged JPEG wallpapers")
+              scene_names = [name for name in archive.namelist()
+                             if name.startswith("assets/scenes/") and name.rsplit("/", 1)[-1].endswith((".jpg", ".webp"))]
+              assert len(scene_names) == 14, f"Expected 14 layered scene assets, found {len(scene_names)}"
+              for name in scene_names:
+                  data = archive.read(name)
+                  assert len(data) > 10_000, f"{name} is too small"
+                  if name.endswith(".webp"):
+                      assert data[:4] == b"RIFF" and data[8:12] == b"WEBP", f"{name} is not WebP"
+                  else:
+                      assert data[:3] == bytes((0xFF, 0xD8, 0xFF)), f"{name} is not JPEG"
+              print(f"Verified {len(names)} wallpapers and {len(scene_names)} layered scene assets")
           PY
 
       - name: Verify Release APK identity, SDK, ABI, signature and checksum

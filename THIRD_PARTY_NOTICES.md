@@ -114,3 +114,9 @@ The Settings navigation and content layout also reference the Apache-2.0 donor `
 - Bottom hint: 10.5sp text, 12dp radius, 0xD916161F fill, 0x26FFFFFF stroke and 14dp/7dp padding.
 
 These are measured donor source values adapted to RFTV's existing eight-section settings screen; no donor SettingsActivity implementation or navigation logic is copied.
+
+## tvOS Launcher photographic scene assets
+The five layered scene sets (background, glass texture and available transparent foreground cut-outs) are sourced from the upstream `techgenius1/tvOS-Launcher` repository:
+https://github.com/techgenius1/tvOS-Launcher/tree/main/assets/backgrounds
+
+They are distributed with the upstream Apache License 2.0 and NOTICE. The corresponding upstream `LICENSE` and `NOTICE` are included in the RFTV source tree and packaged APK. Scene assets are bundled for offline use; no runtime request to GitHub is made.
