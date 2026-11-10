@@ -75,6 +75,18 @@ class MainActivity : Activity() {
         val icon: android.graphics.drawable.Drawable
     )
 
+    private data class OverlayPerfMetrics(
+        val overlay: String,
+        val openedAt: Long,
+        val openCount: Int,
+        val javaHeapBeforeBytes: Long,
+        val nativeHeapBeforeBytes: Long,
+        var captureMs: Long = 0L,
+        var screenshotWidthPx: Int = 0,
+        var screenshotHeightPx: Int = 0,
+        var screenshotBitmapBytes: Int = 0
+    )
+
     private lateinit var prefs: SharedPreferences
     private lateinit var root: FrameLayout
     private lateinit var dock: LinearLayout
@@ -131,6 +143,7 @@ class MainActivity : Activity() {
     private var glassBackdropBitmap: Bitmap? = null
     private var overlayBlurBitmap: Bitmap? = null
     private var overlayBlurGeneration = 0
+    private var overlayOpenCount = 0
     private var catalogFocusedPackage: String? = null
     private var returnFocusToCatalogButton = false
     private var glassBackdropCacheKey: String? = null
@@ -1316,8 +1329,8 @@ class MainActivity : Activity() {
 
     private fun showControlCenter() {
         if (page != "home") return
-        val overlayOpenedAt = SystemClock.uptimeMillis()
-        val backdropSnapshot = captureBackdropSnapshot()
+        val perf = beginOverlayPerf("control_center")
+        val backdropSnapshot = captureBackdropSnapshot(perf)
         releaseOverlayBackdrop()
         val existingOverlay = root.findViewWithTag<View>("rftv-control-center")
         if (existingOverlay == null) {
@@ -1334,7 +1347,7 @@ class MainActivity : Activity() {
             isFocusable = false
             isFocusableInTouchMode = false
         }
-        addGlassBackdrop(overlay, backdropSnapshot, overlayOpenedAt)
+        addGlassBackdrop(overlay, backdropSnapshot, perf)
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = RftvDesignSystem.gradientSurface(
@@ -1567,7 +1580,7 @@ class MainActivity : Activity() {
             topMargin = controlCenterTop
         })
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
-        overlay.post { logOverlayOpen("control_center", overlayOpenedAt) }
+        overlay.post { logOverlayOpen(perf) }
         card.animate()
             .alpha(1f)
             .translationX(0f)
@@ -3580,8 +3593,8 @@ class MainActivity : Activity() {
     }
 
     private fun showPanel(title: String, content: (LinearLayout) -> Unit) {
-        val overlayOpenedAt = SystemClock.uptimeMillis()
-        val backdropSnapshot = if (title == "Каталог приложений") captureBackdropSnapshot() else null
+        val perf = if (title == "Каталог приложений") beginOverlayPerf("app_catalog") else null
+        val backdropSnapshot = perf?.let { captureBackdropSnapshot(it) }
         releaseOverlayBackdrop()
         page = "panel"
         activePanelTitle = title
@@ -3590,7 +3603,7 @@ class MainActivity : Activity() {
         handler.removeCallbacks(homeWeatherTask)
 
         root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
-        if (title == "Каталог приложений") addGlassBackdrop(root, backdropSnapshot, overlayOpenedAt)
+        if (perf != null) addGlassBackdrop(root, backdropSnapshot, perf)
         else addWallpaperGlassBackdrop(root)
         val panelBackground = View(this).apply {
             background = GradientDrawable(
@@ -3636,7 +3649,7 @@ class MainActivity : Activity() {
             Gravity.CENTER
         ))
         setContentView(root)
-        root.post { logOverlayOpen(if (title == "Каталог приложений") "app_catalog" else "panel", overlayOpenedAt) }
+        if (perf != null) root.post { logOverlayOpen(perf) }
         // Start on the first actionable item, not the close button. This keeps
         // the panel usable immediately with a TV remote; fall back to Close
         // only for informational panels without focusable controls.
@@ -3646,17 +3659,46 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun captureBackdropSnapshot(): Bitmap? {
+    private fun isDebugBuild(): Boolean =
+        applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+
+    private fun javaHeapUsedBytes(): Long {
+        val runtime = Runtime.getRuntime()
+        return runtime.totalMemory() - runtime.freeMemory()
+    }
+
+    private fun beginOverlayPerf(name: String): OverlayPerfMetrics {
+        val metrics = OverlayPerfMetrics(
+            overlay = name,
+            openedAt = SystemClock.uptimeMillis(),
+            openCount = ++overlayOpenCount,
+            javaHeapBeforeBytes = javaHeapUsedBytes(),
+            nativeHeapBeforeBytes = android.os.Debug.getNativeHeapAllocatedSize()
+        )
+        if (isDebugBuild()) {
+            Log.d(
+                "RFTV_PERF",
+                "event=opening overlay=$name open_count=${metrics.openCount} java_heap_before_bytes=${metrics.javaHeapBeforeBytes} native_heap_before_bytes=${metrics.nativeHeapBeforeBytes}"
+            )
+        }
+        return metrics
+    }
+
+    // Called on the UI thread before replacing the Home content. The snapshot
+    // therefore contains the complete RFTV content view (wallpaper, clock and Dock).
+    private fun captureBackdropSnapshot(metrics: OverlayPerfMetrics): Bitmap? {
         if (!::root.isInitialized || root.width <= 0 || root.height <= 0) return null
+        val startedAt = SystemClock.elapsedRealtime()
         return try {
-            val width = min(480, (root.width / 2).coerceAtLeast(240))
-            val height = (width * root.height.toFloat() / root.width).toInt().coerceAtLeast(135)
-            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
-                val canvas = Canvas(bitmap)
-                canvas.scale(width.toFloat() / root.width, height.toFloat() / root.height)
-                root.draw(canvas)
+            metrics.screenshotWidthPx = root.width
+            metrics.screenshotHeightPx = root.height
+            Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888).also { bitmap ->
+                root.draw(Canvas(bitmap))
+                metrics.screenshotBitmapBytes = bitmap.allocationByteCount
+                metrics.captureMs = SystemClock.elapsedRealtime() - startedAt
             }
         } catch (_: Throwable) {
+            metrics.captureMs = SystemClock.elapsedRealtime() - startedAt
             null
         }
     }
@@ -3678,7 +3720,7 @@ class MainActivity : Activity() {
         refreshGlassBackdrop()
     }
 
-    private fun addGlassBackdrop(container: FrameLayout, snapshot: Bitmap?, openedAt: Long) {
+    private fun addGlassBackdrop(container: FrameLayout, snapshot: Bitmap?, metrics: OverlayPerfMetrics) {
         val backdrop = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
             contentDescription = "Размытый снимок экрана Liquid Glass"
@@ -3686,28 +3728,37 @@ class MainActivity : Activity() {
             setBackgroundColor(Color.rgb(16, 20, 28))
         }
         container.addView(backdrop, 0, FrameLayout.LayoutParams(-1, -1))
-        // Immediate dark fallback remains visible while the worker generates blur or on OOM.
         container.addView(View(this).apply {
             setBackgroundColor(Color.argb(154, 5, 11, 22))
             isFocusable = false
         }, 1, FrameLayout.LayoutParams(-1, -1))
         activeGlassBackdropView = backdrop
-        if (snapshot == null) return
+        if (snapshot == null) {
+            logBlurResult(metrics, 0L, 0, 0, false)
+            return
+        }
 
         val generation = ++overlayBlurGeneration
         glassBlurExecutor.execute {
-            val startedAt = SystemClock.elapsedRealtime()
+            var downscaled: Bitmap? = null
+            val blurStartedAt = SystemClock.elapsedRealtime()
             val blurred = try {
+                val width = min(480, (snapshot.width / 2).coerceAtLeast(240))
+                val height = (width * snapshot.height.toFloat() / snapshot.width).toInt().coerceAtLeast(135)
+                downscaled = Bitmap.createScaledBitmap(snapshot, width, height, true)
+                if (downscaled !== snapshot && !snapshot.isRecycled) snapshot.recycle()
                 GlassBackdrop.createBlurredSnapshot(
-                    snapshot, snapshot.width, snapshot.height, radius = 7, passes = 3
+                    downscaled, downscaled.width, downscaled.height, radius = 7, passes = 3
                 )
             } catch (_: Throwable) {
                 null
             } finally {
+                downscaled?.takeIf { it !== snapshot && !it.isRecycled }?.recycle()
                 if (!snapshot.isRecycled) snapshot.recycle()
             }
-            val elapsed = SystemClock.elapsedRealtime() - startedAt
-            val bytes = blurred?.allocationByteCount ?: 0
+            val blurElapsed = SystemClock.elapsedRealtime() - blurStartedAt
+            val downscaledBytes = downscaled?.allocationByteCount ?: 0
+            val blurredBytes = blurred?.allocationByteCount ?: 0
             handler.post {
                 if (generation != overlayBlurGeneration || isFinishing || activeGlassBackdropView !== backdrop) {
                     blurred?.takeIf { !it.isRecycled }?.recycle()
@@ -3718,17 +3769,31 @@ class MainActivity : Activity() {
                     overlayBlurBitmap = blurred
                     backdrop.setImageBitmap(blurred)
                 }
-                if (BuildConfig.DEBUG) {
-                    Log.d("RFTV_PERF", "blur_ms=$elapsed bitmap_bytes=$bytes generation=$generation success=${blurred != null}")
-                }
+                logBlurResult(metrics, blurElapsed, downscaledBytes, blurredBytes, blurred != null)
             }
         }
     }
 
-    private fun logOverlayOpen(name: String, openedAt: Long) {
-        if (BuildConfig.DEBUG) {
-            Log.d("RFTV_PERF", "overlay=$name open_to_visible_ms=${SystemClock.uptimeMillis() - openedAt}")
-        }
+    private fun logOverlayOpen(metrics: OverlayPerfMetrics) {
+        if (!isDebugBuild()) return
+        Log.d(
+            "RFTV_PERF",
+            "event=opened overlay=${metrics.overlay} open_count=${metrics.openCount} open_to_visible_ms=${SystemClock.uptimeMillis() - metrics.openedAt} capture_ms=${metrics.captureMs} screenshot_width_px=${metrics.screenshotWidthPx} screenshot_height_px=${metrics.screenshotHeightPx} screenshot_bitmap_bytes=${metrics.screenshotBitmapBytes} java_heap_before_bytes=${metrics.javaHeapBeforeBytes} java_heap_after_bytes=${javaHeapUsedBytes()} native_heap_before_bytes=${metrics.nativeHeapBeforeBytes} native_heap_after_bytes=${android.os.Debug.getNativeHeapAllocatedSize()}"
+        )
+    }
+
+    private fun logBlurResult(
+        metrics: OverlayPerfMetrics,
+        blurMs: Long,
+        downscaledBytes: Int,
+        blurredBytes: Int,
+        success: Boolean
+    ) {
+        if (!isDebugBuild()) return
+        Log.d(
+            "RFTV_PERF",
+            "event=blur_complete overlay=${metrics.overlay} open_count=${metrics.openCount} blur_ms=$blurMs downscaled_bitmap_bytes=$downscaledBytes blurred_bitmap_bytes=$blurredBytes success=$success"
+        )
     }
 
     private fun releaseOverlayBackdrop() {
