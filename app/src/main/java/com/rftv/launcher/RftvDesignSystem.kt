@@ -265,7 +265,7 @@ internal object RftvDesignSystem {
         context,
         intArrayOf(0x541E141C, 0x541E141C),
         23,
-        0x2EFFFFFF
+        0x38FFFFFF
     )
 
     fun dockTileSurface(context: Context, focused: Boolean): GradientDrawable =
