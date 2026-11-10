@@ -76,7 +76,7 @@ internal object ScreensaverDashboardRepository {
         if (!force && isFresh(context)) return cached
 
         val weatherFuture: java.util.concurrent.Future<String> =
-            requests.submit(Callable<String> { fetchWeather() })
+            requests.submit(Callable<String> { fetchWeather(context.applicationContext) })
         val ratesFuture: java.util.concurrent.Future<String> =
             requests.submit(Callable<String> { fetchRates() })
         val russiaFuture: java.util.concurrent.Future<List<String>> =
@@ -157,17 +157,10 @@ internal object ScreensaverDashboardRepository {
         else -> "Погодные условия"
     }
 
-    private fun fetchWeather(): String {
-        val address = "https://api.open-meteo.com/v1/forecast?latitude=55.1599&longitude=61.4026" +
-            "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m" +
-            "&timezone=Asia%2FYekaterinburg"
-        val current = JSONObject(read(address)).getJSONObject("current")
-        val temperature = current.getDouble("temperature_2m").toInt()
-        val feels = current.getDouble("apparent_temperature").toInt()
-        val wind = current.getDouble("wind_speed_10m").toInt()
-        val condition = weatherDescription(current.getInt("weather_code"))
-        return temperature.toString() + "°C · " + condition +
-            "\nОщущается " + feels + "°C · ветер " + wind + " км/ч"
+    private fun fetchWeather(context: Context): String {
+        val weather = RftvWeatherRepository.load(context, force = false)
+        return "${weather.temperature}°C · ${RftvWeatherRepository.weatherDescription(weather.code)}" +
+            "\nОщущается ${weather.feelsLike}°C · ветер ${weather.wind} ${weather.windUnit}"
     }
 
     private fun fetchRates(): String {
