@@ -68,3 +68,16 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+## tvOS Launcher weather fallback reference
+
+RFTV's multi-provider weather fallback and WMO condition-code mapping are adapted from the weather implementation in:
+
+- Project: [techgenius1/tvOS-Launcher](https://github.com/techgenius1/tvOS-Launcher)
+- Copyright: Copyright 2026 techgenius
+- License: Apache License 2.0
+- Upstream files: `src/com/techgenius/tvoslauncher/Weather.java`
+- RFTV adaptation: `app/src/main/java/com/rftv/launcher/RftvWeatherRepository.kt` (adapted and modified for RFTV's fixed Chelyabinsk location, Home/forecast/screensaver cache, and current app architecture).
+
+The upstream license and NOTICE are preserved in `third_party/tvos-launcher/`. No upstream UI, fonts, icons, launcher screens, or other application features are bundled.
