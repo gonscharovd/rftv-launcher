@@ -1637,7 +1637,7 @@ class MainActivity : Activity() {
                     packageInfo.versionCode.toLong()
                 }
                 val memoryClass = (getSystemService(ACTIVITY_SERVICE) as ActivityManager).memoryClass
-                val abi = Build.SUPPORTED_ABIS.firstOrNull() ?: Build.CPU_ABI
+                val abi = Build.SUPPORTED_ABIS.joinToString(", ").ifBlank { Build.CPU_ABI }
                 body.addView(infoCard(
                     "УСТРОЙСТВО",
                     "RFTV ${packageInfo.versionName} · ${versionCode}",
