@@ -1,3 +1,11 @@
+## 0.9.1 (2026-11-10) — release candidate
+
+- Prepared candidate versionName 0.9.1, versionCode 13; stable publication is pending successful main CI and signed Release verification.
+- Iteration 1: hard protection for system shared UID, persistent applications and TV input services; All Apps icon grid with DPAD/focus restoration; asynchronous full-screen snapshot blur for All Apps and Control Center.
+- Added a release-visible Diagnostics screen with the latest 10 overlay openings, cold/repeat classification, capture/blur/open timings, source/blurred bitmap sizes, Java/native heap before/after, open counter, and device/build details. Data is process-memory-only; no new permissions, disk writes or network access.
+- Debug-only RFTV_PERF log format remains unchanged.
+- Physical acceptance on Sber SDX-50U4123B remains pending.
+
 ## 0.9.0 (2026-11-10)
 
 - Stable Release [v0.9.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0) published; PR #36 merged into main (merge commit f4ab471e7f433e18ce96d507e9880ae5655379ee).
