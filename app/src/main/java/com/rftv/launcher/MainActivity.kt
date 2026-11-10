@@ -551,10 +551,12 @@ class MainActivity : Activity() {
 
         lastAppliedWallpaperKey = selectionKey
         wallpaperFallbackAttempted.remove(selectionKey)
-        val colors = palette[index]
+        // A neutral fallback is intentionally quiet; the packaged photograph is the
+        // actual Home surface, not a decorative blue gradient pretending to be wallpaper.
         wallpaperView.background = GradientDrawable(
             GradientDrawable.Orientation.TL_BR,
-            intArrayOf(colors[0], colors[1], colors[2])
+            if (dark) intArrayOf(0xFF080B11.toInt(), 0xFF141923.toInt(), 0xFF090C12.toInt())
+            else intArrayOf(0xFF20252D.toInt(), 0xFF303943.toInt(), 0xFF171C23.toInt())
         )
         loadPhoto(index, dark, wallpaperView)
     }
