@@ -1927,8 +1927,6 @@ class MainActivity : Activity() {
     }
 
     private fun showLauncherSettings() {
-        val overlayOpenedAt = SystemClock.uptimeMillis()
-        val backdropSnapshot = captureBackdropSnapshot()
         releaseOverlayBackdrop()
         settingsNavigationActive = true
         settingsHubVisible = true
@@ -1937,7 +1935,7 @@ class MainActivity : Activity() {
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
         root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
-        addGlassBackdrop(root, backdropSnapshot, overlayOpenedAt)
+        addWallpaperGlassBackdrop(root)
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             background = RftvDesignSystem.settingsShellSurface(this@MainActivity)
@@ -3583,7 +3581,7 @@ class MainActivity : Activity() {
 
     private fun showPanel(title: String, content: (LinearLayout) -> Unit) {
         val overlayOpenedAt = SystemClock.uptimeMillis()
-        val backdropSnapshot = captureBackdropSnapshot()
+        val backdropSnapshot = if (title == "Каталог приложений") captureBackdropSnapshot() else null
         releaseOverlayBackdrop()
         page = "panel"
         activePanelTitle = title
@@ -3592,7 +3590,8 @@ class MainActivity : Activity() {
         handler.removeCallbacks(homeWeatherTask)
 
         root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
-        addGlassBackdrop(root, backdropSnapshot, overlayOpenedAt)
+        if (title == "Каталог приложений") addGlassBackdrop(root, backdropSnapshot, overlayOpenedAt)
+        else addWallpaperGlassBackdrop(root)
         val panelBackground = View(this).apply {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
@@ -3660,6 +3659,23 @@ class MainActivity : Activity() {
         } catch (_: Throwable) {
             null
         }
+    }
+
+    private fun addWallpaperGlassBackdrop(container: FrameLayout) {
+        val selectionKey = lastAppliedWallpaperKey ?: return
+        val backdrop = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = "Размытый фон Liquid Glass"
+            isFocusable = false
+        }
+        container.addView(backdrop, 0, FrameLayout.LayoutParams(-1, -1))
+        container.addView(View(this).apply {
+            setBackgroundColor(Color.argb(112, 5, 11, 22))
+            isFocusable = false
+        }, 1, FrameLayout.LayoutParams(-1, -1))
+        activeGlassBackdropView = backdrop
+        activeGlassBackdropKey = selectionKey
+        refreshGlassBackdrop()
     }
 
     private fun addGlassBackdrop(container: FrameLayout, snapshot: Bitmap?, openedAt: Long) {
