@@ -155,6 +155,9 @@ class MainActivity : Activity() {
     private var activeGlassBackdropView: ImageView? = null
     private var activeGlassBackdropKey: String? = null
     private var homeHeroBackdropView: ImageView? = null
+    private var homeDockBackdropView: ImageView? = null
+    private var dockGlassBackdropBitmap: Bitmap? = null
+    private var dockBackdropGeneration = 0
     private val networkExecutor = Executors.newSingleThreadExecutor()
     private val tvManagerExecutor = Executors.newSingleThreadExecutor()
     private val tvManagerController by lazy {
@@ -436,6 +439,9 @@ class MainActivity : Activity() {
         overlayBlurBitmap = null
         glassBackdropBitmap?.recycle()
         glassBackdropBitmap = null
+        dockBackdropGeneration++
+        dockGlassBackdropBitmap?.takeIf { !it.isRecycled }?.recycle()
+        dockGlassBackdropBitmap = null
         networkExecutor.shutdownNow()
         tvManagerExecutor.shutdownNow()
         super.onDestroy()
@@ -837,6 +843,10 @@ class MainActivity : Activity() {
         activeGlassBackdropView = null
         activeGlassBackdropKey = null
         homeHeroBackdropView = null
+        homeDockBackdropView = null
+        dockBackdropGeneration++
+        dockGlassBackdropBitmap?.takeIf { !it.isRecycled }?.recycle()
+        dockGlassBackdropBitmap = null
         dockTooltip = null
         settingsNavigationActive = false
         settingsHubVisible = false
@@ -965,6 +975,16 @@ class MainActivity : Activity() {
             clipToOutline = true
             elevation = dp(20).toFloat()
         }
+        homeDockBackdropView = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.FIT_XY
+            isFocusable = false
+            contentDescription = "Размытое стекло Dock"
+        }
+        dock.addView(homeDockBackdropView, FrameLayout.LayoutParams(-1, -1))
+        dock.addView(View(this).apply {
+            setBackgroundColor(Color.argb(76, 8, 13, 22))
+            isFocusable = false
+        }, FrameLayout.LayoutParams(-1, -1))
         dockContent = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -983,6 +1003,7 @@ class MainActivity : Activity() {
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         }
         root.addView(dock, dockParams)
+        dock.post { refreshDockGlassBackdrop() }
         dockTooltip = TextView(this).apply {
             textSize = 11.5f
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
@@ -1041,6 +1062,7 @@ class MainActivity : Activity() {
         if (params.width != width) {
             params.width = width
             dock.layoutParams = params
+            dock.post { refreshDockGlassBackdrop() }
         }
     }
 
@@ -3809,24 +3831,24 @@ class MainActivity : Activity() {
     }
 
     // Draw directly into the <=480px target on the UI thread; never render full-resolution first.
-    private fun captureBackdropSnapshot(metrics: OverlayPerfMetrics): Bitmap? {
+    private fun captureBackdropSnapshot(metrics: OverlayPerfMetrics? = null): Bitmap? {
         if (!::root.isInitialized || root.width <= 0 || root.height <= 0) return null
         val startedAt = SystemClock.elapsedRealtime()
         return try {
             val size = OverlaySnapshotSizing.fit(root.width, root.height)
             val width = size.width
             val height = size.height
-            metrics.screenshotWidthPx = width
-            metrics.screenshotHeightPx = height
+            metrics?.screenshotWidthPx = width
+            metrics?.screenshotHeightPx = height
             Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
                 val canvas = Canvas(bitmap)
                 canvas.scale(width / root.width.toFloat(), height / root.height.toFloat())
                 root.draw(canvas)
-                metrics.screenshotBitmapBytes = bitmap.allocationByteCount
-                metrics.captureMs = SystemClock.elapsedRealtime() - startedAt
+                metrics?.screenshotBitmapBytes = bitmap.allocationByteCount
+                metrics?.captureMs = SystemClock.elapsedRealtime() - startedAt
             }
         } catch (_: Throwable) {
-            metrics.captureMs = SystemClock.elapsedRealtime() - startedAt
+            metrics?.captureMs = SystemClock.elapsedRealtime() - startedAt
             null
         }
     }
@@ -3848,7 +3870,7 @@ class MainActivity : Activity() {
         refreshGlassBackdrop()
     }
 
-    private fun addGlassBackdrop(container: FrameLayout, snapshot: Bitmap?, metrics: OverlayPerfMetrics) {
+    private fun addGlassBackdrop(container: FrameLayout, snapshot: Bitmap?, metrics: OverlayPerfMetrics? = null) {
         val backdrop = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
             contentDescription = "Размытый снимок экрана Liquid Glass"
@@ -3862,7 +3884,7 @@ class MainActivity : Activity() {
         }, 1, FrameLayout.LayoutParams(-1, -1))
         activeGlassBackdropView = backdrop
         if (snapshot == null) {
-            logBlurResult(metrics, 0L, 0, 0, false)
+            metrics?.let { logBlurResult(it, 0L, 0, 0, false) }
             return
         }
 
@@ -3892,7 +3914,7 @@ class MainActivity : Activity() {
                     overlayBlurBitmap = blurred
                     backdrop.setImageBitmap(blurred)
                 }
-                logBlurResult(metrics, blurElapsed, downscaledBytes, blurredBytes, blurred != null)
+                metrics?.let { logBlurResult(it, blurElapsed, downscaledBytes, blurredBytes, blurred != null) }
             }
         }
     }
@@ -3957,6 +3979,71 @@ class MainActivity : Activity() {
         overlayBlurBitmap = null
     }
 
+    /**
+     * Crops the exact wallpaper region behind the Dock, downsamples it before blur,
+     * and reuses the same GlassBackdrop radius/passes as the other frosted surfaces.
+     */
+    private fun refreshDockGlassBackdrop(
+        source: Bitmap? = (wallpaperView.drawable as? BitmapDrawable)?.bitmap
+    ) {
+        val target = homeDockBackdropView ?: return
+        if (source == null || source.isRecycled || !::dock.isInitialized) return
+        if (dock.width <= 0 || dock.height <= 0 || root.width <= 0 || root.height <= 0) {
+            dock.post { refreshDockGlassBackdrop() }
+            return
+        }
+        val dockLocation = IntArray(2)
+        val rootLocation = IntArray(2)
+        dock.getLocationOnScreen(dockLocation)
+        root.getLocationOnScreen(rootLocation)
+        val dockLeft = dockLocation[0] - rootLocation[0]
+        val dockTop = dockLocation[1] - rootLocation[1]
+        val scale = kotlin.math.max(
+            root.width / source.width.toFloat(),
+            root.height / source.height.toFloat()
+        )
+        val offsetX = (root.width - source.width * scale) / 2f
+        val offsetY = (root.height - source.height * scale) / 2f
+        val left = ((dockLeft - offsetX) / scale).toInt().coerceIn(0, source.width - 1)
+        val top = ((dockTop - offsetY) / scale).toInt().coerceIn(0, source.height - 1)
+        val right = ((dockLeft + dock.width - offsetX) / scale).toInt().coerceIn(left + 1, source.width)
+        val bottom = ((dockTop + dock.height - offsetY) / scale).toInt().coerceIn(top + 1, source.height)
+        val size = OverlaySnapshotSizing.fit(dock.width, dock.height)
+        val crop = try {
+            Bitmap.createBitmap(size.width, size.height, Bitmap.Config.ARGB_8888).also { bitmap ->
+                Canvas(bitmap).drawBitmap(
+                    source,
+                    Rect(left, top, right, bottom),
+                    Rect(0, 0, size.width, size.height),
+                    Paint(Paint.FILTER_BITMAP_FLAG)
+                )
+            }
+        } catch (_: Throwable) {
+            return
+        }
+        val generation = ++dockBackdropGeneration
+        glassBlurExecutor.execute {
+            val blurred = try {
+                GlassBackdrop.createBlurredSnapshot(crop, crop.width, crop.height, radius = 7, passes = 3)
+            } catch (_: Throwable) {
+                null
+            } finally {
+                if (!crop.isRecycled) crop.recycle()
+            }
+            handler.post {
+                if (generation != dockBackdropGeneration || isFinishing || homeDockBackdropView !== target) {
+                    blurred?.takeIf { !it.isRecycled }?.recycle()
+                    return@post
+                }
+                if (blurred != null) {
+                    dockGlassBackdropBitmap?.takeIf { it !== blurred && !it.isRecycled }?.recycle()
+                    dockGlassBackdropBitmap = blurred
+                    target.setImageBitmap(blurred)
+                }
+            }
+        }
+    }
+
     private fun refreshGlassBackdrop() {
         val selectionKey = activeGlassBackdropKey ?: lastAppliedWallpaperKey ?: return
         val overlayBackdrop = activeGlassBackdropView
@@ -3970,6 +4057,7 @@ class MainActivity : Activity() {
         if (glassBackdropLoadingKey == selectionKey) return
         val source = (wallpaperView.drawable as? BitmapDrawable)?.bitmap ?: return
         if (source.isRecycled) return
+        refreshDockGlassBackdrop(source)
         glassBackdropLoadingKey = selectionKey
         val width = min(480, (resources.displayMetrics.widthPixels / 2).coerceAtLeast(240))
         val height = (width * 9f / 16f).toInt().coerceAtLeast(135)
@@ -3993,6 +4081,7 @@ class MainActivity : Activity() {
                     activeGlassBackdropView?.setImageBitmap(blurred)
                 }
                 homeHeroBackdropView?.setImageBitmap(blurred)
+                refreshDockGlassBackdrop(source)
             }
         }
     }
