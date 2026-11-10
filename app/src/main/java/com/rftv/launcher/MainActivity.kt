@@ -1096,23 +1096,19 @@ class MainActivity : Activity() {
 
     private fun refreshHomeWeather() {
         if (!::homeWeatherText.isInitialized) return
-        val cached = prefs.getString("home_weather_summary", null)
-        if (!cached.isNullOrBlank()) homeWeatherText.text = cached
+        val cached = RftvWeatherRepository.cached(this)
+        homeWeatherText.text = cached?.summary ?: "Челябинск\nПолучаем погоду…"
         networkExecutor.execute {
-            val summary = try {
-                val current = org.json.JSONObject(readHttpText(weatherEndpoint())).getJSONObject("current")
-                val temp = current.getDouble("temperature_2m").toInt()
-                val code = current.getInt("weather_code")
-                "$temp°  ·  ${weatherDescription(code)}\nЧелябинск"
-            } catch (_: Exception) {
-                cached ?: "Челябинск\nПогода временно недоступна"
-            }
-            if (summary != cached && !summary.contains("недоступна")) {
-                prefs.edit().putString("home_weather_summary", summary).apply()
+            val result = try {
+                RftvWeatherRepository.load(this@MainActivity, force = false)
+            } catch (error: Exception) {
+                android.util.Log.w("RFTVWeather", "All weather providers failed", error)
+                null
             }
             handler.post {
                 if (!isFinishing && page == "home" && ::homeWeatherText.isInitialized) {
-                    homeWeatherText.text = summary
+                    homeWeatherText.text = result?.summary ?: cached?.summary
+                        ?: "Челябинск\nПогода временно недоступна"
                 }
             }
         }
@@ -1121,63 +1117,71 @@ class MainActivity : Activity() {
     private fun showWeather() {
         showPanel("Погода · прогноз на 5 дней") { body ->
             val currentCard = TextView(this).apply {
-                text = "Челябинск · загружаем текущие условия…"
-                textSize = 22f
+                text = "Челябинск · получаем текущие условия…"
+                textSize = 25f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                 setTextColor(Color.WHITE)
-                setPadding(dp(22), dp(20), dp(22), dp(20))
+                setPadding(dp(26), dp(22), dp(26), dp(22))
                 background = RftvDesignSystem.cardSurface(this@MainActivity)
+                gravity = Gravity.CENTER_VERTICAL
             }
             body.addView(currentCard, LinearLayout.LayoutParams(-1, -2))
-            body.addView(sectionLabel("ПРОГНОЗ НА БЛИЖАЙШИЕ 5 ДНЕЙ"))
-            val loading = infoCard("ПРОГНОЗ", "Загрузка…", "Получаем данные Open-Meteo")
-            body.addView(loading)
+            body.addView(sectionLabel("ПРОГНОЗ НА БЛИЖАЙШИЕ ДНИ"))
+            val daysContainer = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+            }
+            body.addView(daysContainer, LinearLayout.LayoutParams(-1, -2))
+
+            fun render(snapshot: RftvWeatherRepository.Snapshot) {
+                currentCard.text = buildString {
+                    append("${snapshot.temperature}° · ")
+                    append(RftvWeatherRepository.weatherDescription(snapshot.code))
+                    append("\n${snapshot.place}")
+                    append("\nОщущается ${snapshot.feelsLike}° · ветер ${snapshot.wind} ${snapshot.windUnit}")
+                    if (snapshot.humidity > 0) append(" · влажность ${snapshot.humidity}%")
+                }
+                daysContainer.removeAllViews()
+                snapshot.days.forEachIndexed { index, day ->
+                    daysContainer.addView(infoCard(
+                        if (index == 0) "СЕГОДНЯ" else "ДЕНЬ ${index + 1}",
+                        day.label,
+                        "${RftvWeatherRepository.weatherDescription(day.code)} · ${day.minimum}° … ${day.maximum}°"
+                    ))
+                }
+                val updated = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(snapshot.fetchedAt))
+                daysContainer.addView(infoCard("ИСТОЧНИК ДАННЫХ", snapshot.provider, "Обновлено в $updated"))
+            }
+
+            val cached = RftvWeatherRepository.cached(this)
+            if (cached != null) {
+                render(cached)
+            } else {
+                daysContainer.addView(infoCard("ПРОГНОЗ", "Загрузка…", "Проверяем несколько независимых погодных источников"))
+            }
+
             networkExecutor.execute {
                 val result = try {
-                    val payload = org.json.JSONObject(readHttpText(weatherEndpoint()))
-                    val current = payload.getJSONObject("current")
-                    val daily = payload.getJSONObject("daily")
-                    val dates = daily.getJSONArray("time")
-                    val codes = daily.getJSONArray("weather_code")
-                    val lows = daily.getJSONArray("temperature_2m_min")
-                    val highs = daily.getJSONArray("temperature_2m_max")
-                    val currentSummary = "${current.getDouble("temperature_2m").toInt()}° · ${weatherDescription(current.getInt("weather_code"))}"
-                    val days = (0 until minOf(5, dates.length())).map { index ->
-                        val date = dates.getString(index)
-                        val dayLabel = try {
-                            val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(date)
-                            SimpleDateFormat("EEEE, d MMMM", Locale("ru")).format(parsed ?: Date())
-                                .replaceFirstChar { it.uppercase() }
-                        } catch (_: Exception) { date }
-                        val min = lows.getDouble(index).toInt()
-                        val max = highs.getDouble(index).toInt()
-                        "${dayLabel}|${weatherDescription(codes.getInt(index))}|$min° … $max°"
-                    }
-                    currentSummary to days
-                } catch (_: Exception) {
+                    RftvWeatherRepository.load(this@MainActivity, force = false)
+                } catch (error: Exception) {
+                    android.util.Log.w("RFTVWeather", "Forecast refresh failed", error)
                     null
                 }
                 handler.post {
                     if (isFinishing || page != "panel" || activePanelTitle != "Погода · прогноз на 5 дней") return@post
-                    body.removeView(loading)
-                    if (result == null) {
-                        currentCard.text = "Челябинск · погодные данные временно недоступны"
-                        body.addView(infoCard("НЕТ СВЯЗИ", "Прогноз не получен", "Проверь подключение. Выдуманные значения не показываются."))
-                    } else {
-                        currentCard.text = "Челябинск · ${result.first}\nОбновлено: сейчас"
-                        result.second.forEachIndexed { index, line ->
-                            val parts = line.split("|")
-                            body.addView(infoCard(
-                                if (index == 0) "СЕГОДНЯ" else "ДЕНЬ ${index + 1}",
-                                parts.getOrElse(0) { "" },
-                                "${parts.getOrElse(1) { "" }} · ${parts.getOrElse(2) { "" }}"
-                            ))
-                        }
+                    if (result != null) {
+                        render(result)
+                    } else if (cached == null) {
+                        daysContainer.removeAllViews()
+                        daysContainer.addView(infoCard(
+                            "НЕТ СВЯЗИ",
+                            "Прогноз не получен",
+                            "Не удалось подключиться к Open-Meteo, MET Norway или wttr.in. Повторная попытка будет выполнена автоматически."
+                        ))
                     }
                 }
             }
         }
     }
-
 
     private fun persistAppLists() {
         prefs.edit()
