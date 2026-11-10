@@ -106,7 +106,15 @@ jobs:
                       assert data[:4] == b"RIFF" and data[8:12] == b"WEBP", f"{name} is not WebP"
                   else:
                       assert data[:3] == bytes((0xFF, 0xD8, 0xFF)), f"{name} is not JPEG"
-              print(f"Verified {len(names)} wallpapers and {len(scene_names)} layered scene assets")
+              from io import BytesIO
+              from PIL import Image
+              for name in scene_names:
+                  image = Image.open(BytesIO(archive.read(name)))
+                  image.verify()
+                  if name.endswith("-fg.webp"):
+                      foreground = Image.open(BytesIO(archive.read(name)))
+                      assert "A" in foreground.getbands(), f"{name} must preserve transparent alpha"
+              print(f"Verified {len(names)} wallpapers and {len(scene_names)} decodable scene assets with alpha cut-outs")
           PY
 
       - name: Upload internal Debug diagnostics
@@ -198,7 +206,15 @@ jobs:
                       assert data[:4] == b"RIFF" and data[8:12] == b"WEBP", f"{name} is not WebP"
                   else:
                       assert data[:3] == bytes((0xFF, 0xD8, 0xFF)), f"{name} is not JPEG"
-              print(f"Verified {len(names)} wallpapers and {len(scene_names)} layered scene assets")
+              from io import BytesIO
+              from PIL import Image
+              for name in scene_names:
+                  image = Image.open(BytesIO(archive.read(name)))
+                  image.verify()
+                  if name.endswith("-fg.webp"):
+                      foreground = Image.open(BytesIO(archive.read(name)))
+                      assert "A" in foreground.getbands(), f"{name} must preserve transparent alpha"
+              print(f"Verified {len(names)} wallpapers and {len(scene_names)} decodable scene assets with alpha cut-outs")
           PY
 
       - name: Verify Release APK identity, SDK, ABI, signature and checksum
