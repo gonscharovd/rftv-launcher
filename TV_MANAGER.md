@@ -6,7 +6,7 @@
 
 
 
-Existing implementation shipped in **RFTV Launcher v0.9.0** (versionCode 12), merged into `main` and published as a stable [GitHub Release](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0). The physical Shizuku/provider and package-operation flow has not yet been validated on the target Sber TV; initial acceptance is read-only.
+Existing implementation shipped in **RFTV Launcher v0.9.0** (versionCode 12), merged into `main` and published as a stable [GitHub Release](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0). The physical Shizuku/provider and package-operation flow has not yet been validated on the target Sber TV; initial acceptance is read-only.
 
 - Device and package inventory through Android PackageManager.
 - Package details: requested permissions, granted/denied state, declared services/receivers/activities, category, risk, confidence and analysis limitations.
