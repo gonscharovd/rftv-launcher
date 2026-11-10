@@ -49,6 +49,10 @@ internal object RftvDesignSystem {
         const val GLASS_FILL = 0x20FFFFFF
         const val GLASS_FOCUS = 0xE6FFFFFF
         const val CLOCK_SHADOW = -1358954496
+        const val CLOCK_GLASS_TOP = 0xFFFDFEFF.toInt()
+        const val CLOCK_GLASS_MIDDLE = 0xFFDCE7F1.toInt()
+        const val CLOCK_GLASS_BOTTOM = 0xFFF5F8FC.toInt()
+        const val CLOCK_GLASS_RIM = 0x88FFFFFF.toInt()
         const val OVERLAY_TOP = 0x16000000
         const val OVERLAY_BOTTOM = 0x82000000.toInt()
         const val LABEL_ON_GLASS = 0xB8FFFFFF.toInt()
@@ -193,7 +197,7 @@ internal object RftvDesignSystem {
         const val DOCK_LABEL_WIDTH = 100
         const val DOCK_LABEL_HEIGHT = 28
         const val DOCK_FOCUS_SCALE = 1.13f
-        const val CLOCK_LETTER_SPACING = -0.045f
+        const val CLOCK_LETTER_SPACING = -0.065f
         const val CLOCK_SHADOW_RADIUS = 22f
         const val CLOCK_SHADOW_DY = 4f
         const val DATE_SHADOW_RADIUS = 10f

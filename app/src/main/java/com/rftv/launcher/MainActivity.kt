@@ -943,14 +943,13 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             isFocusable = false
         }
-        clockText = TextView(this).apply {
+        clockText = RftvGlassClockTextView(this).apply {
             text = "09:41"
             textSize = RftvDesignSystem.Size.CLOCK_TEXT_SP
-            letterSpacing = -0.065f
+            letterSpacing = RftvDesignSystem.Size.CLOCK_LETTER_SPACING
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
             gravity = Gravity.CENTER
-            setShadowLayer(24f, 0f, 4f, 0x99000000.toInt())
         }
         dateText = TextView(this).apply {
             textSize = RftvDesignSystem.Size.DATE_TEXT_SP
