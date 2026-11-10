@@ -1925,6 +1925,9 @@ class MainActivity : Activity() {
     }
 
     private fun showLauncherSettings() {
+        val overlayOpenedAt = SystemClock.uptimeMillis()
+        val backdropSnapshot = captureBackdropSnapshot()
+        releaseOverlayBackdrop()
         settingsNavigationActive = true
         settingsHubVisible = true
         page = "panel"
@@ -3587,7 +3590,7 @@ class MainActivity : Activity() {
         handler.removeCallbacks(homeWeatherTask)
 
         root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
-        addGlassBackdrop(root)
+        addGlassBackdrop(root, backdropSnapshot, overlayOpenedAt)
         val panelBackground = View(this).apply {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
