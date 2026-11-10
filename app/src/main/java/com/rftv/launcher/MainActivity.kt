@@ -1410,7 +1410,7 @@ class MainActivity : Activity() {
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
         }
 
-        fun makeTile(icon: String, title: String, subtitle: String, action: () -> Unit, metricPercent: Int? = null): LinearLayout {
+        fun makeTile(icon: String, title: String, subtitle: String, metricPercent: Int? = null, action: () -> Unit): LinearLayout {
             val iconView = RftvControlIconView(this@MainActivity, icon)
             val tile = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -1498,13 +1498,13 @@ class MainActivity : Activity() {
             showControlCenter()
         }
         val ramInfo = readRamUsage()
-        val ram = makeTile("memory", "RAM · ${ramInfo.first}%", ramInfo.second, {
+        val ram = makeTile("memory", "RAM · ${ramInfo.first}%", ramInfo.second, ramInfo.first) {
             System.runFinalization()
             Runtime.getRuntime().gc()
             handler.postDelayed({
                 if (root.findViewWithTag<View>("rftv-control-center") != null) showControlCenter()
             }, 500)
-        }, ramInfo.first)
+        }
         val saver = makeTile("clock", "Заставка", "Погода · курсы · новости") { showScreensaver() }
         val launcherSettings = makeTile("settings", "Лаунчер", "Настройки RFTV") { showLauncherSettings() }
         val tvSettings = makeTile("tv", "Настройки ТВ", "Системные параметры") { openSettings(Settings.ACTION_SETTINGS) }
