@@ -194,4 +194,24 @@ class PackageAnalysisPolicyTest {
         assertTrue(report.evidence.any { it.contains("TvInputService") })
     }
 
+    @Test
+    fun eachPlatformMetadataRuleIsAnAbsoluteOperationDeny() {
+        assertTrue(PackageAnalysisPolicy.isHardProtectedMetadata(
+            sharedUserId = "android.uid.system",
+            isPersistent = false,
+            providesTvInputService = false
+        ))
+        assertTrue(PackageAnalysisPolicy.isHardProtectedMetadata(
+            sharedUserId = null,
+            isPersistent = true,
+            providesTvInputService = false
+        ))
+        assertTrue(PackageAnalysisPolicy.isHardProtectedMetadata(
+            sharedUserId = null,
+            isPersistent = false,
+            providesTvInputService = true
+        ))
+        assertTrue(!PackageAnalysisPolicy.isHardProtectedMetadata(null, false, false))
+    }
+
 }
