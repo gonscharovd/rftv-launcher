@@ -3,6 +3,7 @@ package com.rftv.launcher
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.view.View
 
 /**
@@ -23,6 +24,9 @@ internal object RftvDesignSystem {
         const val PANEL_GRADIENT_END = 0xE60D1118.toInt()
         const val PANEL_SURFACE = 0xD91A1D25.toInt()
         const val CONTROL_CENTER_SURFACE = 0xE61B1F28.toInt()
+        const val GLASS_HIGHLIGHT_TOP = 0x30FFFFFF
+        const val GLASS_HIGHLIGHT_MIDDLE = 0x10FFFFFF
+        const val GLASS_HIGHLIGHT_BOTTOM = 0x00FFFFFF
         const val INTERACTIVE_FOCUSED_TOP = 0xF2FFFFFF.toInt()
         const val INTERACTIVE_FOCUSED_BOTTOM = 0xDFFFFFFF.toInt()
         const val INTERACTIVE_RESTING_TOP = 0x32FFFFFF
@@ -293,7 +297,35 @@ internal object RftvDesignSystem {
         if (strokeWidthDp > 0) setStroke(dp(context, strokeWidthDp), strokeColor)
     }
 
-    fun interactiveSurface(context: Context, focused: Boolean, radiusDp: Int): GradientDrawable = gradientSurface(
+    /**
+     * Lightweight shared glass material: translucent gradient base plus a restrained
+     * top specular wash. It uses drawable layers only; no blur, bitmap or per-frame work.
+     */
+    fun glassSurface(
+        context: Context,
+        colors: IntArray,
+        radiusDp: Int,
+        strokeColor: Int,
+        strokeWidthDp: Int = 1
+    ): LayerDrawable {
+        val base = gradientSurface(context, colors, radiusDp, strokeColor, strokeWidthDp)
+        val highlight = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                ColorTokens.GLASS_HIGHLIGHT_TOP,
+                ColorTokens.GLASS_HIGHLIGHT_MIDDLE,
+                ColorTokens.GLASS_HIGHLIGHT_BOTTOM
+            )
+        ).apply {
+            cornerRadius = dp(context, (radiusDp - 1).coerceAtLeast(0)).toFloat()
+        }
+        val inset = dp(context, 1)
+        return LayerDrawable(arrayOf(base, highlight)).apply {
+            setLayerInset(1, inset, inset, inset, inset)
+        }
+    }
+
+    fun interactiveSurface(context: Context, focused: Boolean, radiusDp: Int): LayerDrawable = glassSurface(
         context,
         if (focused) intArrayOf(ColorTokens.INTERACTIVE_FOCUSED_TOP, ColorTokens.INTERACTIVE_FOCUSED_BOTTOM)
         else intArrayOf(ColorTokens.INTERACTIVE_RESTING_TOP, ColorTokens.INTERACTIVE_RESTING_BOTTOM),
@@ -301,7 +333,7 @@ internal object RftvDesignSystem {
         if (focused) ColorTokens.SETTINGS_NAV_FOCUSED_STROKE else ColorTokens.DOCK_SURFACE_STROKE
     )
 
-    fun dockSurface(context: Context): GradientDrawable = gradientSurface(
+    fun dockSurface(context: Context): LayerDrawable = glassSurface(
         context,
         intArrayOf(ColorTokens.DOCK_SURFACE, ColorTokens.DOCK_SURFACE),
         Radius.DOCK_SURFACE,
@@ -315,30 +347,30 @@ internal object RftvDesignSystem {
             if (focused) setStroke(dp(context, 2), ColorTokens.DOCK_TILE_FOCUSED_STROKE)
         }
 
-    fun controlCenterSurface(context: Context): GradientDrawable =
-        surface(context, ColorTokens.CONTROL_CENTER_SURFACE, Radius.BUTTON, GlassAlpha.PANEL_STROKE)
+    fun controlCenterSurface(context: Context): LayerDrawable =
+        glassSurface(context, intArrayOf(ColorTokens.CONTROL_CENTER_SURFACE, ColorTokens.CONTROL_CENTER_SURFACE), Radius.BUTTON, Color.argb(GlassAlpha.PANEL_STROKE, 255, 255, 255))
 
-    fun settingsShellSurface(context: Context): GradientDrawable = gradientSurface(
+    fun settingsShellSurface(context: Context): LayerDrawable = glassSurface(
         context,
         intArrayOf(ColorTokens.SETTINGS_SHELL_START, ColorTokens.SETTINGS_SHELL_END),
         Radius.SETTINGS_SHELL,
         ColorTokens.CONTROL_CENTER_STROKE
     )
 
-    fun settingsSidebarSurface(context: Context): GradientDrawable = gradientSurface(
+    fun settingsSidebarSurface(context: Context): LayerDrawable = glassSurface(
         context,
         intArrayOf(ColorTokens.SETTINGS_SIDEBAR_START, ColorTokens.SETTINGS_SIDEBAR_END),
         Radius.SETTINGS_SIDEBAR,
         Color.argb(GlassAlpha.SURFACE_STROKE, 255, 255, 255)
     )
 
-    fun settingsNavigationSurface(context: Context, focused: Boolean, selected: Boolean): GradientDrawable {
+    fun settingsNavigationSurface(context: Context, focused: Boolean, selected: Boolean): LayerDrawable {
         val colors = when {
             focused -> intArrayOf(ColorTokens.SETTINGS_NAV_FOCUSED_FILL, ColorTokens.SETTINGS_NAV_FOCUSED_FILL)
             selected -> intArrayOf(ColorTokens.SETTINGS_NAV_SELECTED_TOP, ColorTokens.SETTINGS_NAV_SELECTED_BOTTOM)
             else -> intArrayOf(Color.TRANSPARENT, Color.TRANSPARENT)
         }
-        return gradientSurface(
+        return glassSurface(
             context,
             colors,
             Radius.SETTINGS_NAV,
@@ -346,7 +378,7 @@ internal object RftvDesignSystem {
         )
     }
 
-    fun settingsHintSurface(context: Context): GradientDrawable = gradientSurface(
+    fun settingsHintSurface(context: Context): LayerDrawable = glassSurface(
         context,
         intArrayOf(ColorTokens.SETTINGS_HINT_SURFACE, ColorTokens.SETTINGS_HINT_SURFACE),
         Radius.SETTINGS_HINT,
@@ -358,11 +390,11 @@ internal object RftvDesignSystem {
         setColor(if (focused) ColorTokens.SETTINGS_ICON_FOCUSED else ColorTokens.SETTINGS_ICON_RESTING)
     }
 
-    fun panelSurface(context: Context): GradientDrawable =
-        surface(context, ColorTokens.PANEL_SURFACE, Radius.DOCK, GlassAlpha.PANEL_STROKE)
+    fun panelSurface(context: Context): LayerDrawable =
+        glassSurface(context, intArrayOf(ColorTokens.PANEL_SURFACE, ColorTokens.PANEL_SURFACE), Radius.DOCK, Color.argb(GlassAlpha.PANEL_STROKE, 255, 255, 255))
 
-    fun cardSurface(context: Context): GradientDrawable =
-        gradientSurface(context, intArrayOf(ColorTokens.CARD_SURFACE_START, ColorTokens.CARD_SURFACE_END), Radius.CARD, ColorTokens.CARD_SURFACE_STROKE)
+    fun cardSurface(context: Context): LayerDrawable =
+        glassSurface(context, intArrayOf(ColorTokens.CARD_SURFACE_START, ColorTokens.CARD_SURFACE_END), Radius.CARD, ColorTokens.CARD_SURFACE_STROKE)
 
     fun focusSurface(
         context: Context,

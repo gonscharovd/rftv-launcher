@@ -95,6 +95,9 @@ class RftvDesignSystemTest {
         assertEquals(7, RftvDesignSystem.Radius.SETTINGS_NAV_ICON)
         assertEquals(0x38, RftvDesignSystem.ColorTokens.DOCK_SURFACE_STROKE ushr 24 and 0xFF)
         assertEquals(0x26, RftvDesignSystem.ColorTokens.SETTINGS_HINT_STROKE ushr 24 and 0xFF)
+        assertEquals(0x30, RftvDesignSystem.ColorTokens.GLASS_HIGHLIGHT_TOP ushr 24 and 0xFF)
+        assertEquals(0x10, RftvDesignSystem.ColorTokens.GLASS_HIGHLIGHT_MIDDLE ushr 24 and 0xFF)
+        assertEquals(0x00, RftvDesignSystem.ColorTokens.GLASS_HIGHLIGHT_BOTTOM ushr 24 and 0xFF)
     }
 
     @Test

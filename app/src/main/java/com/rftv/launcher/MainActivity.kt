@@ -1428,7 +1428,7 @@ class MainActivity : Activity() {
         addGlassBackdrop(overlay, backdropSnapshot, perf)
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            background = RftvDesignSystem.gradientSurface(
+            background = RftvDesignSystem.glassSurface(
                 this@MainActivity,
                 intArrayOf(RftvDesignSystem.ColorTokens.CONTROL_CENTER_GRADIENT_START,
                     RftvDesignSystem.ColorTokens.CONTROL_CENTER_GRADIENT_MID,
@@ -1472,7 +1472,7 @@ class MainActivity : Activity() {
                 gravity = Gravity.CENTER_VERTICAL
                 setPadding(dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TILE_PADDING_START), 0,
                     dp(RftvDesignSystem.Spacing.CONTROL_CENTER_TILE_PADDING_END), 0)
-                background = RftvDesignSystem.gradientSurface(
+                background = RftvDesignSystem.glassSurface(
                     this@MainActivity,
                     intArrayOf(RftvDesignSystem.ColorTokens.CONTROL_CENTER_TILE_START,
                         RftvDesignSystem.ColorTokens.CONTROL_CENTER_TILE_END),
@@ -1484,7 +1484,7 @@ class MainActivity : Activity() {
                 isClickable = true
                 contentDescription = "$title. $subtitle"
                 setOnFocusChangeListener { view, focused ->
-                    view.background = RftvDesignSystem.gradientSurface(
+                    view.background = RftvDesignSystem.glassSurface(
                         this@MainActivity,
                         if (focused) intArrayOf(RftvDesignSystem.ColorTokens.CONTROL_CENTER_TILE_FOCUSED_START,
                             RftvDesignSystem.ColorTokens.CONTROL_CENTER_TILE_FOCUSED_END)
