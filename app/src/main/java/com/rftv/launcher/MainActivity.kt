@@ -1566,7 +1566,7 @@ class MainActivity : Activity() {
             topMargin = controlCenterTop
         })
         root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
-        logOverlayOpen("control_center", overlayOpenedAt)
+        overlay.post { logOverlayOpen("control_center", overlayOpenedAt) }
         card.animate()
             .alpha(1f)
             .translationX(0f)
@@ -3636,7 +3636,7 @@ class MainActivity : Activity() {
             Gravity.CENTER
         ))
         setContentView(root)
-        logOverlayOpen(if (title == "Каталог приложений") "app_catalog" else "panel", overlayOpenedAt)
+        root.post { logOverlayOpen(if (title == "Каталог приложений") "app_catalog" else "panel", overlayOpenedAt) }
         // Start on the first actionable item, not the close button. This keeps
         // the panel usable immediately with a TV remote; fall back to Close
         // only for informational panels without focusable controls.
