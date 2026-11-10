@@ -18,46 +18,46 @@ internal object RftvDesignSystem {
         const val TEXT_MUTED = -4473925
         const val HOME_BACKDROP = -16777216
         const val WALLPAPER_FALLBACK = -15657932
-        const val PANEL_SCRIM = -855308015
-        const val PANEL_GRADIENT_START = -13944498
-        const val PANEL_GRADIENT_END = -15656664
-        const val PANEL_SURFACE = -266721735
-        const val CONTROL_CENTER_SURFACE = -400873670
+        const val PANEL_SCRIM = 0xB8000000.toInt()
+        const val PANEL_GRADIENT_START = 0xE61C2028.toInt()
+        const val PANEL_GRADIENT_END = 0xE60D1118.toInt()
+        const val PANEL_SURFACE = 0xD91A1D25.toInt()
+        const val CONTROL_CENTER_SURFACE = 0xE61B1F28.toInt()
         const val RISK_CRITICAL = -41130
         const val RISK_REVIEW = -16826
-        const val GLASS_STROKE = 0x56FFFFFF
-        const val GLASS_FILL = 0x2DFFFFFF
-        const val GLASS_FOCUS = 0x78FFFFFF
+        const val GLASS_STROKE = 0x30FFFFFF
+        const val GLASS_FILL = 0x20FFFFFF
+        const val GLASS_FOCUS = 0xE6FFFFFF
         const val CLOCK_SHADOW = -1358954496
-        const val OVERLAY_TOP = 0x0C000000
-        const val OVERLAY_BOTTOM = 0x76000000
-        const val LABEL_ON_GLASS = -1092818689
-        const val CONTROL_CENTER_SCRIM = 0x90030818.toInt()
-        const val CONTROL_CENTER_GRADIENT_START = -534557820
-        const val CONTROL_CENTER_GRADIENT_MID = -301526233
-        const val CONTROL_CENTER_GRADIENT_END = -401990613
-        const val CONTROL_CENTER_STROKE = 0x7DBEE2FF
-        const val CONTROL_CENTER_TILE_START = 0x5C539DE0
-        const val CONTROL_CENTER_TILE_END = 0x4808192B
-        const val CONTROL_CENTER_TILE_FOCUSED_START = -10765833
-        const val CONTROL_CENTER_TILE_FOCUSED_END = -11955743
-        const val CONTROL_CENTER_ICON = -10502145
-        const val CONTROL_CENTER_SUBTITLE = -3941389
-        const val CONTROL_CENTER_FOCUSED_TEXT = -16244161
+        const val OVERLAY_TOP = 0x16000000
+        const val OVERLAY_BOTTOM = 0x82000000
+        const val LABEL_ON_GLASS = 0xB8FFFFFF.toInt()
+        const val CONTROL_CENTER_SCRIM = 0xB0000000.toInt()
+        const val CONTROL_CENTER_GRADIENT_START = 0xE91C2028.toInt()
+        const val CONTROL_CENTER_GRADIENT_MID = 0xE31A1E26.toInt()
+        const val CONTROL_CENTER_GRADIENT_END = 0xEA0D1118.toInt()
+        const val CONTROL_CENTER_STROKE = 0x42FFFFFF
+        const val CONTROL_CENTER_TILE_START = 0x32FFFFFF
+        const val CONTROL_CENTER_TILE_END = 0x18FFFFFF
+        const val CONTROL_CENTER_TILE_FOCUSED_START = 0xF2FFFFFF.toInt()
+        const val CONTROL_CENTER_TILE_FOCUSED_END = 0xDFFFFFFF.toInt()
+        const val CONTROL_CENTER_ICON = 0xFFFFFFFF.toInt()
+        const val CONTROL_CENTER_SUBTITLE = 0xB8FFFFFF.toInt()
+        const val CONTROL_CENTER_FOCUSED_TEXT = 0xFF17191F.toInt()
         const val SCREENSAVER_GRADIENT_START = -16181200
         const val SCREENSAVER_GRADIENT_MID = -15190955
         const val SCREENSAVER_GRADIENT_END = -16446180
         const val SCREENSAVER_TEXT_SECONDARY = -587202561
         const val SCREENSAVER_TEXT_MUTED = -1342177281
         const val SCREENSAVER_GLASS = 0x26FFFFFF
-        const val SETTINGS_SHELL_TOP = 0xF02A3B55.toInt()
-        const val SETTINGS_SHELL_BOTTOM = 0xF00D1728.toInt()
-        const val SETTINGS_SIDEBAR_TOP = 0x765F7895
-        const val SETTINGS_SIDEBAR_BOTTOM = 0x382B3E59
-        const val SETTINGS_NAV_SELECTED_TOP = 0x705D8FC8
-        const val SETTINGS_NAV_SELECTED_BOTTOM = 0x4A315B85
-        const val SETTINGS_NAV_FOCUSED_STROKE = 0xC8E4F4FF.toInt()
-        const val INTERACTIVE_FOCUSED_TEXT = 0xFF17283E.toInt()
+        const val SETTINGS_SHELL_TOP = 0xEE20232A.toInt()
+        const val SETTINGS_SHELL_BOTTOM = 0xEE111318.toInt()
+        const val SETTINGS_SIDEBAR_TOP = 0x553C414B
+        const val SETTINGS_SIDEBAR_BOTTOM = 0x33272B34
+        const val SETTINGS_NAV_SELECTED_TOP = 0x40FFFFFF
+        const val SETTINGS_NAV_SELECTED_BOTTOM = 0x28FFFFFF
+        const val SETTINGS_NAV_FOCUSED_STROKE = 0xF2FFFFFF.toInt()
+        const val INTERACTIVE_FOCUSED_TEXT = 0xFF17191F.toInt()
     }
 
     object Spacing {
@@ -247,29 +247,24 @@ internal object RftvDesignSystem {
 
     fun interactiveSurface(context: Context, focused: Boolean, radiusDp: Int): GradientDrawable = gradientSurface(
         context,
-        if (focused) intArrayOf(0xE8F3FCFF.toInt(), 0xC9C8D9E9.toInt())
-        else intArrayOf(0x4AFFFFFF, 0x20FFFFFF),
+        if (focused) intArrayOf(0xF2FFFFFF.toInt(), 0xDFFFFFFF.toInt())
+        else intArrayOf(0x32FFFFFF, 0x18FFFFFF),
         radiusDp,
-        if (focused) ColorTokens.SETTINGS_NAV_FOCUSED_STROKE else Color.argb(GlassAlpha.SURFACE_STROKE, 255, 255, 255)
+        if (focused) ColorTokens.SETTINGS_NAV_FOCUSED_STROKE else 0x38FFFFFF
     )
 
     fun dockSurface(context: Context): GradientDrawable = gradientSurface(
         context,
-        intArrayOf(
-            Color.argb(GlassAlpha.DOCK_SURFACE + 8, 255, 255, 255),
-            Color.argb(GlassAlpha.DOCK_SURFACE - 6, 255, 255, 255)
-        ),
+        intArrayOf(0xC21B2028.toInt(), 0xB50D1118.toInt()),
         Radius.DOCK,
-        Color.argb(GlassAlpha.SURFACE_STROKE, 255, 255, 255)
+        0x42FFFFFF
     )
 
     fun dockTileSurface(context: Context, focused: Boolean): GradientDrawable =
         GradientDrawable().apply {
-            setColor(Color.argb(if (focused) GlassAlpha.DOCK_TILE_FOCUSED else GlassAlpha.DOCK_TILE_RESTING, 255, 255, 255))
-            cornerRadius = dp(context, Radius.DOCK_TILE).toFloat()
-            if (focused) {
-                setStroke(dp(context, 1), Color.argb(GlassAlpha.DOCK_TILE_STROKE_FOCUSED, 255, 255, 255))
-            }
+            setColor(if (focused) 0xDDF8FAFF.toInt() else Color.TRANSPARENT)
+            cornerRadius = dp(context, 25).toFloat()
+            if (focused) setStroke(dp(context, 2), 0xF2FFFFFF.toInt())
         }
 
     fun controlCenterSurface(context: Context): GradientDrawable =
@@ -291,9 +286,9 @@ internal object RftvDesignSystem {
 
     fun settingsNavigationSurface(context: Context, focused: Boolean, selected: Boolean): GradientDrawable {
         val colors = when {
-            focused -> intArrayOf(0xDCEAF7FF.toInt(), 0xB8B9D4E8.toInt())
+            focused -> intArrayOf(0xF2FFFFFF.toInt(), 0xDFFFFFFF.toInt())
             selected -> intArrayOf(ColorTokens.SETTINGS_NAV_SELECTED_TOP, ColorTokens.SETTINGS_NAV_SELECTED_BOTTOM)
-            else -> intArrayOf(0x18FFFFFF, 0x08FFFFFF)
+            else -> intArrayOf(0x16FFFFFF, 0x08FFFFFF)
         }
         return gradientSurface(
             context,
@@ -307,7 +302,7 @@ internal object RftvDesignSystem {
         surface(context, ColorTokens.PANEL_SURFACE, Radius.DOCK, GlassAlpha.PANEL_STROKE)
 
     fun cardSurface(context: Context): GradientDrawable =
-        surface(context, Color.argb(GlassAlpha.CARD_SURFACE, 255, 255, 255), Radius.CARD, GlassAlpha.SURFACE_STROKE)
+        gradientSurface(context, intArrayOf(0x36FFFFFF, 0x1EFFFFFF), Radius.CARD, 0x30FFFFFF)
 
     fun focusSurface(
         context: Context,
