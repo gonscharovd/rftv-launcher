@@ -3760,9 +3760,9 @@ class MainActivity : Activity() {
         if (!::root.isInitialized || root.width <= 0 || root.height <= 0) return null
         val startedAt = SystemClock.elapsedRealtime()
         return try {
-            val scale = min(1f, 480f / root.width.toFloat())
-            val width = (root.width * scale).toInt().coerceAtLeast(1)
-            val height = (root.height * scale).toInt().coerceAtLeast(1)
+            val size = OverlaySnapshotSizing.fit(root.width, root.height)
+            val width = size.width
+            val height = size.height
             metrics.screenshotWidthPx = width
             metrics.screenshotHeightPx = height
             Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
