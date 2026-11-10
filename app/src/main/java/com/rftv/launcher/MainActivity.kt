@@ -18,6 +18,12 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Rect
+import android.os.SystemClock
+import android.util.Log
+import android.util.LruCache
+import android.widget.GridLayout
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.BitmapDrawable
@@ -118,7 +124,15 @@ class MainActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private val wallpaperExecutor = Executors.newSingleThreadExecutor()
     private val glassBlurExecutor = Executors.newSingleThreadExecutor()
+    private val appIconExecutor = Executors.newFixedThreadPool(2)
+    private val appIconCache = object : LruCache<String, Bitmap>(4 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap): Int = (value.byteCount / 1024).coerceAtLeast(1)
+    }
     private var glassBackdropBitmap: Bitmap? = null
+    private var overlayBlurBitmap: Bitmap? = null
+    private var overlayBlurGeneration = 0
+    private var catalogFocusedPackage: String? = null
+    private var returnFocusToCatalogButton = false
     private var glassBackdropCacheKey: String? = null
     private var glassBackdropLoadingKey: String? = null
     private var activeGlassBackdropView: ImageView? = null
@@ -389,7 +403,10 @@ class MainActivity : Activity() {
             packageReceiverRegistered = false
         }
         wallpaperExecutor.shutdownNow()
+        appIconExecutor.shutdownNow()
         glassBlurExecutor.shutdownNow()
+        overlayBlurBitmap?.takeIf { !it.isRecycled }?.recycle()
+        overlayBlurBitmap = null
         glassBackdropBitmap?.recycle()
         glassBackdropBitmap = null
         networkExecutor.shutdownNow()
@@ -418,7 +435,10 @@ class MainActivity : Activity() {
                 }
                 if (page == "panel") {
                     if (settingsNavigationActive && !settingsHubVisible) showLauncherSettings()
-                    else showHome()
+                    else {
+                        if (activePanelTitle == "Каталог приложений") returnFocusToCatalogButton = true
+                        showHome()
+                    }
                     return true
                 }
             }
@@ -795,6 +815,7 @@ class MainActivity : Activity() {
         settingsSelectedIndex = 0
         page = "home"
         activePanelTitle = ""
+        releaseOverlayBackdrop()
         root = FrameLayout(this).apply {
             setBackgroundColor(RftvDesignSystem.ColorTokens.HOME_BACKDROP)
             clipChildren = false
@@ -945,7 +966,12 @@ class MainActivity : Activity() {
         refreshHomeWeather()
         handler.removeCallbacks(homeWeatherTask)
         handler.postDelayed(homeWeatherTask, 15 * 60_000L)
-        focusFirstApp()
+        if (returnFocusToCatalogButton) {
+            returnFocusToCatalogButton = false
+            root.findViewWithTag<View>("rftv-all-apps-trigger")?.requestFocus()
+        } else {
+            focusFirstApp()
+        }
     }
 
     private fun startClock() {
@@ -1022,6 +1048,7 @@ class MainActivity : Activity() {
         }
         var catalogLabel: TextView? = null
         val catalogTile = LinearLayout(this).apply {
+            tag = "rftv-all-apps-trigger"
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             isFocusable = true
@@ -2284,26 +2311,114 @@ class MainActivity : Activity() {
                 "${visibleApps.size} доступно",
                 "Нажми OK для запуска. Удерживай OK, чтобы изменить избранное или скрыть приложение."
             ))
-
             if (visibleApps.isEmpty()) {
                 body.addView(infoCard("Каталог пуст", "Нет доступных приложений", "Обнови список приложений или проверь их установку в настройках Android."))
-            } else {
-                visibleApps.forEach { app ->
-                    val subtitle = if (app.packageName in favoritePackages) {
-                        "В избранном · ${app.packageName}"
-                    } else {
-                        app.packageName
+                return@showPanel
+            }
+
+            val screenWidth = resources.displayMetrics.widthPixels
+            val columns = (screenWidth / dp(190)).coerceIn(4, 7)
+            val cellWidth = (screenWidth - dp(48)) / columns
+            val grid = GridLayout(this).apply {
+                columnCount = columns
+                orientation = GridLayout.HORIZONTAL
+                useDefaultMargins = false
+                alignmentMode = GridLayout.ALIGN_BOUNDS
+                setPadding(dp(4), dp(8), dp(4), dp(12))
+                descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
+            }
+            val tiles = mutableListOf<View>()
+            visibleApps.forEachIndexed { index, app ->
+                val tile = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    isFocusable = true
+                    isFocusableInTouchMode = true
+                    isClickable = true
+                    tag = app.packageName
+                    contentDescription = app.label
+                    background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused = false)
+                    setPadding(dp(8), dp(10), dp(8), dp(10))
+                    setOnFocusChangeListener { view, focused ->
+                        view.background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused)
+                        RftvDesignSystem.applyFocusScale(view, focused, 1.045f)
+                        if (focused) catalogFocusedPackage = app.packageName
                     }
-                    val tile = controlTile(app.label, subtitle) {
-                        launchApp(app.packageName)
-                    }
-                    tile.setOnLongClickListener {
-                        showAppActions(app)
-                        true
-                    }
-                    body.addView(tile, LinearLayout.LayoutParams(-1, dp(68)).apply {
-                        bottomMargin = dp(8)
-                    })
+                    setOnClickListener { launchApp(app.packageName) }
+                    setOnLongClickListener { showAppActions(app); true }
+                }
+                val icon = ImageView(this).apply {
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    contentDescription = app.label
+                    isFocusable = false
+                }
+                val label = TextView(this).apply {
+                    text = app.label
+                    textSize = 14f
+                    setTextColor(Color.WHITE)
+                    gravity = Gravity.CENTER
+                    maxLines = 2
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    setPadding(0, dp(8), 0, 0)
+                }
+                tile.addView(icon, LinearLayout.LayoutParams(dp(76), dp(76)))
+                tile.addView(label, LinearLayout.LayoutParams(-1, dp(42)))
+                val id = View.generateViewId()
+                tile.id = id
+                tiles += tile
+                grid.addView(tile, GridLayout.LayoutParams(
+                    GridLayout.spec(index / columns),
+                    GridLayout.spec(index % columns)
+                ).apply {
+                    width = cellWidth
+                    height = dp(142)
+                    setMargins(dp(2), dp(3), dp(2), dp(3))
+                })
+                loadCatalogIcon(app.packageName, icon)
+            }
+            tiles.forEachIndexed { index, tile ->
+                val row = index / columns
+                val column = index % columns
+                tile.nextFocusLeftId = tiles.getOrNull(if (column > 0) index - 1 else index)?.id ?: tile.id
+                tile.nextFocusRightId = tiles.getOrNull(if (column < columns - 1 && index + 1 < tiles.size) index + 1 else index)?.id ?: tile.id
+                tile.nextFocusUpId = tiles.getOrNull(index - columns)?.id ?: tile.id
+                tile.nextFocusDownId = tiles.getOrNull(index + columns)?.id ?: tile.id
+            }
+            body.addView(grid, LinearLayout.LayoutParams(-1, -2))
+            body.post {
+                val target = tiles.firstOrNull { it.tag == catalogFocusedPackage } ?: tiles.firstOrNull()
+                target?.requestFocus()
+                if (target != null) {
+                    val rect = Rect(0, 0, target.width, target.height)
+                    body.requestChildRectangleOnScreen(target, rect, false)
+                }
+            }
+        }
+    }
+
+    private fun loadCatalogIcon(packageId: String, target: ImageView) {
+        val cached = appIconCache.get(packageId)
+        if (cached != null && !cached.isRecycled) {
+            target.setImageBitmap(cached)
+            return
+        }
+        appIconExecutor.execute {
+            val bitmap = try {
+                val drawable = packageManager.getApplicationIcon(packageId)
+                val size = dp(96)
+                Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { output ->
+                    val canvas = Canvas(output)
+                    drawable.setBounds(0, 0, size, size)
+                    drawable.draw(canvas)
+                }
+            } catch (_: Exception) {
+                null
+            }
+            if (bitmap != null) {
+                appIconCache.put(packageId, bitmap)
+                handler.post {
+                    if (!bitmap.isRecycled && target.tag == null) target.setImageBitmap(bitmap)
+                    else if (!bitmap.isRecycled && target.parent != null) target.setImageBitmap(bitmap)
                 }
             }
         }
