@@ -1,30 +1,30 @@
 # RFTV Launcher — Product Roadmap
 
 Дата фиксации: 2026-11-08
-Дата обновления: 2026-11-09
+Дата обновления: 2026-11-10
 
 **Новый подтверждённый объём v0.8.0:** см. [POST_0.7.2_FEEDBACK_PLAN.md](docs/POST_0.7.2_FEEDBACK_PLAN.md). После установки v0.7.2 пользователь сообщил: фотографии обоев не отображаются; требуются крупные стеклянные часы и текущая погода с прогнозным overlay; одностраничный Dock с отдельным каталогом; удаление кнопки обоев и expand-on-down; полно-высотный Control Center с иконками; заставка с общей фотографией, часами, валютами, погодой и двумя новостными колонками; упрощённые Settings и исправление DPAD Left/Right. Это согласованный UI/UX scope, не разрешение на другие функции.
 
-**Текущий Release:** v0.7.2 / versionCode 10 установлен пользователем. Физическая проверка перечисленных сценариев выявила пользовательские замечания; остальные сценарии не считать автоматически пройденными.
+**Текущий Release:** [v0.8.0 / versionCode 11](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0), опубликован 2026-11-09. PR #34 слит; CI и Release publisher успешны. Физическая приёмка v0.8.0 на целевом ТВ ожидает владельца.
 Основной репозиторий: https://github.com/gonscharovd/rftv-launcher
 
 Документ — рабочий план развития. Приоритеты: стабильность → управление с пульта → визуальное качество → производительность → функции → безопасность OTA. Новые пользовательские функции вне согласованного объёма не добавлять без отдельного решения.
 
 ## Текущая точка
 
-**Этап: 3 — визуальная система (off-device реализация); этап 2 остаётся открытым для физической приёмки на ТВ.**
+**Этап: физическая приёмка и стабилизация RFTV 0.8.0.** Визуальная реализация v0.8.0 завершена в исходниках и опубликована; следующий шаг — только тестирование на телевизоре и исправление обнаруженных дефектов.
 
-По решению Product Owner визуальная доводка стала текущим приоритетом. Безопасные off-device задачи этапа 3 выполняются крупными согласованными блоками. Это не закрывает этап 2: OTA-приёмка, DPAD/OEM-поведение, DreamService и производительность на Sber SDX-50U4123B остаются NOT VERIFIED. После завершения визуального блока проводится единая OTA-приёмка на ТВ. Любые изменения интерфейса проходят CI и code review.
+Стабильность и физическая управляемость с пульта — текущий приоритет. Новые пользовательские функции и изменение концепции не добавлять до завершения приёмки. Дефекты исправлять отдельными fix PR и включать в следующий стабильный Release.
 
 Подтверждено по GitHub и CI:
-- Стабильный Release **v0.7.2 / versionCode 10** опубликован и установлен владельцем на Sber SDX-50U4123B; SHA-256 APK `bc6a67e5eab67a1ad334ca357065f09bcc69501dcfd4305091ff6dd75544f10e`.
+- Стабильный Release **v0.8.0 / versionCode 11** опубликован: [GitHub Release](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0). SHA-256 APK `1ab18c47b66bf3b45636b7e4fa97c516397be5105a66aa71a790917ec2df2f0a`.
 - Сертификат v0.7.2: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`; тот же постоянный сертификат подтверждён для сборки v0.8.0.
-- PR #34 — согласованный объём RFTV 0.8.0 — открыт в main; merge ожидает полного зелёного CI и review.
+- PR #34 слит в main 2026-11-09; merge commit `86b9d3db913f3abe512770fcb88a7058b8d0a50c`.
 - GitHub Actions run **42616040741** проверил 20/20 Unsplash URL: HTTP 200, image/jpeg, Pillow decode успешен, все 1920×1080. URL-список с этого запуска не менялся; финальный PR HEAD должен повторно пройти этот step.
 - Signed Release job run **42616746096** на commit `ffdefd6f036bcdf52125e925260aeed047cd6fc4` завершился успешно: package/version/SDK/ABI/подпись и checksum проверены. APK 810 568 байт; SHA-256 `add21f924f04ce0fd9e826259a06e43fbcd703de58dddd2ca4ff7383eb97ab52`; сертификат совпадает с v0.7.2.
-- На момент последнего обновления source tests/lint/Debug job окончательного PR HEAD ещё выполнялся; это не считается успешным CI.
+- Android CI run `42619490305` на main завершён success: wallpaper URL/decode, unit tests, lint, Debug build/metadata, signed Release verification. Publish workflow `42619792984` также success.
 - PR #7 (Control Center и заставка), PR #9 (Aerial TV audit), PR #10 (banner/Lint) и PR #11–#13 (Release workflow) ранее слиты в main.
-- Физическая проверка v0.8.0 на Sber SDX-50U4123B не проводилась. Наличие подписанного CI-артефакта не означает публикацию OTA или тест на телевизоре.
+- Физическая проверка v0.8.0 на Sber SDX-50U4123B не проводилась. Release опубликован и доступен через OTA, но установка и поведение на телевизоре не подтверждены.
 - Подробные технические решения и ограничения зафиксированы в [V0.8.0_IMPLEMENTATION_AUDIT.md](docs/V0.8.0_IMPLEMENTATION_AUDIT.md).
 ## Правила прохождения этапов
 
@@ -37,6 +37,21 @@
 7. Не считать возможности Sber/StarOS универсальными для других Android TV.
 
 ## Дорожная карта
+
+## Актуальный статус на 2026-11-10 — RFTV 0.8.0
+
+- **Исходники:** PR [#34](https://github.com/gonscharovd/rftv-launcher/pull/34) слит в `main` 2026-11-09. Merge commit: `86b9d3db913f3abe512770fcb88a7058b8d0a50c`.
+- **Автоматические проверки:** GitHub Actions [Android CI #42619490305](https://github.com/gonscharovd/rftv-launcher/actions/runs/42619490305) — success. Успешны проверка 20 фотоисточников с декодированием, unit tests, Android lint, Debug build/metadata и сборка/проверка подписанного Release APK.
+- **Публикация:** [стабильный Release v0.8.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0), draft=false, prerelease=false. Публикация [workflow #42619792984](https://github.com/gonscharovd/rftv-launcher/actions/runs/42619792984) — success.
+- **APK:** `com.rftv.launcher`, versionName `0.8.0`, versionCode `11`, minSdk `24`, targetSdk `28`, native-библиотеки отсутствуют (APK ABI-independent, ARMv7-совместимость не ограничивается отдельной ABI-библиотекой). Размер 817 577 байт.
+- **SHA-256 APK:** `1ab18c47b66bf3b45636b7e4fa97c516397be5105a66aa71a790917ec2df2f0a`.
+- **Release certificate SHA-256:** `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917` — постоянный сертификат.
+- **Сверка CI → Release:** publisher скачал signed artifact именно из Android CI run #42619490305, сверил его SHA-256, метаданные, сертификат и размер; затем сверил digest/size загруженного Release APK с проверенным артефактом до публикации stable. Publish workflow завершился успешно.
+- **OTA endpoint:** `/releases/latest` сейчас возвращает `v0.8.0`, draft=false, prerelease=false. Клиент RFTV читает этот endpoint, требует SHA-256 из asset digest, проверяет package, увеличенный versionCode, сертификат установленного приложения и наличие ARMv7 ABI при наличии native-библиотек, затем передаёт APK штатному Android PackageInstaller.
+- **Физическая приёмка:** НЕ ПРОВЕДЕНА. Никакие DPAD/OEM/blur/performance/DreamService/Shizuku/OTA-install сценарии на физическом ТВ не отмечаются пройденными без подтверждения владельца.
+
+Этот статус заменяет все прежние формулировки ниже о незавершённом PR #34, ожидающем CI или ещё не опубликованном v0.8.0.
+
 
 ### Этап 1. Release pipeline и интеграция PR #7 — ВЫПОЛНЕН
 
@@ -125,7 +140,7 @@
 
 Работаем строго по порядку: **1 → 2 → 3 → 4 → 5 → 6**. Исправления безопасности и блокирующие OTA-дефекты имеют право приоритета над очередностью.
 
-Текущее действие: завершение PR #34. В исходниках уже реализованы согласованные изменения Home, фотообоев, адаптивного Dock, каталога, Control Center, Settings и общей data layer ручной/системной заставки. Все 20 фотоисточников прошли предыдущую live HTTP/decode проверку; подписанная Release-сборка versionCode 11 на commit ffdefd6 прошла identity/signature/SHA-256 проверки. Полный CI на PR HEAD зелёный; после документационного commit требуется повторный CI, затем code review, merge и автоматическая публикация OTA Release. Физическая приёмка v0.8.0 остаётся NOT VERIFIED. Детали — docs/V0.8.0_IMPLEMENTATION_AUDIT.md.
+Текущее действие: физическая приёмка стабильного v0.8.0 по [DEVICE_TESTING.md](DEVICE_TESTING.md). PR #34 уже слит; main CI run `42619490305` и publisher run `42619792984` успешны; stable Release v0.8.0 опубликован, OTA endpoint `/releases/latest` возвращает его. Физическая приёмка остаётся NOT VERIFIED до результатов владельца. Детали — docs/V0.8.0_IMPLEMENTATION_AUDIT.md.
 
 
 ## Донорские проекты и анализ Aerial TV
