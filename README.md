@@ -1,6 +1,6 @@
 # RFTV Launcher
 
-**Current stable release: [0.8.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0) · versionCode 11.** PR #34 is merged into `main`; Android CI and signed Release publication passed. Physical acceptance on the target Sber TV is still pending. See [DEVICE_TESTING.md](DEVICE_TESTING.md) for the complete owner checklist.
+**Current stable release: [0.8.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0) · versionCode 11.** The owner installed 0.8.0 and reported that the visual quality is unacceptable and neither wallpaper photography nor weather renders on the target TV. A focused 0.9.0 stabilization/redesign is in progress: tvOS-inspired visual language only, all 20 real wallpapers bundled for offline startup, and multi-provider cached weather. No new user-facing features are being added. See [DEVICE_TESTING.md](DEVICE_TESTING.md) for the acceptance checklist.
 
 A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direction.
 
