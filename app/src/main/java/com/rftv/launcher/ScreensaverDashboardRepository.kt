@@ -25,7 +25,7 @@ internal object ScreensaverDashboardRepository {
     private const val FRESH_FOR_MS = 15 * 60_000L
     private const val MAX_RESPONSE_BYTES = 2 * 1024 * 1024
     private const val REQUEST_TIMEOUT_MS = 8_000
-    private const val TASK_TIMEOUT_SECONDS = 14L
+    private const val TASK_TIMEOUT_SECONDS = 22L
 
     private val requests = Executors.newFixedThreadPool(4)
 
