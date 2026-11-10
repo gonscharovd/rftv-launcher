@@ -135,4 +135,28 @@ class PackageOperationPolicyTest {
         }
         assertTrue(PackageOperationPolicy.EnabledSetting.from(99) == null)
     }
+    @Test
+    fun platformRedRulesCannotBeSelectedInManualOrAutomaticMode() {
+        val protectedMetadata = listOf(
+            Triple("android.uid.system", false, false),
+            Triple(null, true, false),
+            Triple(null, false, true)
+        )
+        protectedMetadata.forEach { (sharedUid, persistent, tvInput) ->
+            val hardProtected = PackageAnalysisPolicy.isHardProtectedMetadata(
+                sharedUserId = sharedUid,
+                isPersistent = persistent,
+                providesTvInputService = tvInput
+            )
+            assertTrue(hardProtected)
+            val candidate = safeCandidate.copy(isProtected = hardProtected)
+            assertFalse(PackageOperationPolicy.canDisable(
+                candidate, adbAccess, PackageOperationPolicy.Mode.MANUAL
+            ).allowed)
+            assertFalse(PackageOperationPolicy.canDisable(
+                candidate, adbAccess, PackageOperationPolicy.Mode.AUTOMATIC
+            ).allowed)
+        }
+    }
+
 }
