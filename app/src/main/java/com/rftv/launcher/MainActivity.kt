@@ -983,7 +983,7 @@ class MainActivity : Activity() {
         }
         dock.addView(homeDockBackdropView, FrameLayout.LayoutParams(-1, -1))
         dock.addView(View(this).apply {
-            setBackgroundColor(Color.argb(76, 8, 13, 22))
+            setBackgroundColor(Color.argb(154, 5, 11, 22))
             isFocusable = false
         }, FrameLayout.LayoutParams(-1, -1))
         dockContent = LinearLayout(this).apply {
