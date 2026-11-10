@@ -4,7 +4,7 @@
 
 ## Зафиксированная сборка
 
-- Stable Release: [RFTV Launcher 0.9.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0)
+- Stable Release: [RFTV Launcher 0.9.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0)
 - Package: `com.rftv.launcher`
 - versionCode: `11`
 - APK: `app-release.apk`, 7 972 147 bytes
