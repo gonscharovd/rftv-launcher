@@ -1,6 +1,6 @@
 # RFTV Launcher
 
-**Current stable release: [0.9.3](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.3) · versionCode 15.** Signed APK SHA-256: `ce7bfcd6639ab9df57b1982518a867089ecd99bd0fac339dda3cb5840f11240e`. Release signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`. Physical acceptance on the target Sber TV is still pending; see [DEVICE_TESTING.md](DEVICE_TESTING.md).
+**Current stable release: [0.9.3](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.3) · versionCode 15.** Signed APK SHA-256: `ce7bfcd6639ab9df57b1982518a867089ecd99bd0fac339dda3cb5840f11240e`. Release signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`. Physical acceptance on the target Sber TV is still pending; see [DEVICE_TESTING.md](DEVICE_TESTING.md). Portable context: [docs/PROJECT_MEMORY.md](docs/PROJECT_MEMORY.md).
 
 A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direction.
 
@@ -20,7 +20,7 @@ TV Manager is retained as an existing, lower-priority subsystem. Do not expand i
 
 - Native Kotlin Android Views (no Compose and no third-party UI dependencies).
 - Home screen with a large centered clock/date over a full-screen photograph, a compact weather status pill, a five-day forecast overlay, and the Control Center entry point. The shipped clock is not yet interleaved between a separate background and transparent foreground layer.
-- Single-row adaptive tvOS-inspired glass Dock capsule with focus lift, focused-app label and a dedicated All Apps entry; DPAD Down does not expand the dock.
+- Single-row content-sized glass Dock capsule with favorite apps, dedicated All Apps entry, centered responsive width and focused-app label; DPAD Down does not expand the dock.
 - Dock and catalog refresh automatically after app installation, removal or replacement, without restarting the launcher; focus and favorite ordering are preserved.
 - 10 real daytime and 10 real nighttime landscape photographs from Unsplash, bundled in the APK for reliable first-run and offline display. These are flat photos, not the planned 3–5 layered depth scenes.
 - Separate day/night wallpaper selection and carousel modes, with a configurable 1–60 minute interval.
