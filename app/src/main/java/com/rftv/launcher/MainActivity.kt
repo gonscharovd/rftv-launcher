@@ -1023,7 +1023,7 @@ class MainActivity : Activity() {
             setPadding(dp(6), dp(5), dp(6), dp(4))
             setOnFocusChangeListener { view, focused ->
                 view.background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused)
-                RftvDesignSystem.applyFocusScale(view, focused, 1.12f)
+                RftvDesignSystem.applyFocusScale(view, focused, RftvDesignSystem.Size.DOCK_FOCUS_SCALE)
                 catalogLabel?.animate()?.alpha(if (focused) 1f else 0f)
                     ?.setDuration(RftvDesignSystem.Motion.FOCUS_DURATION_MS)?.start()
             }
