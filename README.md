@@ -12,8 +12,8 @@ A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direc
 - Dock and catalog refresh automatically after app installation, removal or replacement, without restarting the launcher; focus and favorite ordering are preserved.
 - 10 photographic daytime and 10 photographic nighttime landscape wallpapers from Unsplash.
 - Separate day/night wallpaper selection and carousel modes, with a configurable 1–60 minute interval.
-- Wallpaper photographs are downloaded over HTTPS on first use and cached in app-private storage. Once cached, they work offline.
-- Full-height right-side glass Control Center with vector icons, grouped Wi-Fi/Bluetooth, theme, RAM, screensaver and settings actions.
+- Wallpaper photographs are validated and packaged at build time, then restored into app-private cache; TV runtime access to Unsplash is not required.
+- Floating right-side dark-glass Control Center with vector icons, grouped Wi-Fi/Bluetooth, theme, RAM, screensaver and settings actions; it stays clear of the Dock.
 - Dock width and height controls saved locally.
 - TV Cleaner lists user-installed apps and delegates uninstall to Android's confirmation screen.
 - RFTV TV Manager provides system-package inventory and analysis, strict full-device profile matching, a Shizuku UserService bridge, manual per-package cleanup, durable original-state snapshots, operation journal, verified restore and reverse-order rollback.
