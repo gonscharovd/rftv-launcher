@@ -1982,20 +1982,20 @@ class MainActivity : Activity() {
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             background = RftvDesignSystem.settingsShellSurface(this@MainActivity)
-            setPadding(dp(14), dp(14), dp(14), dp(14))
+            setPadding(dp(44), dp(28), dp(48), dp(22))
             elevation = dp(RftvDesignSystem.Elevation.PANEL_DP).toFloat()
         }
         val sidebar = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = RftvDesignSystem.settingsSidebarSurface(this@MainActivity)
-            setPadding(dp(RftvDesignSystem.Spacing.SETTINGS_SIDEBAR_PADDING), dp(14), dp(RftvDesignSystem.Spacing.SETTINGS_SIDEBAR_PADDING), dp(RftvDesignSystem.Spacing.SETTINGS_SIDEBAR_PADDING))
+            setPadding(0, 0, 0, 0)
         }
         sidebar.addView(TextView(this).apply {
-            text = "RFTV"; textSize = RftvDesignSystem.Size.SETTINGS_BRAND_TEXT_SP; typeface = Typeface.DEFAULT_BOLD
+            text = "RFTV"; textSize = 24f; typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE); setPadding(dp(10), dp(4), dp(10), dp(2))
         })
         sidebar.addView(TextView(this).apply {
-            text = "НАСТРОЙКИ"; textSize = RftvDesignSystem.Size.SETTINGS_CAPTION_TEXT_SP; letterSpacing = .14f
+            text = "НАСТРОЙКИ"; textSize = 10.5f; letterSpacing = .14f
             setTextColor(RftvDesignSystem.ColorTokens.TEXT_SECONDARY); setPadding(dp(10), 0, dp(10), dp(18))
         })
         // The navigation list must scroll independently on compact TV panels;
@@ -2007,41 +2007,46 @@ class MainActivity : Activity() {
         }
         val navigationList = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), dp(4), dp(8), dp(8))
+            clipChildren = false
+            clipToPadding = false
         }
         navigationScroll.addView(navigationList)
         sidebar.addView(navigationScroll, LinearLayout.LayoutParams(-1, 0, 1f))
         settingsSidebarView = sidebar
         val contentColumn = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(4), dp(4), dp(4))
+            setPadding(0, 0, 0, 0)
         }
         settingsContentColumnView = contentColumn
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
         }
         header.addView(TextView(this).apply {
-            text = "Настройки"; textSize = 28f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            text = "Настройки"; textSize = 20f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(Color.WHITE)
-        }, LinearLayout.LayoutParams(0, dp(62), 1f))
+        }, LinearLayout.LayoutParams(0, -2, 1f))
         val settingsCloseButton = glassButton("✕") { showHome() }.apply {
             id = View.generateViewId()
             contentDescription = "Закрыть настройки"
         }
         header.addView(settingsCloseButton, LinearLayout.LayoutParams(dp(54), dp(54)))
-        contentColumn.addView(header)
+        contentColumn.addView(header, LinearLayout.LayoutParams(-1, -2).apply {
+            leftMargin = dp(16); topMargin = dp(14); bottomMargin = dp(12)
+        })
         val detailScroll = ScrollView(this).apply { clipToPadding = false }
         val detail = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(0, dp(12), 0, dp(14))
+            orientation = LinearLayout.VERTICAL; setPadding(dp(18), dp(8), dp(18), dp(28))
         }
         detailScroll.addView(detail)
         contentColumn.addView(detailScroll, LinearLayout.LayoutParams(-1, 0, 1f))
         val settingsHintFooter = TextView(this).apply {
-            textSize = 11.5f
-            setTextColor(RftvDesignSystem.ColorTokens.TEXT_SECONDARY)
+            textSize = 10.5f
+            setTextColor(0xB8FFFFFF.toInt())
             background = RftvDesignSystem.settingsHintSurface(this@MainActivity)
             maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
-            setPadding(dp(12), dp(6), dp(12), dp(6))
+            setPadding(dp(14), dp(7), dp(14), dp(7))
             isFocusable = false
         }
         contentColumn.addView(settingsHintFooter, LinearLayout.LayoutParams(-1, dp(34)))
@@ -2055,7 +2060,7 @@ class MainActivity : Activity() {
             Triple("Диагностика", "Показатели открытия каталога и Control Center", { showDiagnosticsScreen() }),
             Triple("О системе", "Версия и OTA-обновления", { showAboutSystem() })
         )
-        val navItems = mutableListOf<TextView>()
+        val navItems = mutableListOf<LinearLayout>()
         settingsNavViews.clear()
         settingsEntryFocusView = null
         var selectedIndex = settingsSelectedIndex
@@ -2073,8 +2078,14 @@ class MainActivity : Activity() {
         fun refreshNavigation() {
             navItems.forEachIndexed { index, item ->
                 val focused = item.hasFocus()
-                item.background = RftvDesignSystem.settingsNavigationSurface(this, focused, index == selectedIndex)
-                item.setTextColor(if (focused) RftvDesignSystem.ColorTokens.INTERACTIVE_FOCUSED_TEXT else if (index == selectedIndex) Color.WHITE else 0xFFD0D9E6.toInt())
+                val selected = index == selectedIndex
+                item.background = RftvDesignSystem.settingsNavigationSurface(this, focused, selected)
+                val iconBox = item.getChildAt(0) as FrameLayout
+                val icon = iconBox.getChildAt(0) as TextView
+                val label = item.getChildAt(1) as TextView
+                iconBox.background = RftvDesignSystem.settingsNavIconSurface(this, focused)
+                icon.setTextColor(if (focused) 0xFF111114.toInt() else if (selected) Color.WHITE else 0xD9FFFFFF.toInt())
+                label.setTextColor(if (focused) 0xFF111114.toInt() else if (selected) Color.WHITE else 0xC2FFFFFF.toInt())
             }
         }
         fun renderSection(index: Int) {
@@ -2209,29 +2220,46 @@ class MainActivity : Activity() {
             }
         }
         sections.forEachIndexed { index, section ->
-            val item = TextView(this).apply {
+            val item = LinearLayout(this).apply {
                 id = View.generateViewId()
-                text = "${SettingsNavigationSpec.glyphFor(index)}    ${section.first}"; textSize = 16f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                gravity = Gravity.CENTER_VERTICAL; isFocusable = true; isFocusableInTouchMode = true
-                setPadding(dp(12), 0, dp(10), 0)
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                isFocusable = true
+                isFocusableInTouchMode = true
+                isClickable = true
+                minimumHeight = dp(35)
+                setPadding(dp(7), dp(4), dp(14), dp(4))
                 background = RftvDesignSystem.settingsNavigationSurface(this@MainActivity, focused = false, selected = false)
+                val iconBox = FrameLayout(this@MainActivity).apply {
+                    background = RftvDesignSystem.settingsNavIconSurface(this@MainActivity, focused = false)
+                }
+                iconBox.addView(TextView(this@MainActivity).apply {
+                    text = SettingsNavigationSpec.glyphFor(index)
+                    textSize = 15f
+                    gravity = Gravity.CENTER
+                    setTextColor(0xD9FFFFFF.toInt())
+                }, FrameLayout.LayoutParams(dp(15), dp(15), Gravity.CENTER))
+                addView(iconBox, LinearLayout.LayoutParams(dp(27), dp(27)).apply { rightMargin = dp(11) })
+                addView(TextView(this@MainActivity).apply {
+                    text = section.first
+                    textSize = 14.5f
+                    typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                    setTextColor(0xC2FFFFFF.toInt())
+                    maxLines = 1
+                }, LinearLayout.LayoutParams(-2, -2))
                 setOnFocusChangeListener { view, focused ->
-                    view.background = RftvDesignSystem.settingsNavigationSurface(this@MainActivity, focused, index == selectedIndex)
-                    (view as TextView).setTextColor(if (focused) RftvDesignSystem.ColorTokens.INTERACTIVE_FOCUSED_TEXT else if (index == selectedIndex) Color.WHITE else 0xFFD0D9E6.toInt())
-                    RftvDesignSystem.applyFocusScale(view, focused, 1.025f)
+                    refreshNavigation()
+                    RftvDesignSystem.applyFocusScale(view, focused, 1.02f)
                 }
                 setOnClickListener { renderSection(index) }
             }
             navItems += item
             settingsNavViews += item
-            navigationList.addView(item, LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT)).apply { bottomMargin = dp(6) })
+            navigationList.addView(item, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(2) })
         }
-        shell.addView(sidebar, LinearLayout.LayoutParams((resources.displayMetrics.widthPixels * RftvDesignSystem.Size.SETTINGS_SIDEBAR_WIDTH_FRACTION).toInt(), -1))
+        shell.addView(sidebar, LinearLayout.LayoutParams(dp(288), -1).apply { rightMargin = dp(26) })
         shell.addView(contentColumn, LinearLayout.LayoutParams(0, -1, 1f))
-        root.addView(shell, FrameLayout.LayoutParams(
-            (resources.displayMetrics.widthPixels * RftvDesignSystem.Size.SETTINGS_PANEL_WIDTH_FRACTION).toInt(),
-            (resources.displayMetrics.heightPixels * RftvDesignSystem.Size.SETTINGS_PANEL_HEIGHT_FRACTION).toInt(), Gravity.CENTER
-        ))
+        root.addView(shell, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
         renderSection(settingsSelectedIndex)
         sidebar.post { navItems.getOrNull(settingsSelectedIndex)?.requestFocus() }

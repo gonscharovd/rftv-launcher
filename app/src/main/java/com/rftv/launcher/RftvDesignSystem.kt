@@ -196,7 +196,7 @@ internal object RftvDesignSystem {
         const val PANEL_HEADER_HEIGHT = 56
         const val PANEL_CLOSE_HEIGHT = 48
         const val PANEL_WIDTH_FRACTION = 0.88f
-        const val SETTINGS_NAV_ITEM_HEIGHT = 56
+        const val SETTINGS_NAV_ITEM_HEIGHT = 35
         const val SETTINGS_SIDEBAR_WIDTH_FRACTION = 0.255f
         const val SETTINGS_PANEL_WIDTH_FRACTION = 0.92f
         const val SETTINGS_PANEL_HEIGHT_FRACTION = 0.88f
@@ -308,10 +308,15 @@ internal object RftvDesignSystem {
 
     fun settingsHintSurface(context: Context): GradientDrawable = gradientSurface(
         context,
-        intArrayOf(0x24FFFFFF, 0x18FFFFFF),
+        intArrayOf(0xD916161F.toInt(), 0xD916161F.toInt()),
         12,
-        0x38FFFFFF
+        0x26FFFFFF
     )
+
+    fun settingsNavIconSurface(context: Context, focused: Boolean): GradientDrawable = GradientDrawable().apply {
+        cornerRadius = dp(context, 7).toFloat()
+        setColor(if (focused) 0x14000000 else 0x1AFFFFFF)
+    }
 
     fun panelSurface(context: Context): GradientDrawable =
         surface(context, ColorTokens.PANEL_SURFACE, Radius.DOCK, GlassAlpha.PANEL_STROKE)

@@ -29,7 +29,7 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Size.SETTINGS_SIDEBAR_WIDTH_FRACTION in 0.20f..0.32f)
         assertTrue(RftvDesignSystem.Size.SETTINGS_PANEL_WIDTH_FRACTION in 0.88f..0.96f)
         assertTrue(RftvDesignSystem.Size.SETTINGS_PANEL_HEIGHT_FRACTION in 0.82f..0.94f)
-        assertTrue(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT in 48..72)
+        assertTrue(RftvDesignSystem.Size.SETTINGS_NAV_ITEM_HEIGHT in 32..48)
     }
 
     @Test
