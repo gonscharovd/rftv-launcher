@@ -1933,9 +1933,10 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
         }
         header.addView(TextView(this).apply {
-            text = "Настройки"; textSize = RftvDesignSystem.Size.SETTINGS_HEADER_TEXT_SP; typeface = Typeface.DEFAULT_BOLD
+            text = "Настройки"; textSize = 34f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(Color.WHITE)
-        }, LinearLayout.LayoutParams(0, dp(56), 1f))
+        }, LinearLayout.LayoutParams(0, dp(62), 1f))
+        header.addView(glassButton("✕") { showHome() }, LinearLayout.LayoutParams(dp(54), dp(54)))
         contentColumn.addView(header)
         val detailScroll = ScrollView(this).apply { clipToPadding = false }
         val detail = LinearLayout(this).apply {
@@ -1971,7 +1972,7 @@ class MainActivity : Activity() {
             navItems.forEachIndexed { index, item ->
                 val focused = item.hasFocus()
                 item.background = RftvDesignSystem.settingsNavigationSurface(this, focused, index == selectedIndex)
-                item.setTextColor(if (focused) 0xFF15243A.toInt() else if (index == selectedIndex) Color.WHITE else 0xFFD0D9E6.toInt())
+                item.setTextColor(if (focused) RftvDesignSystem.ColorTokens.INTERACTIVE_FOCUSED_TEXT else if (index == selectedIndex) Color.WHITE else 0xFFD0D9E6.toInt())
             }
         }
         fun renderSection(index: Int) {
@@ -2094,15 +2095,16 @@ class MainActivity : Activity() {
             }
         }
         sections.forEachIndexed { index, section ->
+            val sectionGlyphs = listOf("⌂", "◉", "▣", "◷", "▦", "▤", "ⓘ")
             val item = TextView(this).apply {
                 id = View.generateViewId()
-                text = section.first; textSize = 16f; typeface = Typeface.DEFAULT_BOLD
+                text = "${sectionGlyphs[index]}    ${section.first}"; textSize = 16f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                 gravity = Gravity.CENTER_VERTICAL; isFocusable = true; isFocusableInTouchMode = true
                 setPadding(dp(14), 0, dp(10), 0)
                 background = RftvDesignSystem.settingsNavigationSurface(this@MainActivity, focused = false, selected = false)
                 setOnFocusChangeListener { view, focused ->
                     view.background = RftvDesignSystem.settingsNavigationSurface(this@MainActivity, focused, index == selectedIndex)
-                    (view as TextView).setTextColor(if (focused) 0xFF15243A.toInt() else if (index == selectedIndex) Color.WHITE else 0xFFD0D9E6.toInt())
+                    (view as TextView).setTextColor(if (focused) RftvDesignSystem.ColorTokens.INTERACTIVE_FOCUSED_TEXT else if (index == selectedIndex) Color.WHITE else 0xFFD0D9E6.toInt())
                     RftvDesignSystem.applyFocusScale(view, focused, 1.025f)
                 }
                 setOnClickListener { renderSection(index) }
@@ -2126,8 +2128,8 @@ class MainActivity : Activity() {
         showPanel("Внешний вид и обои") { body ->
             body.addView(infoCard(
                 "ОФОРМЛЕНИЕ RFTV",
-                "Liquid Glass",
-                "Многослойные стеклянные поверхности, настоящее размытие активного фона, тонкие блики и выразительный фокус."
+                "tvOS Glass",
+                "Полноэкранная фотографическая сцена, тёмное стекло, деликатные блики, пространственная глубина и выразительный фокус."
             ))
             addWallpaperSettings(body)
             body.addView(glassButton("Назад к настройкам") { showLauncherSettings() },
