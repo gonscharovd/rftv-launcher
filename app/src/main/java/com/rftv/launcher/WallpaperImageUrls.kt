@@ -15,6 +15,11 @@ internal object WallpaperImageUrls {
     fun selectionKey(isDark: Boolean, index: Int): String =
         cacheKey(isDark, index, thumbnail = false)
 
+    fun assetPath(isDark: Boolean, index: Int): String {
+        val prefix = if (isDark) "night" else "day"
+        return "wallpapers/$prefix-${index.coerceAtLeast(0)}.jpg"
+    }
+
     fun cacheFileName(isDark: Boolean, index: Int, thumbnail: Boolean): String {
         val safeIndex = index.coerceAtLeast(0)
         val prefix = if (isDark) "night" else "day"
