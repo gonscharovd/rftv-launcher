@@ -2324,8 +2324,10 @@ class MainActivity : Activity() {
             }
 
             val screenWidth = resources.displayMetrics.widthPixels
-            val columns = (screenWidth / dp(190)).coerceIn(4, 7)
-            val cellWidth = (screenWidth - dp(48)) / columns
+            val panelWidth = (screenWidth * RftvDesignSystem.Size.PANEL_WIDTH_FRACTION).toInt()
+            val contentWidth = (panelWidth - dp(64)).coerceAtLeast(dp(420))
+            val columns = (contentWidth / dp(178)).coerceIn(3, 6)
+            val cellWidth = contentWidth / columns
             val grid = GridLayout(this).apply {
                 columnCount = columns
                 orientation = GridLayout.HORIZONTAL
@@ -2397,7 +2399,7 @@ class MainActivity : Activity() {
                 target?.requestFocus()
                 if (target != null) {
                     val rect = Rect(0, 0, target.width, target.height)
-                    body.requestChildRectangleOnScreen(target, rect, false)
+                    target.requestRectangleOnScreen(rect, false)
                 }
             }
         }
