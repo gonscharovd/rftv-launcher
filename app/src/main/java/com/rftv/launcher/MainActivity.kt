@@ -2209,7 +2209,6 @@ class MainActivity : Activity() {
             }
         }
         sections.forEachIndexed { index, section ->
-            val sectionGlyphs = SettingsNavigationSpec.SECTION_GLYPHS
             val item = TextView(this).apply {
                 id = View.generateViewId()
                 text = "${SettingsNavigationSpec.glyphFor(index)}    ${section.first}"; textSize = 16f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
