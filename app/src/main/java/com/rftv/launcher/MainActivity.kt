@@ -695,42 +695,43 @@ class MainActivity : Activity() {
             var previewShown = false
             try {
                 if (thumbnail) {
+                    // Derive picker thumbnails from the bundled full image. No second
+                    // network request and no blank thumbnails on an offline TV.
+                    if (!fullFile.exists() || fullFile.length() <= 10_000L) {
+                        restoreBundledWallpaper(fullFile, dark, safeIndex)
+                    }
+                    val bundledPreview = decode(fullFile, 4)
+                    if (bundledPreview != null) {
+                        finish(bundledPreview, completed = true)
+                        return@execute
+                    }
                     val preview = fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
                     finish(preview, completed = true, failure = preview == null)
                 } else {
-                    // Paint any cached preview immediately, then prefer a cached
-                    // full image before making another network request. In particular,
-                    // never download a preview when the full wallpaper is already cached.
-                    val cachedPreview = decode(previewFile, 1)
-                    if (cachedPreview != null) {
-                        previewShown = true
-                        finish(cachedPreview, completed = false)
-                    }
-
+                    // The full-resolution photograph is packaged in the APK and copied
+                    // into the same cache used by the carousel and screensaver.
                     val cachedFull = decode(fullFile, 2)
                     if (cachedFull != null) {
                         finish(cachedFull, completed = true)
                         return@execute
                     }
-
-                    if (!previewShown) {
-                        val preview = try {
-                            fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
-                        } catch (error: Exception) {
-                            android.util.Log.w("RFTVWallpaper", "Wallpaper preview failed for ${photo.imageUrl}", error)
-                            prefs.edit().putString("wallpaper_last_error", error.message ?: error.javaClass.simpleName).apply()
-                            null
-                        }
-                        if (preview != null) {
-                            previewShown = true
-                            finish(preview, completed = false)
+                    if (restoreBundledWallpaper(fullFile, dark, safeIndex)) {
+                        val bundled = decode(fullFile, 2)
+                        if (bundled != null) {
+                            finish(bundled, completed = true)
+                            return@execute
                         }
                     }
 
+                    val cachedPreview = decode(previewFile, 1)
+                    if (cachedPreview != null) {
+                        previewShown = true
+                        finish(cachedPreview, completed = false)
+                    }
                     val full = try {
                         fetch(fullFile, fullUrl, 24L * 1024L * 1024L, 2)
                     } catch (error: Exception) {
-                        android.util.Log.w("RFTVWallpaper", "Full wallpaper failed for ${photo.imageUrl}", error)
+                        android.util.Log.w("RFTVWallpaper", "Full wallpaper fallback failed for ${photo.imageUrl}", error)
                         prefs.edit().putString("wallpaper_last_error", error.message ?: error.javaClass.simpleName).apply()
                         null
                     }
@@ -739,10 +740,30 @@ class MainActivity : Activity() {
             } catch (error: Exception) {
                 android.util.Log.w("RFTVWallpaper", "Wallpaper load failed for ${photo.imageUrl}", error)
                 prefs.edit().putString("wallpaper_last_error", error.message ?: error.javaClass.simpleName).apply()
-                // A preview is already useful content: a failed full-size request
-                // must not mark the whole wallpaper as unavailable or show an error.
                 finish(null, completed = true, failure = !previewShown)
             }
+        }
+    }
+
+    /**
+     * Restores a packaged photograph to the normal on-device wallpaper cache.
+     * The build downloads and verifies the 20 real Unsplash photos once; playback
+     * on the TV is then offline-safe and no longer depends on the TV's DNS/TLS path.
+     */
+    private fun restoreBundledWallpaper(file: File, dark: Boolean, index: Int): Boolean {
+        val part = File(file.parentFile, file.name + ".asset.part")
+        return try {
+            assets.open(WallpaperImageUrls.assetPath(dark, index)).use { input ->
+                FileOutputStream(part).use { output -> input.copyTo(output) }
+            }
+            if (part.length() <= 10_000L) throw IllegalStateException("Bundled wallpaper asset is empty")
+            if (file.exists()) file.delete()
+            if (!part.renameTo(file)) throw IllegalStateException("Could not restore bundled wallpaper")
+            true
+        } catch (error: Exception) {
+            part.delete()
+            android.util.Log.w("RFTVWallpaper", "Bundled wallpaper unavailable: ${WallpaperImageUrls.assetPath(dark, index)}", error)
+            false
         }
     }
 
@@ -770,8 +791,8 @@ class MainActivity : Activity() {
         activePanelTitle = ""
         root = FrameLayout(this).apply {
             setBackgroundColor(RftvDesignSystem.ColorTokens.HOME_BACKDROP)
-            clipChildren = true
-            clipToPadding = true
+            clipChildren = false
+            clipToPadding = false
             isFocusableInTouchMode = true
         }
 
@@ -784,138 +805,112 @@ class MainActivity : Activity() {
         root.addView(wallpaperView, FrameLayout.LayoutParams(-1, -1))
         applyWallpaper()
 
-        val overlay = View(this).apply {
+        // A restrained edge gradient keeps white tvOS-style typography readable without
+        // tinting the photograph into a flat blue background.
+        root.addView(View(this).apply {
             background = GradientDrawable(
                 GradientDrawable.Orientation.TOP_BOTTOM,
-                intArrayOf(RftvDesignSystem.ColorTokens.OVERLAY_TOP, RftvDesignSystem.ColorTokens.OVERLAY_BOTTOM)
+                intArrayOf(0x3A000000, 0x08000000, 0x18000000, 0x92000000.toInt())
             )
-        }
-        root.addView(overlay, FrameLayout.LayoutParams(-1, -1))
+            isFocusable = false
+        }, FrameLayout.LayoutParams(-1, -1))
 
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.TOP or Gravity.CENTER_VERTICAL
-            setPadding(dp(RftvDesignSystem.Spacing.XXL), dp(RftvDesignSystem.Spacing.HOME_TOP_INSET), dp(RftvDesignSystem.Spacing.XXL), 0)
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(46), dp(28), dp(46), 0)
+            clipChildren = false
+            clipToPadding = false
         }
 
-        val timeColumn = LinearLayout(this).apply {
+        val weatherPill = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-        }
-        clockText = TextView(this).apply {
-            text = "09:41"
-            letterSpacing = RftvDesignSystem.Size.CLOCK_LETTER_SPACING
-            setTextColor(Color.WHITE)
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-        }
-        dateText = TextView(this).apply {
-            setTextColor(Color.argb(RftvDesignSystem.GlassAlpha.HOME_DATE_TEXT, 255, 255, 255))
-            setPadding(dp(RftvDesignSystem.Size.HOME_DATE_LEFT_PADDING), 0, 0, 0)
-        }
-        timeColumn.addView(clockText)
-        timeColumn.addView(dateText)
-        timeColumn.gravity = Gravity.CENTER
-        clockText.textSize = RftvDesignSystem.Size.CLOCK_TEXT_SP
-        clockText.letterSpacing = -0.055f
-        clockText.setShadowLayer(RftvDesignSystem.Size.CLOCK_SHADOW_RADIUS, 0f, RftvDesignSystem.Size.CLOCK_SHADOW_DY, RftvDesignSystem.ColorTokens.CLOCK_SHADOW)
-        clockText.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-        dateText.textSize = RftvDesignSystem.Size.DATE_TEXT_SP
-        dateText.setShadowLayer(RftvDesignSystem.Size.DATE_SHADOW_RADIUS, 0f, RftvDesignSystem.Size.DATE_SHADOW_DY, Color.argb(RftvDesignSystem.GlassAlpha.HOME_DATE_SHADOW, 0, 0, 0))
-
-        val heroFrame = FrameLayout(this).apply {
-            background = RftvDesignSystem.surface(this@MainActivity, Color.argb(64, 238, 246, 255), 34)
-            clipToOutline = true
-            elevation = dp(18).toFloat()
+            gravity = Gravity.CENTER_VERTICAL
+            background = RftvDesignSystem.surface(this@MainActivity, 0x7A171B22, 26, 48)
+            setPadding(dp(22), dp(11), dp(26), dp(11))
             isFocusable = true
             isFocusableInTouchMode = true
-            contentDescription = "Часы и текущая погода. OK — прогноз на пять дней"
+            isClickable = true
+            contentDescription = "Погода в Челябинске. OK — прогноз"
             setOnClickListener { showWeather() }
-        }
-        homeHeroBackdropView = ImageView(this).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            alpha = 0.78f
-            isFocusable = false
-            contentDescription = "Размытая фотография под стеклянными часами"
-        }
-        heroFrame.addView(homeHeroBackdropView, FrameLayout.LayoutParams(-1, -1))
-        val heroTint = View(this).apply {
-            background = GradientDrawable().apply {
-                cornerRadius = dp(34).toFloat()
-                setColor(Color.argb(54, 218, 234, 255))
-                setStroke(dp(1), Color.argb(115, 255, 255, 255))
+            setOnFocusChangeListener { view, focused ->
+                view.background = RftvDesignSystem.surface(
+                    this@MainActivity,
+                    if (focused) 0xC8FFFFFF.toInt() else 0x7A171B22,
+                    26,
+                    if (focused) 220 else 48
+                )
+                homeWeatherText.setTextColor(if (focused) 0xFF17191F.toInt() else Color.WHITE)
+                RftvDesignSystem.applyFocusScale(view, focused, 1.035f)
             }
-            isFocusable = false
         }
-        heroFrame.addView(heroTint, FrameLayout.LayoutParams(-1, -1))
-        val hero = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setBackgroundColor(Color.TRANSPARENT)
-            setPadding(dp(30), dp(18), dp(30), dp(18))
-            isFocusable = false
-        }
-        heroFrame.setOnFocusChangeListener { view, focused ->
-            heroTint.background = GradientDrawable().apply {
-                cornerRadius = dp(34).toFloat()
-                setColor(Color.argb(if (focused) 88 else 54, 218, 234, 255))
-                setStroke(dp(if (focused) 2 else 1), Color.argb(if (focused) 220 else 115, 255, 255, 255))
-            }
-            RftvDesignSystem.applyFocusScale(view, focused, 1.025f)
-        }
-        hero.addView(timeColumn, LinearLayout.LayoutParams(-2, -2))
-        hero.addView(View(this).apply {
-            setBackgroundColor(Color.argb(90, 255, 255, 255))
-        }, LinearLayout.LayoutParams(dp(1), dp(88)).apply {
-            leftMargin = dp(26)
-            rightMargin = dp(24)
-        })
-        val weatherColumn = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        weatherColumn.addView(TextView(this).apply {
-            text = "СЕЙЧАС"
-            textSize = 11f
-            letterSpacing = 0.16f
-            setTextColor(Color.argb(190, 255, 255, 255))
-        })
         homeWeatherText = TextView(this).apply {
-            text = "Челябинск\nЗагрузка погоды…"
-            textSize = 21f
+            text = "Челябинск\nПолучаем погоду…"
+            textSize = 18f
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            setShadowLayer(8f, 0f, 2f, Color.argb(100, 0, 0, 0))
-            setPadding(0, dp(6), 0, 0)
+            maxLines = 2
+            setShadowLayer(4f, 0f, 1f, 0x66000000)
+            isFocusable = false
         }
-        weatherColumn.addView(homeWeatherText)
-        weatherColumn.addView(TextView(this).apply {
-            text = "ПРОГНОЗ НА 5 ДНЕЙ  ›"
-            textSize = 10f
-            letterSpacing = 0.08f
-            setTextColor(Color.argb(205, 255, 255, 255))
-            setPadding(0, dp(8), 0, 0)
-        })
-        hero.addView(weatherColumn, LinearLayout.LayoutParams(-2, -2))
-        heroFrame.addView(hero, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
-        root.addView(heroFrame, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
+        weatherPill.addView(homeWeatherText, LinearLayout.LayoutParams(-2, -2))
+        top.addView(weatherPill, LinearLayout.LayoutParams(-2, dp(66)))
 
         top.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f))
         top.addView(glassButton("⚙") { showControlCenter() }.apply {
             tag = "rftv-control-center-trigger"
-        }, LinearLayout.LayoutParams(dp(RftvDesignSystem.Size.TOP_SETTINGS_WIDTH), dp(RftvDesignSystem.Size.TOP_ACTION_HEIGHT)))
+        }, LinearLayout.LayoutParams(dp(62), dp(62)))
         root.addView(top, FrameLayout.LayoutParams(-1, -2, Gravity.TOP))
+
+        // The clock is the hero. No enclosing card: the photograph remains the visual surface.
+        val timeColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            isFocusable = false
+        }
+        clockText = TextView(this).apply {
+            text = "09:41"
+            textSize = 122f
+            letterSpacing = -0.065f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            gravity = Gravity.CENTER
+            setShadowLayer(24f, 0f, 4f, 0x99000000.toInt())
+        }
+        dateText = TextView(this).apply {
+            textSize = 20f
+            letterSpacing = 0.025f
+            setTextColor(0xE8FFFFFF.toInt())
+            gravity = Gravity.CENTER
+            setPadding(0, dp(4), 0, 0)
+            setShadowLayer(8f, 0f, 2f, 0x99000000.toInt())
+        }
+        timeColumn.addView(clockText, LinearLayout.LayoutParams(-2, -2))
+        timeColumn.addView(dateText, LinearLayout.LayoutParams(-2, -2).apply {
+            topMargin = dp(4)
+        })
+        val heroFrame = FrameLayout(this).apply {
+            setBackgroundColor(Color.TRANSPARENT)
+            isFocusable = false
+            isClickable = false
+        }
+        heroFrame.addView(timeColumn, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
+        root.addView(heroFrame, FrameLayout.LayoutParams(-1, dp(390), Gravity.CENTER))
 
         dock = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             background = RftvDesignSystem.dockSurface(this@MainActivity)
-            setPadding(dp(RftvDesignSystem.Spacing.SM), dp(RftvDesignSystem.Spacing.DOCK_CONTENT_PADDING), dp(RftvDesignSystem.Spacing.SM), dp(RftvDesignSystem.Spacing.DOCK_CONTENT_PADDING))
-            clipChildren = true
-            clipToPadding = true
-            elevation = dp(RftvDesignSystem.Elevation.DOCK_DP).toFloat()
+            setPadding(dp(18), dp(12), dp(18), dp(12))
+            clipChildren = false
+            clipToPadding = false
+            elevation = dp(20).toFloat()
         }
         dockContent = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
+            clipChildren = false
+            clipToPadding = false
         }
         buildDockContent()
         dock.addView(dockContent, LinearLayout.LayoutParams(-1, -2))
@@ -933,9 +928,7 @@ class MainActivity : Activity() {
         }
         root.addView(dock, dockParams)
 
-
         setContentView(root)
-        refreshGlassBackdrop()
         startClock()
         refreshHomeWeather()
         handler.removeCallbacks(homeWeatherTask)
