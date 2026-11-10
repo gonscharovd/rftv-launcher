@@ -18,10 +18,10 @@
 
 Подтверждено по GitHub и CI:
 - Стабильный Release **v0.8.0 / versionCode 11** опубликован: [GitHub Release](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0). SHA-256 APK `1ab18c47b66bf3b45636b7e4fa97c516397be5105a66aa71a790917ec2df2f0a`.
-- Сертификат v0.7.2: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`; тот же постоянный сертификат подтверждён для сборки v0.8.0.
+- Постоянный Release certificate SHA-256 для v0.8.0: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`.
 - PR #34 слит в main 2026-11-09; merge commit `86b9d3db913f3abe512770fcb88a7058b8d0a50c`.
 - GitHub Actions run **42616040741** проверил 20/20 Unsplash URL: HTTP 200, image/jpeg, Pillow decode успешен, все 1920×1080. URL-список с этого запуска не менялся; финальный PR HEAD должен повторно пройти этот step.
-- Signed Release job run **42616746096** на commit `ffdefd6f036bcdf52125e925260aeed047cd6fc4` завершился успешно: package/version/SDK/ABI/подпись и checksum проверены. APK 810 568 байт; SHA-256 `add21f924f04ce0fd9e826259a06e43fbcd703de58dddd2ca4ff7383eb97ab52`; сертификат совпадает с v0.7.2.
+- Финальный main CI run **42619490305** на merge commit завершил оба job успешно. Signed Release APK прошёл проверку package/version/SDK/ABI/подписи/checksum; точные опубликованные параметры и digest приведены в актуальном статусе выше. Publisher run **42619792984** успешно сверил Release asset с CI artifact и опубликовал stable v0.8.0.
 - Android CI run `42619490305` на main завершён success: wallpaper URL/decode, unit tests, lint, Debug build/metadata, signed Release verification. Publish workflow `42619792984` также success.
 - PR #7 (Control Center и заставка), PR #9 (Aerial TV audit), PR #10 (banner/Lint) и PR #11–#13 (Release workflow) ранее слиты в main.
 - Физическая проверка v0.8.0 на Sber SDX-50U4123B не проводилась. Release опубликован и доступен через OTA, но установка и поведение на телевизоре не подтверждены.
