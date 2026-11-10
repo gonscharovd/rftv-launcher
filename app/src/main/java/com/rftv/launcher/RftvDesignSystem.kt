@@ -17,7 +17,7 @@ internal object RftvDesignSystem {
         const val TEXT_SECONDARY = -2037517
         const val TEXT_MUTED = -4473925
         const val HOME_BACKDROP = -16777216
-        const val WALLPAPER_FALLBACK = -15657932
+        const val WALLPAPER_FALLBACK = 0xFF0D1118.toInt()
         const val PANEL_SCRIM = 0xB8000000.toInt()
         const val PANEL_GRADIENT_START = 0xE61C2028.toInt()
         const val PANEL_GRADIENT_END = 0xE60D1118.toInt()
@@ -44,9 +44,9 @@ internal object RftvDesignSystem {
         const val CONTROL_CENTER_ICON = 0xFFFFFFFF.toInt()
         const val CONTROL_CENTER_SUBTITLE = 0xB8FFFFFF.toInt()
         const val CONTROL_CENTER_FOCUSED_TEXT = 0xFF17191F.toInt()
-        const val SCREENSAVER_GRADIENT_START = -16181200
-        const val SCREENSAVER_GRADIENT_MID = -15190955
-        const val SCREENSAVER_GRADIENT_END = -16446180
+        const val SCREENSAVER_GRADIENT_START = 0xFF151A22.toInt()
+        const val SCREENSAVER_GRADIENT_MID = 0xFF0F141C.toInt()
+        const val SCREENSAVER_GRADIENT_END = 0xFF080B10.toInt()
         const val SCREENSAVER_TEXT_SECONDARY = -587202561
         const val SCREENSAVER_TEXT_MUTED = -1342177281
         const val SCREENSAVER_GLASS = 0x26FFFFFF
