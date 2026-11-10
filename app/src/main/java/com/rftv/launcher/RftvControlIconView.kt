@@ -18,6 +18,11 @@ internal class RftvControlIconView(context: Context, private val kind: String) :
         strokeJoin = Paint.Join.ROUND
     }
 
+    fun setTint(color: Int) {
+        paint.color = color
+        invalidate()
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val size = min(width, height).toFloat()
