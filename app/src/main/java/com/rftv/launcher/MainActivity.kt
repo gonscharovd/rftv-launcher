@@ -1315,6 +1315,9 @@ class MainActivity : Activity() {
 
     private fun showControlCenter() {
         if (page != "home") return
+        val overlayOpenedAt = SystemClock.uptimeMillis()
+        val backdropSnapshot = captureBackdropSnapshot()
+        releaseOverlayBackdrop()
         val existingOverlay = root.findViewWithTag<View>("rftv-control-center")
         if (existingOverlay == null) {
             controlCenterReturnFocus = currentFocus
@@ -1330,7 +1333,7 @@ class MainActivity : Activity() {
             isFocusable = false
             isFocusableInTouchMode = false
         }
-        addGlassBackdrop(overlay)
+        addGlassBackdrop(overlay, backdropSnapshot, overlayOpenedAt)
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = RftvDesignSystem.gradientSurface(
@@ -1602,6 +1605,7 @@ class MainActivity : Activity() {
     private fun closeControlCenter() {
         val overlay = root.findViewWithTag<View>("rftv-control-center") ?: return
         root.removeView(overlay)
+        releaseOverlayBackdrop()
         val previous = controlCenterReturnFocus
         controlCenterReturnFocus = null
         if (previous != null && previous.isShown && previous.isFocusable && previous.requestFocus()) return
@@ -1928,7 +1932,7 @@ class MainActivity : Activity() {
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
         root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
-        addGlassBackdrop(root)
+        addGlassBackdrop(root, backdropSnapshot, overlayOpenedAt)
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             background = RftvDesignSystem.settingsShellSurface(this@MainActivity)
@@ -3573,6 +3577,9 @@ class MainActivity : Activity() {
     }
 
     private fun showPanel(title: String, content: (LinearLayout) -> Unit) {
+        val overlayOpenedAt = SystemClock.uptimeMillis()
+        val backdropSnapshot = captureBackdropSnapshot()
+        releaseOverlayBackdrop()
         page = "panel"
         activePanelTitle = title
         handler.removeCallbacks(clockTask)
@@ -3625,29 +3632,90 @@ class MainActivity : Activity() {
             Gravity.CENTER
         ))
         setContentView(root)
+        logOverlayOpen(if (title == "Каталог приложений") "app_catalog" else "panel", overlayOpenedAt)
         // Start on the first actionable item, not the close button. This keeps
         // the panel usable immediately with a TV remote; fall back to Close
         // only for informational panels without focusable controls.
         body.post {
+            if (title == "Каталог приложений") return@post
             if (!requestFirstFocusable(body)) header.getChildAt(1)?.requestFocus()
         }
     }
 
-    private fun addGlassBackdrop(container: FrameLayout) {
-        val selectionKey = lastAppliedWallpaperKey ?: return
+    private fun captureBackdropSnapshot(): Bitmap? {
+        if (!::root.isInitialized || root.width <= 0 || root.height <= 0) return null
+        return try {
+            val width = min(480, (root.width / 2).coerceAtLeast(240))
+            val height = (width * root.height.toFloat() / root.width).toInt().coerceAtLeast(135)
+            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
+                val canvas = Canvas(bitmap)
+                canvas.scale(width.toFloat() / root.width, height.toFloat() / root.height)
+                root.draw(canvas)
+            }
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    private fun addGlassBackdrop(container: FrameLayout, snapshot: Bitmap?, openedAt: Long) {
         val backdrop = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
-            contentDescription = "Размытый фон Liquid Glass"
+            contentDescription = "Размытый снимок экрана Liquid Glass"
             isFocusable = false
+            setBackgroundColor(Color.rgb(16, 20, 28))
         }
         container.addView(backdrop, 0, FrameLayout.LayoutParams(-1, -1))
+        // Immediate dark fallback remains visible while the worker generates blur or on OOM.
         container.addView(View(this).apply {
-            setBackgroundColor(Color.argb(112, 5, 11, 22))
+            setBackgroundColor(Color.argb(154, 5, 11, 22))
             isFocusable = false
         }, 1, FrameLayout.LayoutParams(-1, -1))
         activeGlassBackdropView = backdrop
-        activeGlassBackdropKey = selectionKey
-        refreshGlassBackdrop()
+        if (snapshot == null) return
+
+        val generation = ++overlayBlurGeneration
+        glassBlurExecutor.execute {
+            val startedAt = SystemClock.elapsedRealtime()
+            val blurred = try {
+                GlassBackdrop.createBlurredSnapshot(
+                    snapshot, snapshot.width, snapshot.height, radius = 7, passes = 3
+                )
+            } catch (_: Throwable) {
+                null
+            } finally {
+                if (!snapshot.isRecycled) snapshot.recycle()
+            }
+            val elapsed = SystemClock.elapsedRealtime() - startedAt
+            val bytes = blurred?.allocationByteCount ?: 0
+            handler.post {
+                if (generation != overlayBlurGeneration || isFinishing || activeGlassBackdropView !== backdrop) {
+                    blurred?.takeIf { !it.isRecycled }?.recycle()
+                    return@post
+                }
+                if (blurred != null) {
+                    overlayBlurBitmap?.takeIf { !it.isRecycled }?.recycle()
+                    overlayBlurBitmap = blurred
+                    backdrop.setImageBitmap(blurred)
+                }
+                if (BuildConfig.DEBUG) {
+                    Log.d("RFTV_PERF", "blur_ms=$elapsed bitmap_bytes=$bytes generation=$generation success=${blurred != null}")
+                }
+            }
+        }
+    }
+
+    private fun logOverlayOpen(name: String, openedAt: Long) {
+        if (BuildConfig.DEBUG) {
+            Log.d("RFTV_PERF", "overlay=$name open_to_visible_ms=${SystemClock.uptimeMillis() - openedAt}")
+        }
+    }
+
+    private fun releaseOverlayBackdrop() {
+        overlayBlurGeneration++
+        activeGlassBackdropView?.setImageDrawable(null)
+        activeGlassBackdropView = null
+        overlayBlurBitmap?.takeIf { !it.isRecycled }?.recycle()
+        overlayBlurBitmap = null
     }
 
     private fun refreshGlassBackdrop() {
