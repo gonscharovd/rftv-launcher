@@ -30,7 +30,7 @@ internal object RftvDesignSystem {
         const val GLASS_FOCUS = 0xE6FFFFFF
         const val CLOCK_SHADOW = -1358954496
         const val OVERLAY_TOP = 0x16000000
-        const val OVERLAY_BOTTOM = 0x82000000
+        const val OVERLAY_BOTTOM = 0x82000000.toInt()
         const val LABEL_ON_GLASS = 0xB8FFFFFF.toInt()
         const val CONTROL_CENTER_SCRIM = 0xB0000000.toInt()
         const val CONTROL_CENTER_GRADIENT_START = 0xE91C2028.toInt()
