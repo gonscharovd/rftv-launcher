@@ -70,7 +70,7 @@ jobs:
           APK="app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           BADGING="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK")"
-          grep -F "package: name='com.rftv.launcher'" <<< "$BADGING"
+          grep -F "package: name='com.rftv.launcher.debug'" <<< "$BADGING"
           grep -F "sdkVersion:'24'" <<< "$BADGING"
           grep -F "targetSdkVersion:'28'" <<< "$BADGING"
           if grep -q "^native-code:" <<< "$BADGING"; then
@@ -98,10 +98,10 @@ jobs:
           PY
 
       - name: Upload internal Debug diagnostics
-        if: always() && github.event_name == 'workflow_dispatch'
+        if: always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch')
         uses: actions/upload-artifact@v4
         with:
-          name: rftv-launcher-ci-debug
+          name: rftv-launcher-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: warn
           retention-days: 7
