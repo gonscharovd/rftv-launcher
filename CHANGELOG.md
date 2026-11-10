@@ -1,3 +1,14 @@
+## 0.9.0 (2026-11-10)
+
+- Stable Release [v0.9.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0) published; PR #36 merged into main (merge commit f4ab471e7f433e18ce96d507e9880ae5655379ee).
+- Android CI run 42810753407 and publisher run 42811138590 succeeded.
+- APK: com.rftv.launcher, versionName 0.9.0, versionCode 12, minSdk 24, targetSdk 28, 7,972,147 bytes.
+- SHA-256: d4a2941add01cfb6c7c56845005f02939eceef3ed9c05c2e04b8c0839539e31c; permanent signing certificate SHA-256: 22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917.
+- Home: full-screen photo and central clock. Dock: single dark glass capsule with focus lift. Control Center: floating right panel above Dock. Settings: clearer sidebar/content hierarchy.
+- All 20 real Unsplash photographs are downloaded and validated during build, packaged in the APK and available without runtime Unsplash access. CI verifies all JPEG assets and Apache notices in Debug/Release APKs.
+- Home/forecast/screensaver use a shared cache and Open-Meteo → MET Norway → wttr.in fallback.
+- No new user-facing functionality was added. Physical acceptance on Sber SDX-50U4123B remains pending.
+
 # RFTV Launcher — Changelog
 
 ## 0.8.0 (2026-11-09)

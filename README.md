@@ -1,19 +1,19 @@
 # RFTV Launcher
 
-**Current stable release: [0.8.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0) · versionCode 11.** The owner installed 0.8.0 and reported that the visual quality is unacceptable and neither wallpaper photography nor weather renders on the target TV. A focused 0.9.0 stabilization/redesign is in progress: tvOS-inspired visual language only, all 20 real wallpapers bundled for offline startup, and multi-provider cached weather. No new user-facing features are being added. See [DEVICE_TESTING.md](DEVICE_TESTING.md) for the acceptance checklist.
+**Current stable release: [0.9.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0) · versionCode 12.** Android CI and signed Release publication passed. All 20 real wallpaper photographs are bundled in the APK and weather uses three providers with a shared cache. Physical acceptance on the target Sber TV is still pending; see [DEVICE_TESTING.md](DEVICE_TESTING.md).
 
 A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direction.
 
 ## Implemented features
 
 - Native Kotlin Android Views (no Compose and no third-party UI dependencies).
-- Home screen with large glass-style clock/date, current Chelyabinsk weather beside the clock, a five-day forecast overlay, and the Control Center entry point.
-- Single-row adaptive translucent app dock with focus scaling and a dedicated All Apps entry; DPAD Down does not expand the dock.
+- Home screen with a large centered clock/date over a full-screen photograph, a compact weather status pill, a five-day forecast overlay, and the Control Center entry point.
+- Single-row adaptive tvOS-inspired glass Dock capsule with focus lift, focused-app label and a dedicated All Apps entry; DPAD Down does not expand the dock.
 - Dock and catalog refresh automatically after app installation, removal or replacement, without restarting the launcher; focus and favorite ordering are preserved.
-- 10 photographic daytime and 10 photographic nighttime landscape wallpapers from Unsplash.
+- 10 real daytime and 10 real nighttime landscape photographs from Unsplash, bundled in the APK for reliable first-run and offline display.
 - Separate day/night wallpaper selection and carousel modes, with a configurable 1–60 minute interval.
-- Wallpaper photographs are downloaded over HTTPS on first use and cached in app-private storage. Once cached, they work offline.
-- Full-height right-side glass Control Center with vector icons, grouped Wi-Fi/Bluetooth, theme, RAM, screensaver and settings actions.
+- Wallpaper photographs are validated and packaged at build time, then restored into app-private cache; TV runtime access to Unsplash is not required.
+- Floating right-side dark-glass Control Center with vector icons, grouped Wi-Fi/Bluetooth, theme, RAM, screensaver and settings actions; it stays clear of the Dock.
 - Dock width and height controls saved locally.
 - TV Cleaner lists user-installed apps and delegates uninstall to Android's confirmation screen.
 - RFTV TV Manager provides system-package inventory and analysis, strict full-device profile matching, a Shizuku UserService bridge, manual per-package cleanup, durable original-state snapshots, operation journal, verified restore and reverse-order rollback.
@@ -52,8 +52,8 @@ GitHub Actions builds pushes to main and feature/** branches and pull requests t
 
 ## Important prototype limitations
 
-- The manual screensaver and Android DreamService use Open-Meteo weather for Chelyabinsk, official Bank of Russia USD/EUR rates, and RSS feeds from RIA Novosti and Google News (Russian-language world feed). The initial city and feeds are hard-coded. Both manual ScreensaverActivity and the system DreamService now use the same three-card header and two-column Russia/World news layout.
-- Wallpaper photos require an internet connection for their first download. The launcher stores each downloaded image privately; previously downloaded wallpapers remain available offline.
+- The manual screensaver and Android DreamService use the shared Open-Meteo → MET Norway → wttr.in weather fallback for Chelyabinsk, official Bank of Russia USD/EUR rates, and RSS feeds from RIA Novosti and Google News (Russian-language world feed). The initial city and feeds are hard-coded. Both manual ScreensaverActivity and the system DreamService now use the same three-card header and two-column Russia/World news layout.
+- All 20 wallpaper photos are bundled in the APK and restored to private storage. First-run display and carousel selection do not require Unsplash to be reachable from the TV.
 - Liquid Glass surfaces use layered translucent fills, highlights, strokes and a blurred backdrop. Android 9 uses an asynchronously generated, downsampled snapshot blur; newer Android versions may use native blur APIs with a compatible fallback. The effect is evaluated on the target TV rather than disabled by assumption.
 - Brightness, Wi-Fi and Bluetooth entries open Android settings. Direct toggles depend on StarOS permissions and firmware APIs and are not claimed to work universally.
 - RAM is informational. Android controls background process lifecycle; this app does not force-stop arbitrary apps or claim to free RAM by killing protected processes.
