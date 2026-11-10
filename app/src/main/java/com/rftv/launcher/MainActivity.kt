@@ -697,13 +697,17 @@ class MainActivity : Activity() {
                 if (thumbnail) {
                     // Derive picker thumbnails from the bundled full image. No second
                     // network request and no blank thumbnails on an offline TV.
-                    if (!fullFile.exists() || fullFile.length() <= 10_000L) {
-                        restoreBundledWallpaper(fullFile, dark, safeIndex)
-                    }
-                    val bundledPreview = decode(fullFile, 4)
-                    if (bundledPreview != null) {
-                        finish(bundledPreview, completed = true)
+                    val cachedThumbSource = decode(fullFile, 4)
+                    if (cachedThumbSource != null) {
+                        finish(cachedThumbSource, completed = true)
                         return@execute
+                    }
+                    if (restoreBundledWallpaper(fullFile, dark, safeIndex)) {
+                        val bundledPreview = decode(fullFile, 4)
+                        if (bundledPreview != null) {
+                            finish(bundledPreview, completed = true)
+                            return@execute
+                        }
                     }
                     val preview = fetch(previewFile, previewUrl, 8L * 1024L * 1024L, 1)
                     finish(preview, completed = true, failure = preview == null)
