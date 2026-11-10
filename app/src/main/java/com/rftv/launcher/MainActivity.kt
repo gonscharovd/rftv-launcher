@@ -1329,16 +1329,15 @@ class MainActivity : Activity() {
 
     private fun showControlCenter() {
         if (page != "home") return
+        val existingOverlay = root.findViewWithTag<View>("rftv-control-center")
+        if (existingOverlay != null) root.removeView(existingOverlay)
         val perf = beginOverlayPerf("control_center")
         val backdropSnapshot = captureBackdropSnapshot(perf)
         releaseOverlayBackdrop()
-        val existingOverlay = root.findViewWithTag<View>("rftv-control-center")
         if (existingOverlay == null) {
             controlCenterReturnFocus = currentFocus
                 ?.takeIf { it.tag != "rftv-control-center-trigger" }
                 ?: root.findViewWithTag("rftv-control-center-trigger")
-        } else {
-            root.removeView(existingOverlay)
         }
 
         val overlay = FrameLayout(this).apply {
@@ -3745,10 +3744,11 @@ class MainActivity : Activity() {
             val blurred = try {
                 val width = min(480, (snapshot.width / 2).coerceAtLeast(240))
                 val height = (width * snapshot.height.toFloat() / snapshot.width).toInt().coerceAtLeast(135)
-                downscaled = Bitmap.createScaledBitmap(snapshot, width, height, true)
-                if (downscaled !== snapshot && !snapshot.isRecycled) snapshot.recycle()
+                val scaled = Bitmap.createScaledBitmap(snapshot, width, height, true)
+                downscaled = scaled
+                if (scaled !== snapshot && !snapshot.isRecycled) snapshot.recycle()
                 GlassBackdrop.createBlurredSnapshot(
-                    downscaled, downscaled.width, downscaled.height, radius = 7, passes = 3
+                    scaled, scaled.width, scaled.height, radius = 7, passes = 3
                 )
             } catch (_: Throwable) {
                 null
