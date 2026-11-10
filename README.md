@@ -1,6 +1,6 @@
 # RFTV Launcher
 
-**Current stable release: [0.9.1](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.1) · versionCode 13.** Signed APK SHA-256: `ef03ecf77a13604ec3834bc47ad8c93ccfe1df615522f81c271235a704944167`. Release signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`. Physical acceptance on the target Sber TV is still pending; see [DEVICE_TESTING.md](DEVICE_TESTING.md).
+**Current stable release: [0.9.3](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.3) · versionCode 15.** Signed APK SHA-256: `ce7bfcd6639ab9df57b1982518a867089ecd99bd0fac339dda3cb5840f11240e`. Release signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`. Physical acceptance on the target Sber TV is still pending; see [DEVICE_TESTING.md](DEVICE_TESTING.md). Portable context: [docs/PROJECT_MEMORY.md](docs/PROJECT_MEMORY.md).
 
 A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direction.
 
@@ -20,7 +20,7 @@ TV Manager is retained as an existing, lower-priority subsystem. Do not expand i
 
 - Native Kotlin Android Views (no Compose and no third-party UI dependencies).
 - Home screen with a large centered clock/date over a full-screen photograph, a compact weather status pill, a five-day forecast overlay, and the Control Center entry point. The shipped clock is not yet interleaved between a separate background and transparent foreground layer.
-- Single-row adaptive tvOS-inspired glass Dock capsule with focus lift, focused-app label and a dedicated All Apps entry; DPAD Down does not expand the dock.
+- Single-row content-sized glass Dock capsule with favorite apps, dedicated All Apps entry, centered responsive width and focused-app label; DPAD Down does not expand the dock.
 - Dock and catalog refresh automatically after app installation, removal or replacement, without restarting the launcher; focus and favorite ordering are preserved.
 - 10 real daytime and 10 real nighttime landscape photographs from Unsplash, bundled in the APK for reliable first-run and offline display. These are flat photos, not the planned 3–5 layered depth scenes.
 - Separate day/night wallpaper selection and carousel modes, with a configurable 1–60 minute interval.
@@ -58,7 +58,7 @@ gradle --no-daemon assembleDebug
 
 Debug APK: app/build/outputs/apk/debug/app-debug.apk
 
-Stable Release APKs are published through [GitHub Releases](https://github.com/gonscharovd/rftv-launcher/releases). Stable v0.9.1 uses versionCode 13; Iteration 2 candidate v0.9.2 uses versionCode 14 and remains unreleased on its feature PR. Use the in-app OTA updater for upgrades; it verifies SHA-256, package identity, increasing versionCode, ARMv7 compatibility when native libraries are present, and the installed signing certificate before opening Android's installer.
+Stable Release APKs are published through [GitHub Releases](https://github.com/gonscharovd/rftv-launcher/releases). Stable v0.9.3 uses versionCode 15. Iteration 4A candidate v0.9.4 / versionCode 16 is being verified; it is not a published Release. Use the in-app OTA updater for upgrades; it verifies SHA-256, package identity, increasing versionCode, ARMv7 compatibility when native libraries are present, and the installed signing certificate before opening Android's installer.
 
 GitHub Actions builds pushes to main and feature/** branches and pull requests targeting main.
 
@@ -90,7 +90,7 @@ All 20 photographs are linked to their original Unsplash photo pages and used un
 
 ## Next implementation order
 
-1. Measure the current v0.9.0 baseline on the target Sber TV: memory, frame pacing, cold launch, overlay opening and blur cost. No physical measurements are claimed yet.
+1. After installing the next verified stable Release, complete the Iteration 4 physical checklist on the target Sber TV: catalog exit paths, DPAD focus, responsive Dock and glass surfaces. No physical measurements or acceptance are claimed yet.
 2. Deliver and measure full-screen blur for All Apps and Control Center.
 3. Implement 3–5 layered photographic scenes and the clock-between-layers composition.
 4. Complete tvOS-style Settings focus restoration.

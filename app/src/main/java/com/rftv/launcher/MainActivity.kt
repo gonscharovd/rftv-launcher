@@ -20,6 +20,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Rect
+import android.graphics.Paint
 import android.os.SystemClock
 import android.util.Log
 import android.util.LruCache
@@ -92,7 +93,7 @@ class MainActivity : Activity() {
 
     private lateinit var prefs: SharedPreferences
     private lateinit var root: FrameLayout
-    private lateinit var dock: LinearLayout
+    private lateinit var dock: FrameLayout
     private lateinit var dockContent: LinearLayout
     private var dockTooltip: TextView? = null
     private lateinit var clockText: TextView
@@ -148,12 +149,16 @@ class MainActivity : Activity() {
     private var overlayBlurBitmap: Bitmap? = null
     private var overlayBlurGeneration = 0
     private var catalogFocusedPackage: String? = null
+    private var catalogLaunchPending = false
     private var returnFocusToCatalogButton = false
     private var glassBackdropCacheKey: String? = null
     private var glassBackdropLoadingKey: String? = null
     private var activeGlassBackdropView: ImageView? = null
     private var activeGlassBackdropKey: String? = null
     private var homeHeroBackdropView: ImageView? = null
+    private var homeDockBackdropView: ImageView? = null
+    private var dockGlassBackdropBitmap: Bitmap? = null
+    private var dockBackdropGeneration = 0
     private val networkExecutor = Executors.newSingleThreadExecutor()
     private val tvManagerExecutor = Executors.newSingleThreadExecutor()
     private val tvManagerController by lazy {
@@ -203,6 +208,7 @@ class MainActivity : Activity() {
     private var darkCarousel = false
     private var carouselIntervalMinutes = 5
     private var dockWidthPercent = 88
+    private var dockTileCount = 3
     private var dockHeightDp = 74
     private var screensaverTimeoutMinutes = 15
     private val idleScreensaverTask = object : Runnable {
@@ -380,6 +386,17 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        val shouldRestoreCatalogReturn = CatalogReturnPolicy.shouldReturnHomeAfterAppLaunch(
+            launchPending = catalogLaunchPending,
+            page = page,
+            activePanelTitle = activePanelTitle
+        )
+        catalogLaunchPending = false
+        if (shouldRestoreCatalogReturn) {
+            returnFocusToCatalogButton = true
+            showHome()
+            return
+        }
         if (page == "home") {
             startClock()
             resetIdleScreensaverTimer()
@@ -426,6 +443,9 @@ class MainActivity : Activity() {
         overlayBlurBitmap = null
         glassBackdropBitmap?.recycle()
         glassBackdropBitmap = null
+        dockBackdropGeneration++
+        dockGlassBackdropBitmap?.takeIf { !it.isRecycled }?.recycle()
+        dockGlassBackdropBitmap = null
         networkExecutor.shutdownNow()
         tvManagerExecutor.shutdownNow()
         super.onDestroy()
@@ -827,6 +847,10 @@ class MainActivity : Activity() {
         activeGlassBackdropView = null
         activeGlassBackdropKey = null
         homeHeroBackdropView = null
+        homeDockBackdropView = null
+        dockBackdropGeneration++
+        dockGlassBackdropBitmap?.takeIf { !it.isRecycled }?.recycle()
+        dockGlassBackdropBitmap = null
         dockTooltip = null
         settingsNavigationActive = false
         settingsHubVisible = false
@@ -948,15 +972,23 @@ class MainActivity : Activity() {
         heroFrame.addView(timeColumn, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
         root.addView(heroFrame, FrameLayout.LayoutParams(-1, dp(390), Gravity.CENTER))
 
-        dock = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
+        dock = FrameLayout(this).apply {
             background = RftvDesignSystem.dockSurface(this@MainActivity)
-            setPadding(dp(13), dp(10), dp(13), dp(10))
             clipChildren = false
             clipToPadding = false
+            clipToOutline = true
             elevation = dp(20).toFloat()
         }
+        homeDockBackdropView = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.FIT_XY
+            isFocusable = false
+            contentDescription = "Размытое стекло Dock"
+        }
+        dock.addView(homeDockBackdropView, FrameLayout.LayoutParams(-1, -1))
+        dock.addView(View(this).apply {
+            setBackgroundColor(Color.argb(154, 5, 11, 22))
+            isFocusable = false
+        }, FrameLayout.LayoutParams(-1, -1))
         dockContent = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -964,20 +996,18 @@ class MainActivity : Activity() {
             clipToPadding = false
         }
         buildDockContent()
-        dock.addView(dockContent, LinearLayout.LayoutParams(-1, -2))
+        dock.addView(dockContent, FrameLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_SIZE), Gravity.CENTER))
 
         val dockParams = FrameLayout.LayoutParams(
-            -1,
+            calculateDockWidthPx(dockTileCount),
             dp(dockHeightDp),
             Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         ).apply {
-            leftMargin = dp(RftvDesignSystem.Spacing.HOME_DOCK_HORIZONTAL_INSET)
-            rightMargin = dp(RftvDesignSystem.Spacing.HOME_DOCK_HORIZONTAL_INSET)
             bottomMargin = dp(RftvDesignSystem.Spacing.DOCK_BOTTOM_INSET)
-            width = (resources.displayMetrics.widthPixels * dockWidthPercent / 100f).toInt()
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         }
         root.addView(dock, dockParams)
+        dock.post { refreshDockGlassBackdrop() }
         dockTooltip = TextView(this).apply {
             textSize = 11.5f
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
@@ -1004,7 +1034,8 @@ class MainActivity : Activity() {
         handler.postDelayed(homeWeatherTask, 15 * 60_000L)
         if (returnFocusToCatalogButton) {
             returnFocusToCatalogButton = false
-            root.findViewWithTag<View>("rftv-all-apps-trigger")?.requestFocus()
+            val allApps = root.findViewWithTag<View>(CatalogReturnPolicy.ALL_APPS_DOCK_TAG)
+            if (allApps?.requestFocus() != true) focusFirstApp()
         } else {
             focusFirstApp()
         }
@@ -1017,18 +1048,40 @@ class MainActivity : Activity() {
         handler.postDelayed(carouselTask, carouselIntervalMinutes * 60_000L)
     }
 
+    private fun calculateDockWidthPx(tileCount: Int): Int {
+        val density = resources.displayMetrics.density
+        val screenWidthDp = (resources.displayMetrics.widthPixels / density).toInt()
+        val widthDp = DockWidthPolicy.widthDp(
+            tileCount = tileCount,
+            screenWidthDp = screenWidthDp,
+            maxWidthPercent = dockWidthPercent
+        )
+        return dp(widthDp)
+    }
+
+    private fun updateDockWidth(tileCount: Int) {
+        if (!::dock.isInitialized) return
+        val params = dock.layoutParams as? FrameLayout.LayoutParams ?: return
+        val width = calculateDockWidthPx(tileCount)
+        if (params.width != width) {
+            params.width = width
+            dock.layoutParams = params
+            dock.post { refreshDockGlassBackdrop() }
+        }
+    }
+
     private fun buildDockContent() {
         dockContent.removeAllViews()
         val visibleApps = installedApps.filter { it.packageName !in hiddenPackages }
         val favorites = visibleApps.filter { it.packageName in favoritePackages }
         // Keep RFTV's favorites ordering and the dedicated All Apps entry.
         val firstRow = favorites.ifEmpty { visibleApps }
+        dockTileCount = firstRow.size + 1
         dockContent.addView(buildAppRow(firstRow), LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_SIZE)))
+        dock.post { updateDockWidth(dockTileCount) }
     }
 
     private fun buildAppRow(items: List<TvApp>): HorizontalScrollView {
-        val availableWidthDp = (resources.displayMetrics.widthPixels /
-            resources.displayMetrics.density * dockWidthPercent / 100f).toInt()
         val tileSize = dp(RftvDesignSystem.Size.DOCK_TILE_SIZE)
         val iconSize = dp(RftvDesignSystem.Size.DOCK_ICON)
         val tileGap = dp(RftvDesignSystem.Spacing.DOCK_TILE_GAP)
@@ -1036,7 +1089,7 @@ class MainActivity : Activity() {
         val scroll = HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
-            isFillViewport = true
+            isFillViewport = false
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
             clipChildren = false
             clipToPadding = false
@@ -1047,7 +1100,6 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             clipChildren = false
             clipToPadding = false
-            minimumWidth = dp((availableWidthDp - 2 * RftvDesignSystem.Spacing.DOCK_CONTENT_HORIZONTAL_PADDING).coerceAtLeast(1))
         }
 
         fun addTile(label: String, packageName: String?, drawable: android.graphics.drawable.Drawable?, glyph: String? = null) {
@@ -1056,6 +1108,7 @@ class MainActivity : Activity() {
                 isFocusableInTouchMode = true
                 isClickable = true
                 contentDescription = label
+                tag = packageName ?: CatalogReturnPolicy.ALL_APPS_DOCK_TAG
                 background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused = false)
                 clipChildren = false
                 clipToPadding = false
@@ -1970,6 +2023,12 @@ class MainActivity : Activity() {
     }
 
     private fun showLauncherSettings() {
+        // Hide Control Center before capture so the Settings backdrop contains the Home scene,
+        // not a screenshot of the panel that is being replaced.
+        root.findViewWithTag<View>("rftv-control-center")?.visibility = View.GONE
+        val settingsBackdropSnapshot = captureBackdropSnapshot()
+        homeDockBackdropView = null
+        dockBackdropGeneration++
         releaseOverlayBackdrop()
         settingsNavigationActive = true
         settingsHubVisible = true
@@ -1978,7 +2037,7 @@ class MainActivity : Activity() {
         handler.removeCallbacks(clockTask)
         handler.removeCallbacks(carouselTask)
         root = FrameLayout(this).apply { setBackgroundColor(Color.TRANSPARENT) }
-        addWallpaperGlassBackdrop(root)
+        addGlassBackdrop(root, settingsBackdropSnapshot)
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             background = RftvDesignSystem.settingsShellSurface(this@MainActivity)
@@ -2643,9 +2702,10 @@ class MainActivity : Activity() {
     private fun updateDockSize() {
         if (!::dock.isInitialized) return
         val params = dock.layoutParams as FrameLayout.LayoutParams
-        params.width = (resources.displayMetrics.widthPixels * dockWidthPercent / 100f).toInt()
+        params.width = calculateDockWidthPx(dockTileCount)
         params.height = dp(dockHeightDp)
         dock.layoutParams = params
+        dock.post { refreshDockGlassBackdrop() }
         dockTooltip?.let { tooltip ->
             (tooltip.layoutParams as? FrameLayout.LayoutParams)?.let { tooltipParams ->
                 tooltipParams.bottomMargin = dp(dockHeightDp + RftvDesignSystem.Spacing.DOCK_BOTTOM_INSET + 5)
@@ -3713,7 +3773,10 @@ class MainActivity : Activity() {
             setTextColor(Color.WHITE)
         }
         header.addView(heading, LinearLayout.LayoutParams(0, dp(RftvDesignSystem.Size.PANEL_HEADER_HEIGHT), 1f))
-        header.addView(glassButton("Закрыть  ✕") { showHome() }, LinearLayout.LayoutParams(-2, dp(RftvDesignSystem.Size.PANEL_CLOSE_HEIGHT)))
+        header.addView(glassButton("Закрыть  ✕") {
+            if (title == "Каталог приложений") returnFocusToCatalogButton = true
+            showHome()
+        }, LinearLayout.LayoutParams(-2, dp(RftvDesignSystem.Size.PANEL_CLOSE_HEIGHT)))
         shell.addView(header)
 
         val scroll = ScrollView(this).apply {
@@ -3779,24 +3842,24 @@ class MainActivity : Activity() {
     }
 
     // Draw directly into the <=480px target on the UI thread; never render full-resolution first.
-    private fun captureBackdropSnapshot(metrics: OverlayPerfMetrics): Bitmap? {
+    private fun captureBackdropSnapshot(metrics: OverlayPerfMetrics? = null): Bitmap? {
         if (!::root.isInitialized || root.width <= 0 || root.height <= 0) return null
         val startedAt = SystemClock.elapsedRealtime()
         return try {
             val size = OverlaySnapshotSizing.fit(root.width, root.height)
             val width = size.width
             val height = size.height
-            metrics.screenshotWidthPx = width
-            metrics.screenshotHeightPx = height
+            metrics?.screenshotWidthPx = width
+            metrics?.screenshotHeightPx = height
             Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
                 val canvas = Canvas(bitmap)
                 canvas.scale(width / root.width.toFloat(), height / root.height.toFloat())
                 root.draw(canvas)
-                metrics.screenshotBitmapBytes = bitmap.allocationByteCount
-                metrics.captureMs = SystemClock.elapsedRealtime() - startedAt
+                metrics?.screenshotBitmapBytes = bitmap.allocationByteCount
+                metrics?.captureMs = SystemClock.elapsedRealtime() - startedAt
             }
         } catch (_: Throwable) {
-            metrics.captureMs = SystemClock.elapsedRealtime() - startedAt
+            metrics?.captureMs = SystemClock.elapsedRealtime() - startedAt
             null
         }
     }
@@ -3818,7 +3881,7 @@ class MainActivity : Activity() {
         refreshGlassBackdrop()
     }
 
-    private fun addGlassBackdrop(container: FrameLayout, snapshot: Bitmap?, metrics: OverlayPerfMetrics) {
+    private fun addGlassBackdrop(container: FrameLayout, snapshot: Bitmap?, metrics: OverlayPerfMetrics? = null) {
         val backdrop = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
             contentDescription = "Размытый снимок экрана Liquid Glass"
@@ -3832,7 +3895,7 @@ class MainActivity : Activity() {
         }, 1, FrameLayout.LayoutParams(-1, -1))
         activeGlassBackdropView = backdrop
         if (snapshot == null) {
-            logBlurResult(metrics, 0L, 0, 0, false)
+            metrics?.let { logBlurResult(it, 0L, 0, 0, false) }
             return
         }
 
@@ -3862,7 +3925,7 @@ class MainActivity : Activity() {
                     overlayBlurBitmap = blurred
                     backdrop.setImageBitmap(blurred)
                 }
-                logBlurResult(metrics, blurElapsed, downscaledBytes, blurredBytes, blurred != null)
+                metrics?.let { logBlurResult(it, blurElapsed, downscaledBytes, blurredBytes, blurred != null) }
             }
         }
     }
@@ -3927,6 +3990,71 @@ class MainActivity : Activity() {
         overlayBlurBitmap = null
     }
 
+    /**
+     * Crops the exact wallpaper region behind the Dock, downsamples it before blur,
+     * and reuses the same GlassBackdrop radius/passes as the other frosted surfaces.
+     */
+    private fun refreshDockGlassBackdrop(
+        source: Bitmap? = (wallpaperView.drawable as? BitmapDrawable)?.bitmap
+    ) {
+        val target = homeDockBackdropView ?: return
+        if (source == null || source.isRecycled || !::dock.isInitialized) return
+        if (dock.width <= 0 || dock.height <= 0 || root.width <= 0 || root.height <= 0) {
+            dock.post { refreshDockGlassBackdrop() }
+            return
+        }
+        val dockLocation = IntArray(2)
+        val rootLocation = IntArray(2)
+        dock.getLocationOnScreen(dockLocation)
+        root.getLocationOnScreen(rootLocation)
+        val dockLeft = dockLocation[0] - rootLocation[0]
+        val dockTop = dockLocation[1] - rootLocation[1]
+        val scale = kotlin.math.max(
+            root.width / source.width.toFloat(),
+            root.height / source.height.toFloat()
+        )
+        val offsetX = (root.width - source.width * scale) / 2f
+        val offsetY = (root.height - source.height * scale) / 2f
+        val left = ((dockLeft - offsetX) / scale).toInt().coerceIn(0, source.width - 1)
+        val top = ((dockTop - offsetY) / scale).toInt().coerceIn(0, source.height - 1)
+        val right = ((dockLeft + dock.width - offsetX) / scale).toInt().coerceIn(left + 1, source.width)
+        val bottom = ((dockTop + dock.height - offsetY) / scale).toInt().coerceIn(top + 1, source.height)
+        val size = OverlaySnapshotSizing.fit(dock.width, dock.height)
+        val crop = try {
+            Bitmap.createBitmap(size.width, size.height, Bitmap.Config.ARGB_8888).also { bitmap ->
+                Canvas(bitmap).drawBitmap(
+                    source,
+                    Rect(left, top, right, bottom),
+                    Rect(0, 0, size.width, size.height),
+                    Paint(Paint.FILTER_BITMAP_FLAG)
+                )
+            }
+        } catch (_: Throwable) {
+            return
+        }
+        val generation = ++dockBackdropGeneration
+        glassBlurExecutor.execute {
+            val blurred = try {
+                GlassBackdrop.createBlurredSnapshot(crop, crop.width, crop.height, radius = 7, passes = 3)
+            } catch (_: Throwable) {
+                null
+            } finally {
+                if (!crop.isRecycled) crop.recycle()
+            }
+            handler.post {
+                if (generation != dockBackdropGeneration || isFinishing || homeDockBackdropView !== target) {
+                    blurred?.takeIf { !it.isRecycled }?.recycle()
+                    return@post
+                }
+                if (blurred != null) {
+                    dockGlassBackdropBitmap?.takeIf { it !== blurred && !it.isRecycled }?.recycle()
+                    dockGlassBackdropBitmap = blurred
+                    target.setImageBitmap(blurred)
+                }
+            }
+        }
+    }
+
     private fun refreshGlassBackdrop() {
         val selectionKey = activeGlassBackdropKey ?: lastAppliedWallpaperKey ?: return
         val overlayBackdrop = activeGlassBackdropView
@@ -3940,6 +4068,7 @@ class MainActivity : Activity() {
         if (glassBackdropLoadingKey == selectionKey) return
         val source = (wallpaperView.drawable as? BitmapDrawable)?.bitmap ?: return
         if (source.isRecycled) return
+        refreshDockGlassBackdrop(source)
         glassBackdropLoadingKey = selectionKey
         val width = min(480, (resources.displayMetrics.widthPixels / 2).coerceAtLeast(240))
         val height = (width * 9f / 16f).toInt().coerceAtLeast(135)
@@ -3963,6 +4092,7 @@ class MainActivity : Activity() {
                     activeGlassBackdropView?.setImageBitmap(blurred)
                 }
                 homeHeroBackdropView?.setImageBitmap(blurred)
+                refreshDockGlassBackdrop(source)
             }
         }
     }
@@ -4111,9 +4241,12 @@ class MainActivity : Activity() {
         val intent = packageManager.getLeanbackLaunchIntentForPackage(packageName)
             ?: packageManager.getLaunchIntentForPackage(packageName)
         if (intent != null) {
+            val launchedFromCatalog = page == "panel" && activePanelTitle == "Каталог приложений"
+            if (launchedFromCatalog) catalogLaunchPending = true
             try {
                 startActivity(intent)
             } catch (_: Exception) {
+                if (launchedFromCatalog) catalogLaunchPending = false
                 // App may be disabled by the vendor firmware.
             }
         }

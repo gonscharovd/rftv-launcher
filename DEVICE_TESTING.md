@@ -1,13 +1,13 @@
 # RFTV — физическая приёмка и измерения на Sber TV
 
-Дата подготовки: 2026-11-10. v0.9.0 — текущая shipped-база; новый продуктовый чек-лист добавлен в конце документа. Чек-лист предназначен для единственного подтверждённого тестового устройства: **Sber SDX-50U4123B, Salute TV / StarOS 1.103.91, Android 9/API 28, ARMv7, MediaTek MT9632**.
+Дата актуализации: 2026-11-10. v0.9.3 — текущая stable-база; новый продуктовый чек-лист добавлен в конце документа. Чек-лист предназначен для единственного подтверждённого тестового устройства: **Sber SDX-50U4123B, Salute TV / StarOS 1.103.91, Android 9/API 28, ARMv7, MediaTek MT9632**.
 
 ## Зафиксированная сборка
 
-- Stable Release: [RFTV Launcher 0.9.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0)
+- Stable Release: [RFTV Launcher 0.9.3](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.3)
 - Package: `com.rftv.launcher`
 - versionCode: `12`
-- APK: `app-release.apk`, 7 972 147 bytes
+- APK: `app-release.apk`, 7 990 843 bytes
 - SHA-256: `d4a2941add01cfb6c7c56845005f02939eceef3ed9c05c2e04b8c0839539e31c`
 - Signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`
 - Установка: только встроенный OTA либо официальный стабильный APK из ссылки выше. **Debug APK не устанавливать.**
@@ -20,7 +20,7 @@
 - [ ] В настройках ТВ записать фактическую версию StarOS, Android/API и модель.
 - [ ] Зафиксировать текущую версию RFTV до обновления.
 - [ ] Открыть RFTV → «О системе» / OTA.
-- [ ] OTA обнаруживает стабильный `v0.9.0`, не draft и не prerelease.
+- [ ] OTA обнаруживает стабильный `v0.9.3`, не draft и не prerelease.
 - [ ] Отображаются версия и changelog.
 - [ ] Загрузка завершается без ошибки.
 - [ ] SHA-256 проверяется успешно.
@@ -28,7 +28,7 @@
 - [ ] Открывается штатный Android installer; имя приложения — RFTV Launcher.
 - [ ] Подтвердить установку штатным установщиком.
 - [ ] Обновление завершается успешно, без удаления приложения/данных.
-- [ ] После обновления версия — 0.9.0 / versionCode 12.
+- [ ] После обновления версия — 0.9.3 / versionCode 15.
 - [ ] Сохранены тема, выбранные дневные/ночные обои, режим карусели, интервал, Dock dimensions, избранное, порядок и скрытые приложения.
 
 ## 1. Home
@@ -214,16 +214,9 @@
 ---
 
 
-## Итерация 1
+## Итерация 1 — историческая инструкция (Debug-only, не для установки на ТВ)
 
-Проверка выполняется на Sber SDX-50U4123B после установки отдельного Debug APK из артефактов PR #39. Debug имеет package `com.rftv.launcher.debug` и label «RFTV Launcher Debug», поэтому устанавливается рядом со стабильным Release `com.rftv.launcher`. Не удалять и не обновлять стабильный Release Debug-сборкой.
-
-### Установка Debug рядом с Release
-
-- [ ] В GitHub открыть PR #39 → **Checks** → workflow **Android CI** → успешный запуск → **Artifacts** → скачать `rftv-launcher-debug`.
-- [ ] Распаковать ZIP и установить `app-debug.apk` штатным установщиком Android.
-- [ ] Убедиться, что в списке приложений присутствуют отдельно RFTV Launcher и RFTV Launcher Debug.
-- [ ] Запустить Debug, затем стабильный Release; оба приложения запускаются, настройки и данные Release не затронуты.
+Debug APK предназначен только для CI и диагностики на компьютере. **На телевизор устанавливается только проверенный подписанный stable Release через OTA.** Не устанавливать Debug рядом со стабильным приложением и не использовать Debug для физической приёмки.
 
 ### Каталог приложений и пульт
 
@@ -326,7 +319,7 @@ TV Manager не является частью ближайшей разрабо�
 ### OTA-обновление
 
 - [ ] На ТВ открыть **Настройки RFTV → О системе → Обновления**.
-- [ ] Убедиться, что текущая версия указана как 0.8.0 или 0.9.0 (если обновление ещё не установлено).
+- [ ] Убедиться, что текущая версия указана как 0.9.3 (если обновление ещё не установлено).
 - [ ] Нажать **Скачать и установить обновление**.
 - [ ] Дождаться загрузки и автоматических проверок; при запросе Android разрешить установку приложений для RFTV и вернуться в лаунчер.
 - [ ] В штатном установщике Android подтвердить обновление RFTV Launcher.
@@ -351,3 +344,23 @@ TV Manager не является частью ближайшей разрабо�
 4. Если OTA не устанавливается — экран с полным сообщением об ошибке.
 
 Фотографировать экран ТВ целиком, чтобы были видны заголовок раздела и значения. ADB, компьютер и ручная передача файлов не нужны.
+
+## Дополнение — Iteration 4A: обязательная проверка возврата фокуса
+
+- [ ] Открыть каталог из Dock, нажать Back: Home появляется, фокус явно возвращается на «Все приложения».
+- [ ] Открыть каталог, закрыть кнопкой «Закрыть»: фокус возвращается на «Все приложения».
+- [ ] Открыть каталог, запустить приложение через OK, вернуться в RFTV через Home/Back: каталог закрыт, Home восстановлен, фокус на «Все приложения».
+- [ ] После каждого из трёх путей проверить DPAD Up/Down/Left/Right, OK и Back; реакции должны быть немедленными.
+- [ ] Повторить каждый сценарий пять раз подряд, включая длинный список каталога.
+- [ ] Убедиться, что в окне Activity нет невидимого/отключённого модального overlay, фокус не равен null после восстановления, приложение не падает.
+- [ ] Физическая приёмка фиксируется только после подтверждения владельца на целевом ТВ. Автоматические unit tests не заменяют этот тест.
+
+
+## Дополнение — Iteration 4B/4C: Dock sizing and frosted glass
+
+- [ ] Dock width tracks favorite count plus the All Apps tile; adding/removing favorites grows/shrinks the capsule.
+- [ ] Dock remains horizontally centered, has at least three tile widths, and never spans the full screen.
+- [ ] With many favorites, Dock is capped below the screen edges and scrolls internally without clipping focus.
+- [ ] Dock, Control Center, Settings and app catalog all show a real blurred background, not only a flat alpha fill.
+- [ ] Blur remains stable during repeated opening/closing and wallpaper changes; no black frames, stale bitmap, memory leak or DPAD delay.
+- [ ] Confirm edge highlight and darkening are consistent; no new user transparency settings appear.

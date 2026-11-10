@@ -1,3 +1,20 @@
+# Current project status — verified 2026-11-10 22:44 +05:00
+
+- Repository: `gonscharovd/rftv-launcher`; `main` HEAD: `2038bd822961772773affae63aa7119f4c1fa889`.
+- Latest stable Release: [v0.9.3](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.3), versionCode 15; APK SHA-256 `ce7bfcd6639ab9df57b1982518a867089ecd99bd0fac339dda3cb5840f11240e`.
+- Android CI #42865839755 and Publisher #42866314971 both succeeded. Signed artifact identity and persistent certificate were verified by the workflows.
+- Iteration 4 is not yet complete. 4A–4C implementation is committed on `feature/iteration-4-catalog-focus-glass`: explicit focus restoration for Back/Close/app-return; content-sized Dock width; real GlassBackdrop on all four surfaces. Unit tests and CI are running. Candidate 0.9.4 / versionCode 16. Physical TV acceptance remains pending.
+- 4B (content-sized Dock) and 4C (consistent real frosted-glass material across Dock, Control Center, Settings and catalog) remain open; do not mark them complete.
+- PR #15 (`docs/project-memory-system`) is stale and not mergeable against current main; its state snapshot refers to an old commit/release. Reconcile or replace its documentation before treating it as current.
+- Physical acceptance on Sber SDX-50U4123B has not been confirmed. Do not claim TV testing.
+
+## Immediate work order
+
+1. Complete and verify 4A with unit tests and CI. Physical acceptance: Back-close catalog, close-button path, launch app from catalog and return via Home/Back, then DPAD/OK/Back.
+2. Only after 4A is stable, implement 4B responsive Dock width and 4C shared frosted-glass material.
+3. Update device acceptance, architecture, current state, tasks and handoff documents before PR review.
+4. Do not merge PR or publish a candidate until all requested iteration scope and release checks pass.
+
 # RFTV Launcher — Product Roadmap
 
 ## Owner-approved direction — 2026-11-10
@@ -157,7 +174,7 @@ The prior roadmap's statement that development should stop after v0.9.0 acceptan
 
 Работаем строго по порядку: **1 → 2 → 3 → 4 → 5 → 6**. Исправления безопасности и блокирующие OTA-дефекты имеют право приоритета над очередностью.
 
-Текущее действие: физическая приёмка опубликованного v0.9.0 по [DEVICE_TESTING.md](DEVICE_TESTING.md). PR #36 слит, CI и publisher успешны, stable Release доступен через OTA. Новые пользовательские функции не добавлять до завершения приёмки.
+Историческая запись на момент v0.9.0: физическая приёмка этого релиза ожидалась отдельно. Актуальный статус и ближайшие действия см. в блоке Current project status в начале файла.
 
 
 ## Донорские проекты и анализ Aerial TV
