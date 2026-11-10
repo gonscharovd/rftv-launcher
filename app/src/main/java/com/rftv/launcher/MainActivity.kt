@@ -1946,7 +1946,11 @@ class MainActivity : Activity() {
             text = "Настройки"; textSize = 34f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             setTextColor(Color.WHITE)
         }, LinearLayout.LayoutParams(0, dp(62), 1f))
-        header.addView(glassButton("✕") { showHome() }, LinearLayout.LayoutParams(dp(54), dp(54)))
+        val settingsCloseButton = glassButton("✕") { showHome() }.apply {
+            id = View.generateViewId()
+            contentDescription = "Закрыть настройки"
+        }
+        header.addView(settingsCloseButton, LinearLayout.LayoutParams(dp(54), dp(54)))
         contentColumn.addView(header)
         val detailScroll = ScrollView(this).apply { clipToPadding = false }
         val detail = LinearLayout(this).apply {
@@ -2102,6 +2106,8 @@ class MainActivity : Activity() {
                 if (firstRight.id == View.NO_ID) firstRight.id = View.generateViewId()
                 navItems.forEach { it.nextFocusRightId = firstRight.id }
                 firstRight.nextFocusLeftId = navItems.getOrNull(index)?.id ?: View.NO_ID
+                firstRight.nextFocusUpId = settingsCloseButton.id
+                settingsCloseButton.nextFocusDownId = firstRight.id
             }
         }
         sections.forEachIndexed { index, section ->
