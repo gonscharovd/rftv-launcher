@@ -92,7 +92,7 @@ class MainActivity : Activity() {
 
     private lateinit var prefs: SharedPreferences
     private lateinit var root: FrameLayout
-    private lateinit var dock: LinearLayout
+    private lateinit var dock: FrameLayout
     private lateinit var dockContent: LinearLayout
     private var dockTooltip: TextView? = null
     private lateinit var clockText: TextView
@@ -204,6 +204,7 @@ class MainActivity : Activity() {
     private var darkCarousel = false
     private var carouselIntervalMinutes = 5
     private var dockWidthPercent = 88
+    private var dockTileCount = 3
     private var dockHeightDp = 74
     private var screensaverTimeoutMinutes = 15
     private val idleScreensaverTask = object : Runnable {
@@ -957,13 +958,11 @@ class MainActivity : Activity() {
         heroFrame.addView(timeColumn, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
         root.addView(heroFrame, FrameLayout.LayoutParams(-1, dp(390), Gravity.CENTER))
 
-        dock = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
+        dock = FrameLayout(this).apply {
             background = RftvDesignSystem.dockSurface(this@MainActivity)
-            setPadding(dp(13), dp(10), dp(13), dp(10))
             clipChildren = false
             clipToPadding = false
+            clipToOutline = true
             elevation = dp(20).toFloat()
         }
         dockContent = LinearLayout(this).apply {
@@ -973,17 +972,14 @@ class MainActivity : Activity() {
             clipToPadding = false
         }
         buildDockContent()
-        dock.addView(dockContent, LinearLayout.LayoutParams(-1, -2))
+        dock.addView(dockContent, FrameLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_SIZE), Gravity.CENTER))
 
         val dockParams = FrameLayout.LayoutParams(
-            -1,
+            calculateDockWidthPx(dockTileCount),
             dp(dockHeightDp),
             Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         ).apply {
-            leftMargin = dp(RftvDesignSystem.Spacing.HOME_DOCK_HORIZONTAL_INSET)
-            rightMargin = dp(RftvDesignSystem.Spacing.HOME_DOCK_HORIZONTAL_INSET)
             bottomMargin = dp(RftvDesignSystem.Spacing.DOCK_BOTTOM_INSET)
-            width = (resources.displayMetrics.widthPixels * dockWidthPercent / 100f).toInt()
             gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
         }
         root.addView(dock, dockParams)
@@ -1027,18 +1023,39 @@ class MainActivity : Activity() {
         handler.postDelayed(carouselTask, carouselIntervalMinutes * 60_000L)
     }
 
+    private fun calculateDockWidthPx(tileCount: Int): Int {
+        val density = resources.displayMetrics.density
+        val screenWidthDp = (resources.displayMetrics.widthPixels / density).toInt()
+        val widthDp = DockWidthPolicy.widthDp(
+            tileCount = tileCount,
+            screenWidthDp = screenWidthDp,
+            maxWidthPercent = dockWidthPercent
+        )
+        return dp(widthDp)
+    }
+
+    private fun updateDockWidth(tileCount: Int) {
+        if (!::dock.isInitialized) return
+        val params = dock.layoutParams as? FrameLayout.LayoutParams ?: return
+        val width = calculateDockWidthPx(tileCount)
+        if (params.width != width) {
+            params.width = width
+            dock.layoutParams = params
+        }
+    }
+
     private fun buildDockContent() {
         dockContent.removeAllViews()
         val visibleApps = installedApps.filter { it.packageName !in hiddenPackages }
         val favorites = visibleApps.filter { it.packageName in favoritePackages }
         // Keep RFTV's favorites ordering and the dedicated All Apps entry.
         val firstRow = favorites.ifEmpty { visibleApps }
+        dockTileCount = firstRow.size + 1
         dockContent.addView(buildAppRow(firstRow), LinearLayout.LayoutParams(-1, dp(RftvDesignSystem.Size.DOCK_TILE_SIZE)))
+        dock.post { updateDockWidth(dockTileCount) }
     }
 
     private fun buildAppRow(items: List<TvApp>): HorizontalScrollView {
-        val availableWidthDp = (resources.displayMetrics.widthPixels /
-            resources.displayMetrics.density * dockWidthPercent / 100f).toInt()
         val tileSize = dp(RftvDesignSystem.Size.DOCK_TILE_SIZE)
         val iconSize = dp(RftvDesignSystem.Size.DOCK_ICON)
         val tileGap = dp(RftvDesignSystem.Spacing.DOCK_TILE_GAP)
@@ -1046,7 +1063,7 @@ class MainActivity : Activity() {
         val scroll = HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
-            isFillViewport = true
+            isFillViewport = false
             descendantFocusability = ViewGroup.FOCUS_AFTER_DESCENDANTS
             clipChildren = false
             clipToPadding = false
@@ -1057,7 +1074,6 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             clipChildren = false
             clipToPadding = false
-            minimumWidth = dp((availableWidthDp - 2 * RftvDesignSystem.Spacing.DOCK_CONTENT_HORIZONTAL_PADDING).coerceAtLeast(1))
         }
 
         fun addTile(label: String, packageName: String?, drawable: android.graphics.drawable.Drawable?, glyph: String? = null) {
@@ -2654,7 +2670,7 @@ class MainActivity : Activity() {
     private fun updateDockSize() {
         if (!::dock.isInitialized) return
         val params = dock.layoutParams as FrameLayout.LayoutParams
-        params.width = (resources.displayMetrics.widthPixels * dockWidthPercent / 100f).toInt()
+        params.width = calculateDockWidthPx(dockTileCount)
         params.height = dp(dockHeightDp)
         dock.layoutParams = params
         dockTooltip?.let { tooltip ->
