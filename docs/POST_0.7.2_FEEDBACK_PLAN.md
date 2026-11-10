@@ -93,8 +93,27 @@
 
 Источник: https://github.com/techgenius1/tvOS-Launcher (Apache-2.0; переносить алгоритмический подход с сохранением авторства/лицензии, не копировать интерфейс целиком).
 
-## Текущий статус реализации (2026-11-09)
+## Исторический снимок реализации до merge (2026-11-09; superseded)
 
 В ветке `feature/0.8.0-home-and-system-ui-redesign` уже внесены: общий downsampled box-blur helper с unit tests; blur активных обоев для Control Center/Settings/обычных панелей; полно-высотная область Control Center; удаление Home wallpaper shortcut и Dock expand-on-down; одностраничный адаптивный Dock с отдельной кнопкой каталога; крупные часы, встроенные в фото через отдельный blur-backed glass layer, и текущая погода на Home; Open-Meteo прогноз на 5 дней; удаление Close из Settings и явные переходы Left/Right; единый ScreensaverDashboardRepository для ручной ScreensaverActivity и системного DreamService с параллельной загрузкой, независимым cache freshness и сохранением последнего успешного ответа; обе заставки используют общую структуру с активными обоями, часами/курсами/погодой и колонками Россия/Мир; добавлены mapping/cache unit tests.
 
-Это статус внесённых изменений в исходники, не статус готовности. Run 42618685512 на PR HEAD подтвердил 10/10 дневных и 10/10 ночных URL: HTTP 200, image/jpeg, полное Pillow decode, JPEG 1920×1080. В том же run полностью прошли unit tests, Android lint, Debug build/metadata и signed Release verification. APK: 811 216 байт, SHA-256 c90858c653da665be09eb02bff017c3c4e35df7a738e12c2b16713bc60a53ac7; certificate SHA-256 совпадает с установленным v0.7.2. Остались review и merge PR #34, затем автоматическая публикация stable Release. DPAD/focus, отображение иконок, размеры/blur и системный DreamService требуют физической проверки. Полный аудит: [V0.8.0_IMPLEMENTATION_AUDIT.md](V0.8.0_IMPLEMENTATION_AUDIT.md). Физический тест v0.8.0 на ТВ не проводился.
+Это исторический статус внесённых изменений до merge PR #34. Актуальное состояние после merge и публикации приведено ниже. Run 42618685512 на PR HEAD подтвердил 10/10 дневных и 10/10 ночных URL: HTTP 200, image/jpeg, полное Pillow decode, JPEG 1920×1080. В том же run полностью прошли unit tests, Android lint, Debug build/metadata и signed Release verification. APK: 811 216 байт, SHA-256 c90858c653da665be09eb02bff017c3c4e35df7a738e12c2b16713bc60a53ac7; certificate SHA-256 совпадает с установленным v0.7.2. Остались review и merge PR #34, затем автоматическая публикация stable Release. DPAD/focus, отображение иконок, размеры/blur и системный DreamService требуют физической проверки. Полный аудит: [V0.8.0_IMPLEMENTATION_AUDIT.md](V0.8.0_IMPLEMENTATION_AUDIT.md). Физический тест v0.8.0 на ТВ не проводился.
+
+## Итог этапа v0.8.0 — 2026-11-10
+
+## Актуальный статус на 2026-11-10 — RFTV 0.8.0
+
+- **Исходники:** PR [#34](https://github.com/gonscharovd/rftv-launcher/pull/34) слит в `main` 2026-11-09. Merge commit: `86b9d3db913f3abe512770fcb88a7058b8d0a50c`.
+- **Автоматические проверки:** GitHub Actions [Android CI #42619490305](https://github.com/gonscharovd/rftv-launcher/actions/runs/42619490305) — success. Успешны проверка 20 фотоисточников с декодированием, unit tests, Android lint, Debug build/metadata и сборка/проверка подписанного Release APK.
+- **Публикация:** [стабильный Release v0.8.0](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.8.0), draft=false, prerelease=false. Публикация [workflow #42619792984](https://github.com/gonscharovd/rftv-launcher/actions/runs/42619792984) — success.
+- **APK:** `com.rftv.launcher`, versionName `0.8.0`, versionCode `11`, minSdk `24`, targetSdk `28`, native-библиотеки отсутствуют (APK ABI-independent, ARMv7-совместимость не ограничивается отдельной ABI-библиотекой). Размер 817 577 байт.
+- **SHA-256 APK:** `1ab18c47b66bf3b45636b7e4fa97c516397be5105a66aa71a790917ec2df2f0a`.
+- **Release certificate SHA-256:** `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917` — постоянный сертификат.
+- **Сверка CI → Release:** publisher скачал signed artifact именно из Android CI run #42619490305, сверил его SHA-256, метаданные, сертификат и размер; затем сверил digest/size загруженного Release APK с проверенным артефактом до публикации stable. Publish workflow завершился успешно.
+- **OTA endpoint:** `/releases/latest` сейчас возвращает `v0.8.0`, draft=false, prerelease=false. Клиент RFTV читает этот endpoint, требует SHA-256 из asset digest, проверяет package, увеличенный versionCode, сертификат установленного приложения и наличие ARMv7 ABI при наличии native-библиотек, затем передаёт APK штатному Android PackageInstaller.
+- **Физическая приёмка:** НЕ ПРОВЕДЕНА. Никакие DPAD/OEM/blur/performance/DreamService/Shizuku/OTA-install сценарии на физическом ТВ не отмечаются пройденными без подтверждения владельца.
+
+Этот статус заменяет все прежние формулировки ниже о незавершённом PR #34, ожидающем CI или ещё не опубликованном v0.8.0.
+
+
+Согласованный пользовательский объём реализован и опубликован. Следующий этап — физическая приёмка без добавления новых функций. Полный сценарный чек-лист находится в [DEVICE_TESTING.md](../DEVICE_TESTING.md).
