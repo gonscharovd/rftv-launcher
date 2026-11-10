@@ -1121,7 +1121,7 @@ class MainActivity : Activity() {
             tooltip.visibility = View.VISIBLE
             tooltip.alpha = 1f
             tooltip.post {
-                if (tooltip.visibility != View.VISIBLE || !anchor?.isShown.orFalse()) return@post
+                if (tooltip.visibility != View.VISIBLE || anchor?.isShown != true) return@post
                 val rootLocation = IntArray(2)
                 val anchorLocation = IntArray(2)
                 root.getLocationOnScreen(rootLocation)
@@ -1141,7 +1141,6 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun Boolean?.orFalse(): Boolean = this == true
 
     private fun focusFirstApp() {
         if (!::dockContent.isInitialized) return
