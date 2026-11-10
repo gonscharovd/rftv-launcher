@@ -56,6 +56,9 @@ internal object RftvDesignSystem {
         const val CLOCK_GLASS_TOP = 0xFFFDFEFF.toInt()
         const val CLOCK_GLASS_MIDDLE = 0xFFDCE7F1.toInt()
         const val CLOCK_GLASS_BOTTOM = 0xFFF5F8FC.toInt()
+        const val CLOCK_GLASS_DARK_TOP = 0xFF596675.toInt()
+        const val CLOCK_GLASS_DARK_MIDDLE = 0xFF2B3745.toInt()
+        const val CLOCK_GLASS_DARK_BOTTOM = 0xFF151E2A.toInt()
         const val CLOCK_GLASS_RIM = 0x88FFFFFF.toInt()
         const val OVERLAY_TOP = 0x16000000
         const val OVERLAY_BOTTOM = 0x82000000.toInt()

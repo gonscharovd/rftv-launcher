@@ -16,6 +16,7 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Size.CLOCK_LETTER_SPACING < 0f)
         assertTrue(RftvDesignSystem.ColorTokens.CLOCK_GLASS_RIM ushr 24 > 0)
         assertTrue(RftvDesignSystem.ColorTokens.CLOCK_GLASS_TOP != RftvDesignSystem.ColorTokens.CLOCK_GLASS_MIDDLE)
+        assertTrue(RftvDesignSystem.ColorTokens.CLOCK_GLASS_DARK_TOP != RftvDesignSystem.ColorTokens.CLOCK_GLASS_DARK_BOTTOM)
         assertTrue(RftvDesignSystem.Size.DOCK_ICON < RftvDesignSystem.Size.DOCK_TILE_WIDTH)
         assertTrue(RftvDesignSystem.Spacing.HOME_DOCK_HORIZONTAL_INSET > RftvDesignSystem.Spacing.HOME_ACTION_GAP)
         assertTrue(RftvDesignSystem.Size.HOME_WALLPAPER_BUTTON_HEIGHT in 40..56)
