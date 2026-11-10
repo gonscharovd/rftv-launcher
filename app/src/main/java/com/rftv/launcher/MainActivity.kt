@@ -982,7 +982,7 @@ class MainActivity : Activity() {
                 contentDescription = app.label
                 setOnFocusChangeListener { view, focused ->
                     view.background = RftvDesignSystem.dockTileSurface(this@MainActivity, focused)
-                    RftvDesignSystem.applyFocusScale(view, focused, 1.12f)
+                    RftvDesignSystem.applyFocusScale(view, focused, RftvDesignSystem.Size.DOCK_FOCUS_SCALE)
                     view.elevation = if (focused) dp(RftvDesignSystem.Elevation.FOCUSED_TILE_DP).toFloat() else 0f
                     dockLabelView?.animate()?.alpha(if (focused) 1f else 0f)
                         ?.setDuration(RftvDesignSystem.Motion.FOCUS_DURATION_MS)?.start()
