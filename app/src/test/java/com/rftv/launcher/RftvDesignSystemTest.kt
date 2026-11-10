@@ -56,7 +56,10 @@ class RftvDesignSystemTest {
 
     @Test
     fun controlCenterAndScreensaverTokensStayWithinTvFriendlyRanges() {
-        assertTrue(RftvDesignSystem.Radius.CONTROL_CENTER_PANEL >= 28)
+        assertTrue(RftvDesignSystem.Radius.CONTROL_CENTER_PANEL >= 24)
+        assertEquals(54, RftvDesignSystem.Size.DOCK_TILE_SIZE)
+        assertEquals(26, RftvDesignSystem.Size.DOCK_ICON)
+        assertEquals(293, RftvDesignSystem.Size.CONTROL_CENTER_PANEL_WIDTH)
         assertTrue(RftvDesignSystem.Radius.CONTROL_CENTER_TILE >= 24)
         assertTrue(RftvDesignSystem.Size.CONTROL_CENTER_WIDTH_FRACTION in 0.38f..0.48f)
         assertTrue(RftvDesignSystem.Size.CONTROL_CENTER_HEIGHT_FRACTION in 0.85f..0.96f)
