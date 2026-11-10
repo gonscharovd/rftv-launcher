@@ -128,7 +128,7 @@ jobs:
 
   release:
     name: Signed Release APK verification
-    if: github.event_name != 'pull_request'
+    # Release secrets are intentionally consumed only on main; feature branches and PRs run source/debug CI.
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -178,6 +178,9 @@ jobs:
 
       - name: Build signed Release
         run: gradle --no-daemon --stacktrace assembleRelease
+
+      - name: Install Pillow for APK image validation
+        run: python3 -m pip install --disable-pip-version-check pillow
 
       - name: Verify all 20 bundled wallpaper assets in signed Release APK
         run: |
