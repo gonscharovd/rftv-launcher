@@ -1062,7 +1062,7 @@ class MainActivity : Activity() {
                         ?.scaleY(if (focused) 1.07f else 1f)
                         ?.setDuration(RftvDesignSystem.Motion.FOCUS_DURATION_MS)?.start()
                     view.elevation = if (focused) dp(RftvDesignSystem.Elevation.FOCUSED_TILE_DP).toFloat() else 0f
-                    updateDockTooltip(app.label, focused)
+                    updateDockTooltip(app.label, focused, view)
                 }
                 setOnClickListener { launchApp(app.packageName) }
                 setOnLongClickListener { showAppActions(app); true }
@@ -1093,7 +1093,7 @@ class MainActivity : Activity() {
                     ?.scaleY(if (focused) 1.07f else 1f)
                     ?.setDuration(RftvDesignSystem.Motion.FOCUS_DURATION_MS)?.start()
                 view.elevation = if (focused) dp(RftvDesignSystem.Elevation.FOCUSED_TILE_DP).toFloat() else 0f
-                updateDockTooltip("Все приложения", focused)
+                updateDockTooltip("Все приложения", focused, view)
             }
             setOnClickListener { showAppCatalog() }
         }
@@ -1113,19 +1113,35 @@ class MainActivity : Activity() {
         return scroll
     }
 
-    private fun updateDockTooltip(label: String, visible: Boolean) {
+    private fun updateDockTooltip(label: String, visible: Boolean, anchor: View? = null) {
         val tooltip = dockTooltip ?: return
         tooltip.animate().cancel()
         if (visible) {
             tooltip.text = label
             tooltip.visibility = View.VISIBLE
             tooltip.alpha = 1f
+            tooltip.post {
+                if (tooltip.visibility != View.VISIBLE || !anchor?.isShown.orFalse()) return@post
+                val rootLocation = IntArray(2)
+                val anchorLocation = IntArray(2)
+                root.getLocationOnScreen(rootLocation)
+                anchor?.getLocationOnScreen(anchorLocation)
+                val centerX = if (anchor != null) {
+                    anchorLocation[0] - rootLocation[0] + anchor.width / 2f
+                } else root.width / 2f
+                val halfTooltip = tooltip.width / 2f
+                val minCenter = halfTooltip + dp(8)
+                val maxCenter = root.width - halfTooltip - dp(8)
+                tooltip.translationX = centerX.coerceIn(minCenter, maxCenter) - root.width / 2f
+            }
         } else {
             tooltip.animate().alpha(0f).setDuration(90L).withEndAction {
                 if (tooltip.alpha == 0f) tooltip.visibility = View.INVISIBLE
             }.start()
         }
     }
+
+    private fun Boolean?.orFalse(): Boolean = this == true
 
     private fun focusFirstApp() {
         if (!::dockContent.isInitialized) return
