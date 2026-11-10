@@ -34,6 +34,13 @@ class WallpaperImageUrlsTest {
     }
 
     @Test
+    fun bundledAssetsUseStableDayAndNightPaths() {
+        assertEquals("wallpapers/day-0.jpg", WallpaperImageUrls.assetPath(false, 0))
+        assertEquals("wallpapers/night-9.jpg", WallpaperImageUrls.assetPath(true, 9))
+        assertEquals("wallpapers/day-0.jpg", WallpaperImageUrls.assetPath(false, -1))
+    }
+
+    @Test
     fun negativeIndexesCannotEscapeWallpaperCacheNamespace() {
         assertEquals("night-0.jpg", WallpaperImageUrls.cacheFileName(true, -1, false))
         assertEquals("night-0", WallpaperImageUrls.selectionKey(true, -1))

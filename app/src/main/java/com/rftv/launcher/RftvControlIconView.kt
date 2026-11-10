@@ -18,6 +18,11 @@ internal class RftvControlIconView(context: Context, private val kind: String) :
         strokeJoin = Paint.Join.ROUND
     }
 
+    fun setTint(color: Int) {
+        paint.color = color
+        invalidate()
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val size = min(width, height).toFloat()
@@ -33,6 +38,7 @@ internal class RftvControlIconView(context: Context, private val kind: String) :
             "clock" -> drawClock(canvas)
             "settings" -> drawSettings(canvas)
             "tv" -> drawTv(canvas)
+            "weather" -> drawWeather(canvas)
         }
         canvas.restoreToCount(save)
     }
@@ -92,6 +98,19 @@ internal class RftvControlIconView(context: Context, private val kind: String) :
             val y2 = (32 + 23 * kotlin.math.sin(radians)).toFloat()
             c.drawLine(x1, y1, x2, y2, paint)
         }
+    }
+
+    private fun drawWeather(c: Canvas) {
+        paint.style = Paint.Style.STROKE
+        c.drawCircle(20f, 22f, 9f, paint)
+        c.drawLine(20f, 5f, 20f, 9f, paint)
+        c.drawLine(20f, 35f, 20f, 39f, paint)
+        c.drawLine(3f, 22f, 7f, 22f, paint)
+        c.drawLine(33f, 22f, 37f, 22f, paint)
+        c.drawLine(8f, 10f, 11f, 13f, paint)
+        c.drawLine(29f, 31f, 32f, 34f, paint)
+        c.drawRoundRect(RectF(17f, 28f, 57f, 53f), 12f, 12f, paint)
+        c.drawArc(RectF(25f, 20f, 52f, 49f), 180f, 180f, false, paint)
     }
 
     private fun drawTv(c: Canvas) {
