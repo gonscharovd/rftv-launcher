@@ -5,7 +5,9 @@
 - Fixes the missing All Apps Dock focus tag: the Back/Close return path now finds the actual Dock tile and explicitly requests focus, with a fallback to the first app tile.
 - Returning from an app launched from the catalog is now treated as a catalog-exit lifecycle transition in `onResume()`: the catalog is closed, Home is rebuilt, and focus returns to the All Apps tile.
 - Added a pure catalog-return policy and unit regression tests for the lifecycle return condition and stable Dock tag.
-- Candidate: `com.rftv.launcher`, versionName `0.9.4`, versionCode `16`. Not a published Release. 4B Dock content sizing and 4C unified frosted-glass material remain pending.
+- 4B: Dock capsule now wraps the number of visible favorite tiles plus All Apps, centered with a three-tile minimum and a configurable existing maximum-width cap; existing squircle tiles, scrolling, favorites and catalog entry are preserved.
+- 4C: Dock now receives a cropped low-resolution blur of the exact wallpaper area behind it; Control Center and catalog retain screenshot blur; Settings now uses the same screenshot/GlassBackdrop pipeline. All use radius 7, 3 passes and a shared dark scrim/edge treatment. No user-facing transparency controls added.
+- Candidate: `com.rftv.launcher`, versionName `0.9.4`, versionCode `16`. Not a published Release; automated verification is pending.
 
 ## 0.9.3 (2026-11-10) — stable Release
 
