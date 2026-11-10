@@ -86,6 +86,10 @@ jobs:
               names = [name for name in archive.namelist()
                        if name.startswith("assets/wallpapers/") and name.endswith(".jpg")]
               assert len(names) == 20, f"Expected 20 bundled wallpapers, found {len(names)}"
+              for legal in ("assets/third_party/tvos-launcher/LICENSE",
+                            "assets/third_party/tvos-launcher/NOTICE",
+                            "assets/third_party/THIRD_PARTY_NOTICES.md"):
+                  assert legal in archive.namelist(), f"Missing packaged legal notice: {legal}"
               for name in names:
                   data = archive.read(name)
                   assert len(data) > 10_000, f"{name} is too small"
