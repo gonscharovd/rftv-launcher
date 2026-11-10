@@ -21,7 +21,10 @@ internal object PackageAnalysisPolicy {
         val activityCount: Int = 0,
         val profilePurpose: String? = null,
         val profileRisk: String? = null,
-        val isProtected: Boolean = false
+        val isProtected: Boolean = false,
+        val sharedUserId: String? = null,
+        val isPersistent: Boolean = false,
+        val providesTvInputService: Boolean = false
     )
 
     data class Report(
@@ -145,8 +148,13 @@ internal object PackageAnalysisPolicy {
         val permissions = signals.requestedPermissions.toSet()
         val evidence = mutableListOf<String>()
 
-        if (isCriticalIdentity(id) || signals.isProtected) {
-            evidence += if (signals.isProtected && !isCriticalIdentity(id)) {
+        val hardPlatformProtection = signals.sharedUserId == "android.uid.system" ||
+            signals.isPersistent || signals.providesTvInputService
+        if (isCriticalIdentity(id) || signals.isProtected || hardPlatformProtection) {
+            if (signals.sharedUserId == "android.uid.system") evidence += "Пакет использует защищённый sharedUserId android.uid.system."
+            if (signals.isPersistent) evidence += "Пакет помечен ApplicationInfo.FLAG_PERSISTENT."
+            if (signals.providesTvInputService) evidence += "Пакет объявляет сервис с action android.media.tv.TvInputService."
+            if (evidence.isEmpty()) evidence += if (signals.isProtected && !isCriticalIdentity(id)) {
                 "Пакет динамически защищён: он назначен системной ролью HOME, Settings, ввода или активной заставки."
             } else {
                 "Идентификатор пакета совпадает с защищённой системной категорией."
