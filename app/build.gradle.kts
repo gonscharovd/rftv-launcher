@@ -75,7 +75,11 @@ android.sourceSets.getByName("main").assets.srcDir(generatedWallpaperAssets)
 
 val packageWallpapers by tasks.registering {
     val wallpaperSource = layout.projectDirectory.file("src/main/java/com/rftv/launcher/MainActivity.kt")
+    val donorLicense = rootProject.file("third_party/tvos-launcher/LICENSE")
+    val donorNotice = rootProject.file("third_party/tvos-launcher/NOTICE")
+    val notices = rootProject.file("THIRD_PARTY_NOTICES.md")
     inputs.file(wallpaperSource)
+    inputs.files(donorLicense, donorNotice, notices)
     outputs.dir(generatedWallpaperAssets)
 
     doLast {
@@ -89,6 +93,16 @@ val packageWallpapers by tasks.registering {
         val root = generatedWallpaperAssets.get().asFile
         val wallpaperDir = root.resolve("wallpapers")
         wallpaperDir.mkdirs()
+
+        // Apache-2.0 requires the upstream license and NOTICE to accompany the
+        // adapted weather implementation in the distributed APK as well as the source tree.
+        val legalDir = root.resolve("third_party/tvos-launcher")
+        legalDir.mkdirs()
+        donorLicense.copyTo(legalDir.resolve("LICENSE"), overwrite = true)
+        donorNotice.copyTo(legalDir.resolve("NOTICE"), overwrite = true)
+        val noticesDir = root.resolve("third_party")
+        noticesDir.mkdirs()
+        notices.copyTo(noticesDir.resolve("THIRD_PARTY_NOTICES.md"), overwrite = true)
 
         photos.forEachIndexed { index, match ->
             val isNight = index >= 10
