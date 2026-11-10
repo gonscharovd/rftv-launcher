@@ -355,3 +355,12 @@ TV Manager не является частью ближайшей разрабо�
 - [ ] Убедиться, что в окне Activity нет невидимого/отключённого модального overlay, фокус не равен null после восстановления, приложение не падает.
 - [ ] Физическая приёмка фиксируется только после подтверждения владельца на целевом ТВ. Автоматические unit tests не заменяют этот тест.
 
+
+## Дополнение — Iteration 4B/4C: Dock sizing and frosted glass
+
+- [ ] Dock width tracks favorite count plus the All Apps tile; adding/removing favorites grows/shrinks the capsule.
+- [ ] Dock remains horizontally centered, has at least three tile widths, and never spans the full screen.
+- [ ] With many favorites, Dock is capped below the screen edges and scrolls internally without clipping focus.
+- [ ] Dock, Control Center, Settings and app catalog all show a real blurred background, not only a flat alpha fill.
+- [ ] Blur remains stable during repeated opening/closing and wallpaper changes; no black frames, stale bitmap, memory leak or DPAD delay.
+- [ ] Confirm edge highlight and darkening are consistent; no new user transparency settings appear.
