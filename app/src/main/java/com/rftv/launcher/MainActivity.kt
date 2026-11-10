@@ -101,6 +101,12 @@ class MainActivity : Activity() {
     private lateinit var homeWeatherText: TextView
     private lateinit var wallpaperView: ImageView
     private var lastAppliedWallpaperKey: String? = null
+    private var homeSceneId: String = "auto"
+    private var homeSceneBackgroundView: ImageView? = null
+    private var homeSceneForegroundView: ImageView? = null
+    private var loadedHomeScene: LoadedHomeScene? = null
+    private var loadingHomeSceneId: String? = null
+    private var sceneLoadGeneration: Int = 0
     @Volatile private var tvManagerShellService: ITvManagerShellService? = null
     @Volatile private var tvManagerShellUid: Int = -1
     private var tvManagerFocusPackage: String? = null
@@ -228,6 +234,20 @@ class MainActivity : Activity() {
 
     private data class WallpaperPhoto(val title: String, val author: String, val pageUrl: String, val imageUrl: String)
 
+    private data class LoadedHomeScene(
+        val id: String,
+        val background: Bitmap,
+        val foreground: Bitmap?,
+        val glass: Bitmap,
+        val darkClock: Boolean
+    ) {
+        fun recycle() {
+            if (!background.isRecycled) background.recycle()
+            foreground?.takeIf { !it.isRecycled }?.recycle()
+            if (!glass.isRecycled) glass.recycle()
+        }
+    }
+
     // Unsplash photographs are cached in app-private storage on first use.
     private val lightPhotos = listOf(
         WallpaperPhoto("Emerald Lake at sunrise", "Philipp", "https://unsplash.com/photos/a-large-body-of-water-surrounded-by-mountains-OvfI1PiuTpE", "https://images.unsplash.com/photo-1724169913051-49f6ff76a070?auto=format&fit=crop&fm=jpg&q=82&w=1920&h=1080"),
@@ -285,11 +305,11 @@ class MainActivity : Activity() {
     private val carouselTask = object : Runnable {
         override fun run() {
             if (page == "home") {
-                if (isDarkTheme() && darkCarousel) {
+                if (homeSceneId == "photos" && isDarkTheme() && darkCarousel) {
                     wallpaperDark = (wallpaperDark + 1) % darkWallpapers.size
                     prefs.edit().putInt("wallpaper_dark", wallpaperDark).apply()
                     applyWallpaper()
-                } else if (!isDarkTheme() && lightCarousel) {
+                } else if (homeSceneId == "photos" && !isDarkTheme() && lightCarousel) {
                     wallpaperLight = (wallpaperLight + 1) % lightWallpapers.size
                     prefs.edit().putInt("wallpaper_light", wallpaperLight).apply()
                     applyWallpaper()
@@ -329,6 +349,13 @@ class MainActivity : Activity() {
         themeMode = prefs.getInt("theme_mode", 2)
         wallpaperLight = prefs.getInt("wallpaper_light", 0)
         wallpaperDark = prefs.getInt("wallpaper_dark", 0)
+        homeSceneId = prefs.getString(
+            "home_scene_id",
+            if (prefs.contains("wallpaper_light") || prefs.contains("wallpaper_dark") ||
+                prefs.getBoolean("wallpaper_light_carousel", false) ||
+                prefs.getBoolean("wallpaper_dark_carousel", false)
+            ) "photos" else "auto"
+        ) ?: "auto"
         lightCarousel = prefs.getBoolean("wallpaper_light_carousel", false)
         darkCarousel = prefs.getBoolean("wallpaper_dark_carousel", false)
         carouselIntervalMinutes = prefs.getInt("wallpaper_interval", 5).coerceIn(1, 60)
@@ -439,6 +466,11 @@ class MainActivity : Activity() {
             try { unregisterReceiver(packageChangeReceiver) } catch (_: IllegalArgumentException) { }
             packageReceiverRegistered = false
         }
+        sceneLoadGeneration++
+        loadingHomeSceneId = null
+        if (::clockText.isInitialized) (clockText as? RftvGlassClockTextView)?.setGlassTexture(null)
+        loadedHomeScene?.recycle()
+        loadedHomeScene = null
         wallpaperExecutor.shutdownNow()
         appIconExecutor.shutdownNow()
         glassBlurExecutor.shutdownNow()
@@ -604,12 +636,33 @@ class MainActivity : Activity() {
     private fun applyWallpaper() {
         if (!::wallpaperView.isInitialized) return
         val dark = isDarkTheme()
+        val selectedSceneId = when (homeSceneId) {
+            "auto" -> RftvHomeSceneSpec.automaticSceneId(dark)
+            "photos" -> null
+            else -> homeSceneId
+        }
+        val scene = selectedSceneId?.let(RftvHomeSceneSpec::find)
+        if (scene != null) {
+            applyHomeScene(scene)
+            return
+        }
+        if (homeSceneId != "photos") {
+            homeSceneId = "photos"
+            prefs.edit().putString("home_scene_id", homeSceneId).apply()
+        }
+        releaseHomeScene()
         val palette = if (dark) darkWallpapers else lightWallpapers
         val index = (if (dark) wallpaperDark else wallpaperLight).coerceIn(0, palette.lastIndex)
         val selectionKey = WallpaperImageUrls.selectionKey(dark, index)
-        if (selectionKey == lastAppliedWallpaperKey) return
+        if (selectionKey == lastAppliedWallpaperKey && wallpaperView.drawable != null) {
+            wallpaperView.visibility = View.VISIBLE
+            refreshGlassBackdrop()
+            return
+        }
 
         lastAppliedWallpaperKey = selectionKey
+        activeGlassBackdropKey = selectionKey
+        wallpaperView.visibility = View.VISIBLE
         wallpaperFallbackAttempted.remove(selectionKey)
         // A neutral fallback is intentionally quiet; the packaged photograph is the
         // actual Home surface, not a decorative blue gradient pretending to be wallpaper.
@@ -619,6 +672,122 @@ class MainActivity : Activity() {
             else intArrayOf(0xFF20252D.toInt(), 0xFF303943.toInt(), 0xFF171C23.toInt())
         )
         loadPhoto(index, dark, wallpaperView)
+        refreshGlassBackdrop()
+    }
+
+    private fun activatePhotoWallpapers() {
+        if (homeSceneId == "photos") return
+        homeSceneId = "photos"
+        prefs.edit().putString("home_scene_id", homeSceneId).apply()
+        lastAppliedWallpaperKey = null
+    }
+
+    private fun applyHomeScene(scene: SceneAsset) {
+        val selectionKey = "scene:${scene.id}"
+        if (loadedHomeScene?.id == scene.id) {
+            lastAppliedWallpaperKey = selectionKey
+            activeGlassBackdropKey = selectionKey
+            activateLoadedHomeScene(loadedHomeScene!!)
+            refreshGlassBackdrop()
+            return
+        }
+        if (loadingHomeSceneId == scene.id) return
+
+        lastAppliedWallpaperKey = selectionKey
+        activeGlassBackdropKey = selectionKey
+        loadingHomeSceneId = scene.id
+        val generation = ++sceneLoadGeneration
+        wallpaperExecutor.execute {
+            val targetWidth = resources.displayMetrics.widthPixels.coerceAtLeast(480)
+            val targetHeight = resources.displayMetrics.heightPixels.coerceAtLeast(270)
+            val background = decodeSceneBitmap(scene.backgroundAsset, Bitmap.Config.RGB_565, targetWidth, targetHeight)
+            val foreground = scene.foregroundAsset?.let {
+                decodeSceneBitmap(it, Bitmap.Config.ARGB_8888, targetWidth, targetHeight)
+            }
+            val glass = decodeSceneBitmap(scene.glassAsset, Bitmap.Config.RGB_565, 480, 270)
+            handler.post {
+                if (generation != sceneLoadGeneration || isFinishing) {
+                    background?.takeIf { !it.isRecycled }?.recycle()
+                    foreground?.takeIf { !it.isRecycled }?.recycle()
+                    glass?.takeIf { !it.isRecycled }?.recycle()
+                    return@post
+                }
+                loadingHomeSceneId = null
+                if (background == null || glass == null ||
+                    (scene.foregroundAsset != null && foreground == null)
+                ) {
+                    background?.takeIf { !it.isRecycled }?.recycle()
+                    foreground?.takeIf { !it.isRecycled }?.recycle()
+                    glass?.takeIf { !it.isRecycled }?.recycle()
+                    homeSceneId = "photos"
+                    prefs.edit().putString("home_scene_id", homeSceneId).apply()
+                    lastAppliedWallpaperKey = null
+                    applyWallpaper()
+                    return@post
+                }
+                val previous = loadedHomeScene
+                val loaded = LoadedHomeScene(scene.id, background, foreground, glass, scene.darkClock)
+                loadedHomeScene = loaded
+                activateLoadedHomeScene(loaded)
+                previous?.recycle()
+                refreshGlassBackdrop()
+            }
+        }
+    }
+
+    private fun activateLoadedHomeScene(scene: LoadedHomeScene) {
+        homeSceneBackgroundView?.setImageBitmap(scene.background)
+        homeSceneForegroundView?.setImageBitmap(scene.foreground)
+        homeSceneBackgroundView?.visibility = View.VISIBLE
+        homeSceneForegroundView?.visibility = if (scene.foreground != null) View.VISIBLE else View.GONE
+        wallpaperView.visibility = View.GONE
+        (clockText as? RftvGlassClockTextView)?.apply {
+            setGlassTexture(scene.glass)
+            setDarkText(scene.darkClock)
+        }
+    }
+
+    private fun releaseHomeScene() {
+        sceneLoadGeneration++
+        loadingHomeSceneId = null
+        homeSceneBackgroundView?.setImageDrawable(null)
+        homeSceneForegroundView?.setImageDrawable(null)
+        homeSceneBackgroundView?.visibility = View.GONE
+        homeSceneForegroundView?.visibility = View.GONE
+        if (::wallpaperView.isInitialized) wallpaperView.visibility = View.VISIBLE
+        (clockText as? RftvGlassClockTextView)?.apply {
+            setGlassTexture(null)
+            setDarkText(false)
+        }
+        loadedHomeScene?.recycle()
+        loadedHomeScene = null
+        activeGlassBackdropKey = null
+    }
+
+    private fun decodeSceneBitmap(
+        assetPath: String,
+        config: Bitmap.Config,
+        targetWidth: Int,
+        targetHeight: Int
+    ): Bitmap? {
+        return try {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            assets.open(assetPath).use { BitmapFactory.decodeStream(it, null, bounds) }
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+            var sampleSize = 1
+            while (
+                bounds.outWidth / sampleSize > targetWidth * 1.25f ||
+                bounds.outHeight / sampleSize > targetHeight * 1.25f
+            ) sampleSize *= 2
+            val options = BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+                inPreferredConfig = config
+                inDither = config == Bitmap.Config.RGB_565
+            }
+            assets.open(assetPath).use { BitmapFactory.decodeStream(it, null, options) }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun loadPhoto(index: Int, dark: Boolean, target: ImageView, thumbnail: Boolean = false) {
@@ -851,6 +1020,8 @@ class MainActivity : Activity() {
         activeGlassBackdropKey = null
         homeHeroBackdropView = null
         homeDockBackdropView = null
+        homeSceneBackgroundView = null
+        homeSceneForegroundView = null
         dockBackdropGeneration++
         dockGlassBackdropBitmap?.takeIf { !it.isRecycled }?.recycle()
         dockGlassBackdropBitmap = null
@@ -878,7 +1049,14 @@ class MainActivity : Activity() {
         }
         lastAppliedWallpaperKey = null
         root.addView(wallpaperView, FrameLayout.LayoutParams(-1, -1))
-        applyWallpaper()
+        homeSceneBackgroundView = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            visibility = View.GONE
+            isFocusable = false
+            isClickable = false
+            contentDescription = "Фоновый слой многослойной сцены"
+        }
+        root.addView(homeSceneBackgroundView, FrameLayout.LayoutParams(-1, -1))
 
         // A restrained edge gradient keeps white tvOS-style typography readable without
         // tinting the photograph into a flat blue background.
@@ -976,6 +1154,16 @@ class MainActivity : Activity() {
         }
         heroFrame.addView(timeColumn, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
         root.addView(heroFrame, FrameLayout.LayoutParams(-1, dp(390), Gravity.CENTER))
+        homeSceneForegroundView = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            visibility = View.GONE
+            isFocusable = false
+            isClickable = false
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            contentDescription = "Прозрачный передний план сцены"
+        }
+        root.addView(homeSceneForegroundView, FrameLayout.LayoutParams(-1, -1))
+        applyWallpaper()
 
         dock = FrameLayout(this).apply {
             background = RftvDesignSystem.dockSurface(this@MainActivity)
@@ -2640,6 +2828,62 @@ class MainActivity : Activity() {
     }
 
     private fun addWallpaperSettings(body: LinearLayout) {
+        body.addView(sectionLabel("СЦЕНЫ tvOS"))
+        val activeSceneTitle = when (homeSceneId) {
+            "auto" -> "Автоматически · день / ночь"
+            "photos" -> "Фотообои · 20 фотографий"
+            else -> RftvHomeSceneSpec.find(homeSceneId)?.title ?: "Автоматически · день / ночь"
+        }
+        body.addView(infoCard(
+            "ГЛАВНЫЙ ЭКРАН",
+            activeSceneTitle,
+            "Авто переключает ночную и дневную сцены по теме. Фотообои сохраняют отдельные дневную и ночную карусели."
+        ))
+        val sceneChoices = listOf("auto" to "Авто", "photos" to "Фотообои") +
+            RftvHomeSceneSpec.ALL.map { it.id to it.title }
+        val sceneRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            clipChildren = false
+            clipToPadding = false
+        }
+        sceneChoices.forEach { (id, title) ->
+            val selected = homeSceneId == id
+            val chip = TextView(this).apply {
+                text = if (selected) "✓  $title" else title
+                textSize = 12f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                setTextColor(Color.WHITE)
+                gravity = Gravity.CENTER
+                minWidth = dp(92)
+                setPadding(dp(14), 0, dp(14), 0)
+                isFocusable = true
+                isClickable = true
+                background = RftvDesignSystem.interactiveSurface(this@MainActivity, selected, RftvDesignSystem.Radius.BUTTON)
+                setOnFocusChangeListener { view, focused ->
+                    view.background = RftvDesignSystem.interactiveSurface(
+                        this@MainActivity, focused || selected, RftvDesignSystem.Radius.BUTTON
+                    )
+                }
+                setOnClickListener {
+                    homeSceneId = id
+                    prefs.edit().putString("home_scene_id", id).apply()
+                    lastAppliedWallpaperKey = null
+                    applyWallpaper()
+                    showLauncherSettings()
+                }
+            }
+            sceneRow.addView(chip, LinearLayout.LayoutParams(-2, dp(48)).apply {
+                rightMargin = dp(8)
+            })
+        }
+        body.addView(HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+            clipChildren = false
+            clipToPadding = false
+            addView(sceneRow)
+        }, LinearLayout.LayoutParams(-1, dp(56)))
         body.addView(sectionLabel("ДНЕВНЫЕ ОБОИ · " + (wallpaperLight + 1) + "/10"))
         body.addView(infoCard("СВЕТЛАЯ ТЕМА", "Обои " + (wallpaperLight + 1) + " из 10",
             if (lightCarousel) "Режим: карусель · смена каждые " + carouselIntervalMinutes + " мин."
@@ -2647,17 +2891,24 @@ class MainActivity : Activity() {
         body.addView(wallpaperPicker(false))
         val dayActions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         dayActions.addView(glassButton("◀") {
+            activatePhotoWallpapers()
             wallpaperLight = (wallpaperLight - 1 + lightWallpapers.size) % lightWallpapers.size
             prefs.edit().putInt("wallpaper_light", wallpaperLight).apply()
+            lastAppliedWallpaperKey = null
+            applyWallpaper()
             showLauncherSettings()
         }, LinearLayout.LayoutParams(dp(72), dp(48)))
         dayActions.addView(glassButton("Следующий фон") {
+            activatePhotoWallpapers()
             wallpaperLight = (wallpaperLight + 1) % lightWallpapers.size
             prefs.edit().putInt("wallpaper_light", wallpaperLight).apply()
+            lastAppliedWallpaperKey = null
+            applyWallpaper()
             showLauncherSettings()
         }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { leftMargin = dp(8) })
         body.addView(dayActions)
         body.addView(glassButton(if (lightCarousel) "Дневная карусель: ВКЛ" else "Дневная карусель: ВЫКЛ") {
+            activatePhotoWallpapers()
             lightCarousel = !lightCarousel
             prefs.edit().putBoolean("wallpaper_light_carousel", lightCarousel).apply()
             showLauncherSettings()
@@ -2670,17 +2921,24 @@ class MainActivity : Activity() {
         body.addView(wallpaperPicker(true))
         val nightActions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         nightActions.addView(glassButton("◀") {
+            activatePhotoWallpapers()
             wallpaperDark = (wallpaperDark - 1 + darkWallpapers.size) % darkWallpapers.size
             prefs.edit().putInt("wallpaper_dark", wallpaperDark).apply()
+            lastAppliedWallpaperKey = null
+            applyWallpaper()
             showLauncherSettings()
         }, LinearLayout.LayoutParams(dp(72), dp(48)))
         nightActions.addView(glassButton("Следующий фон") {
+            activatePhotoWallpapers()
             wallpaperDark = (wallpaperDark + 1) % darkWallpapers.size
             prefs.edit().putInt("wallpaper_dark", wallpaperDark).apply()
+            lastAppliedWallpaperKey = null
+            applyWallpaper()
             showLauncherSettings()
         }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { leftMargin = dp(8) })
         body.addView(nightActions)
         body.addView(glassButton(if (darkCarousel) "Ночная карусель: ВКЛ" else "Ночная карусель: ВЫКЛ") {
+            activatePhotoWallpapers()
             darkCarousel = !darkCarousel
             prefs.edit().putBoolean("wallpaper_dark_carousel", darkCarousel).apply()
             showLauncherSettings()
@@ -2723,6 +2981,7 @@ class MainActivity : Activity() {
                     )
                 }
                 setOnClickListener {
+                    activatePhotoWallpapers()
                     if (dark) {
                         wallpaperDark = index
                         prefs.edit().putInt("wallpaper_dark", index).apply()
@@ -2730,6 +2989,8 @@ class MainActivity : Activity() {
                         wallpaperLight = index
                         prefs.edit().putInt("wallpaper_light", index).apply()
                     }
+                    lastAppliedWallpaperKey = null
+                    applyWallpaper()
                     showLauncherSettings()
                 }
             }
@@ -3903,8 +4164,11 @@ class MainActivity : Activity() {
     // bakes the clock, weather controls and Dock into the blur, creating visible ghosting
     // underneath Control Center, catalog and Settings.
     private fun captureBackdropSnapshot(metrics: OverlayPerfMetrics? = null): Bitmap? {
+        val backdropSource = homeSceneBackgroundView?.takeIf {
+            it.visibility == View.VISIBLE && it.drawable != null
+        } ?: if (::wallpaperView.isInitialized) wallpaperView else null
         if (!::root.isInitialized || root.width <= 0 || root.height <= 0 ||
-            !::wallpaperView.isInitialized || wallpaperView.width <= 0 || wallpaperView.height <= 0
+            backdropSource == null || backdropSource.width <= 0 || backdropSource.height <= 0
         ) return null
         val startedAt = SystemClock.elapsedRealtime()
         return try {
@@ -3915,8 +4179,8 @@ class MainActivity : Activity() {
             metrics?.screenshotHeightPx = height
             Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { bitmap ->
                 val canvas = Canvas(bitmap)
-                canvas.scale(width / wallpaperView.width.toFloat(), height / wallpaperView.height.toFloat())
-                wallpaperView.draw(canvas)
+                canvas.scale(width / backdropSource.width.toFloat(), height / backdropSource.height.toFloat())
+                backdropSource.draw(canvas)
                 metrics?.screenshotBitmapBytes = bitmap.allocationByteCount
                 metrics?.captureMs = SystemClock.elapsedRealtime() - startedAt
             }
@@ -4128,7 +4392,10 @@ class MainActivity : Activity() {
             return
         }
         if (glassBackdropLoadingKey == selectionKey) return
-        val source = (wallpaperView.drawable as? BitmapDrawable)?.bitmap ?: return
+        val backdropView = homeSceneBackgroundView?.takeIf {
+            it.visibility == View.VISIBLE && it.drawable != null
+        } ?: wallpaperView
+        val source = (backdropView.drawable as? BitmapDrawable)?.bitmap ?: return
         if (source.isRecycled) return
         refreshDockGlassBackdrop(source)
         glassBackdropLoadingKey = selectionKey
