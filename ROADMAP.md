@@ -5,7 +5,7 @@
 - Release is published, `draft=false`, `prerelease=false`; the permanent signing certificate SHA-256 is `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`.
 - Active visual-shell work: draft [PR #43](https://github.com/gonscharovd/rftv-launcher/pull/43), branch `feature/visual-shell-execution`, head `7f65d8a0c4acda26e416084ffdc065f23fb39402` before the current follow-up commits.
 - PR #43 already contains shared glass tokens/materials, the two-column Control Center, five layered scenes (14 offline image assets), the clock shader, Auto/Photo/manual scene selection and Settings parent focus/scroll restoration.
-- Current feature-branch CI #42884493320: source tests, wallpaper/scene packaging, Android lint and Debug build succeeded. Signed Release job is skipped on feature branches; this does not certify a Release APK.
+- Current PR CI #43616405382 passed: wallpaper and pinned scene asset packaging, unit tests, Android lint, Debug build, package/SDK metadata and APK checks for all 20 wallpapers plus 14 scene assets. Signed Release verification is skipped on feature branches by design; signed artifact verification will run on main after merge.
 - Scene teardown now detaches ImageViews/shaders before recycling bitmaps. Existing dialogs share the glass theme; secondary panels and Settings have consistent reveal transitions. Donor scene assets are pinned to immutable upstream commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`. Documentation is reconciled with stable v0.9.4.
 - Candidate version is being advanced to v0.9.5 / versionCode 17 so it can upgrade stable v0.9.4. No candidate Release has been published.
 - Physical acceptance on Sber SDX-50U4123B has not been confirmed. Do not claim TV testing.
