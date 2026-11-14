@@ -42,10 +42,11 @@ jobs:
         with:
           gradle-version: 8.9
 
-      - name: Validate all 20 wallpaper sources over HTTP and decode
+      - name: Validate wallpaper sources and package layered scene assets
         run: |
           python3 -m pip install --disable-pip-version-check pillow
           python3 scripts/check_wallpaper_urls.py
+          gradle --no-daemon --stacktrace :app:packageWallpapers
 
       - name: Run unit tests when test sources exist
         shell: bash
@@ -95,7 +96,25 @@ jobs:
                   data = archive.read(name)
                   assert len(data) > 10_000, f"{name} is too small"
                   assert data[:3] == bytes((0xFF, 0xD8, 0xFF)), f"{name} is not JPEG"
-              print(f"Verified {len(names)} packaged JPEG wallpapers")
+              scene_names = [name for name in archive.namelist()
+                             if name.startswith("assets/scenes/") and name.rsplit("/", 1)[-1].endswith((".jpg", ".webp"))]
+              assert len(scene_names) == 14, f"Expected 14 layered scene assets, found {len(scene_names)}"
+              for name in scene_names:
+                  data = archive.read(name)
+                  assert len(data) > 10_000, f"{name} is too small"
+                  if name.endswith(".webp"):
+                      assert data[:4] == b"RIFF" and data[8:12] == b"WEBP", f"{name} is not WebP"
+                  else:
+                      assert data[:3] == bytes((0xFF, 0xD8, 0xFF)), f"{name} is not JPEG"
+              from io import BytesIO
+              from PIL import Image
+              for name in scene_names:
+                  image = Image.open(BytesIO(archive.read(name)))
+                  image.verify()
+                  if name.endswith("-fg.webp"):
+                      foreground = Image.open(BytesIO(archive.read(name)))
+                      assert "A" in foreground.getbands(), f"{name} must preserve transparent alpha"
+              print(f"Verified {len(names)} wallpapers and {len(scene_names)} decodable scene assets with alpha cut-outs")
           PY
 
       - name: Upload internal Debug diagnostics
@@ -109,7 +128,8 @@ jobs:
 
   release:
     name: Signed Release APK verification
-    if: github.event_name != 'pull_request'
+    # Release secrets are intentionally consumed only on main; feature branches and PRs run source/debug CI.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -160,6 +180,9 @@ jobs:
       - name: Build signed Release
         run: gradle --no-daemon --stacktrace assembleRelease
 
+      - name: Install Pillow for APK image validation
+        run: python3 -m pip install --disable-pip-version-check pillow
+
       - name: Verify all 20 bundled wallpaper assets in signed Release APK
         run: |
           python3 - <<'PY'
@@ -177,7 +200,25 @@ jobs:
                   data = archive.read(name)
                   assert len(data) > 10_000, f"{name} is too small"
                   assert data[:3] == bytes((0xFF, 0xD8, 0xFF)), f"{name} is not JPEG"
-              print(f"Verified {len(names)} packaged JPEG wallpapers")
+              scene_names = [name for name in archive.namelist()
+                             if name.startswith("assets/scenes/") and name.rsplit("/", 1)[-1].endswith((".jpg", ".webp"))]
+              assert len(scene_names) == 14, f"Expected 14 layered scene assets, found {len(scene_names)}"
+              for name in scene_names:
+                  data = archive.read(name)
+                  assert len(data) > 10_000, f"{name} is too small"
+                  if name.endswith(".webp"):
+                      assert data[:4] == b"RIFF" and data[8:12] == b"WEBP", f"{name} is not WebP"
+                  else:
+                      assert data[:3] == bytes((0xFF, 0xD8, 0xFF)), f"{name} is not JPEG"
+              from io import BytesIO
+              from PIL import Image
+              for name in scene_names:
+                  image = Image.open(BytesIO(archive.read(name)))
+                  image.verify()
+                  if name.endswith("-fg.webp"):
+                      foreground = Image.open(BytesIO(archive.read(name)))
+                      assert "A" in foreground.getbands(), f"{name} must preserve transparent alpha"
+              print(f"Verified {len(names)} wallpapers and {len(scene_names)} decodable scene assets with alpha cut-outs")
           PY
 
       - name: Verify Release APK identity, SDK, ABI, signature and checksum

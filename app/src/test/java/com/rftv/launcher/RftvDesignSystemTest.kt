@@ -13,6 +13,10 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Radius.CONTROL > 0)
         assertTrue(RftvDesignSystem.Radius.DOCK > RftvDesignSystem.Radius.CARD)
         assertTrue(RftvDesignSystem.Size.CLOCK_TEXT_SP > RftvDesignSystem.Size.PAGE_TITLE_SP)
+        assertTrue(RftvDesignSystem.Size.CLOCK_LETTER_SPACING < 0f)
+        assertTrue(RftvDesignSystem.ColorTokens.CLOCK_GLASS_RIM ushr 24 > 0)
+        assertTrue(RftvDesignSystem.ColorTokens.CLOCK_GLASS_TOP != RftvDesignSystem.ColorTokens.CLOCK_GLASS_MIDDLE)
+        assertTrue(RftvDesignSystem.ColorTokens.CLOCK_GLASS_DARK_TOP != RftvDesignSystem.ColorTokens.CLOCK_GLASS_DARK_BOTTOM)
         assertTrue(RftvDesignSystem.Size.DOCK_ICON < RftvDesignSystem.Size.DOCK_TILE_WIDTH)
         assertTrue(RftvDesignSystem.Spacing.HOME_DOCK_HORIZONTAL_INSET > RftvDesignSystem.Spacing.HOME_ACTION_GAP)
         assertTrue(RftvDesignSystem.Size.HOME_WALLPAPER_BUTTON_HEIGHT in 40..56)
@@ -64,11 +68,37 @@ class RftvDesignSystemTest {
         assertTrue(RftvDesignSystem.Size.CONTROL_CENTER_WIDTH_FRACTION in 0.38f..0.48f)
         assertTrue(RftvDesignSystem.Size.CONTROL_CENTER_HEIGHT_FRACTION in 0.85f..0.96f)
         assertTrue(RftvDesignSystem.Size.CONTROL_CENTER_TILE_HEIGHT in 64..88)
+        assertEquals(293, RftvDesignSystem.Size.CONTROL_CENTER_PANEL_WIDTH)
+        assertEquals(11, RftvDesignSystem.Spacing.CONTROL_CENTER_COLUMN_GAP)
+        assertEquals(56, RftvDesignSystem.Size.CONTROL_CENTER_COMPACT_TILE_HEIGHT)
+        assertEquals(25, RftvDesignSystem.Size.CONTROL_CENTER_TILE_ICON_SIZE)
+        assertEquals(7, RftvDesignSystem.Size.CONTROL_CENTER_TILE_BOTTOM_GAP)
+        assertTrue(RftvDesignSystem.Size.CONTROL_CENTER_FOCUS_SCALE > 1f)
         assertTrue(RftvDesignSystem.Motion.CONTROL_CENTER_REVEAL_DURATION_MS in 120L..300L)
         assertTrue(RftvDesignSystem.GlassAlpha.CONTROL_CENTER_TILE_RESTING in 0..255)
         assertTrue(RftvDesignSystem.GlassAlpha.CONTROL_CENTER_TILE_FOCUSED in 0..255)
         assertTrue(RftvDesignSystem.Size.SCREENSAVER_CLOCK_TEXT_SP in 52f..72f)
         assertTrue(RftvDesignSystem.Size.SCREENSAVER_HINT_TEXT_SP in 12f..18f)
+    }
+
+    @Test
+    fun sharedGlassMaterialsUseCentralizedBoundedTokens() {
+        val restingDock = RftvDesignSystem.ColorTokens.DOCK_SURFACE
+        val focusedDock = RftvDesignSystem.ColorTokens.DOCK_TILE_FOCUSED
+        val restingInteractive = RftvDesignSystem.ColorTokens.INTERACTIVE_RESTING_TOP
+        val focusedInteractive = RftvDesignSystem.ColorTokens.INTERACTIVE_FOCUSED_TOP
+
+        assertEquals(0x54, restingDock ushr 24 and 0xFF)
+        assertTrue((focusedDock ushr 24 and 0xFF) > (restingDock ushr 24 and 0xFF))
+        assertTrue((restingInteractive ushr 24 and 0xFF) < (focusedInteractive ushr 24 and 0xFF))
+        assertEquals(23, RftvDesignSystem.Radius.DOCK_SURFACE)
+        assertEquals(12, RftvDesignSystem.Radius.SETTINGS_HINT)
+        assertEquals(7, RftvDesignSystem.Radius.SETTINGS_NAV_ICON)
+        assertEquals(0x38, RftvDesignSystem.ColorTokens.DOCK_SURFACE_STROKE ushr 24 and 0xFF)
+        assertEquals(0x26, RftvDesignSystem.ColorTokens.SETTINGS_HINT_STROKE ushr 24 and 0xFF)
+        assertEquals(0x30, RftvDesignSystem.ColorTokens.GLASS_HIGHLIGHT_TOP ushr 24 and 0xFF)
+        assertEquals(0x10, RftvDesignSystem.ColorTokens.GLASS_HIGHLIGHT_MIDDLE ushr 24 and 0xFF)
+        assertEquals(0x00, RftvDesignSystem.ColorTokens.GLASS_HIGHLIGHT_BOTTOM ushr 24 and 0xFF)
     }
 
     @Test

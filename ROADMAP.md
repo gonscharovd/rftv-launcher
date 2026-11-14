@@ -1,19 +1,25 @@
-# Current project status — verified 2026-11-10 22:44 +05:00
+# Current project status — verified 2026-11-14 21:26 +05:00
 
-- Repository: `gonscharovd/rftv-launcher`; `main` HEAD: `2038bd822961772773affae63aa7119f4c1fa889`.
-- Latest stable Release: [v0.9.3](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.3), versionCode 15; APK SHA-256 `ce7bfcd6639ab9df57b1982518a867089ecd99bd0fac339dda3cb5840f11240e`.
-- Android CI #42865839755 and Publisher #42866314971 both succeeded. Signed artifact identity and persistent certificate were verified by the workflows.
-- Iteration 4 is not yet complete. 4A–4C implementation is committed on `feature/iteration-4-catalog-focus-glass`: explicit focus restoration for Back/Close/app-return; content-sized Dock width; real GlassBackdrop on all four surfaces. Unit tests and CI are running. Candidate 0.9.4 / versionCode 16. Physical TV acceptance remains pending.
-- 4B (content-sized Dock) and 4C (consistent real frosted-glass material across Dock, Control Center, Settings and catalog) remain open; do not mark them complete.
-- PR #15 (`docs/project-memory-system`) is stale and not mergeable against current main; its state snapshot refers to an old commit/release. Reconcile or replace its documentation before treating it as current.
+- Repository: `gonscharovd/rftv-launcher`; `main` HEAD: `4981dce3629592ac1edb243ba2e6c7cae2fe23fa`.
+- Latest stable Release: [v0.9.4](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.4), versionCode 16; APK size 7,993,855 bytes; SHA-256 `398ec55a1ce62cccde33afccc7827356016c145c1e097e745b4551457a1174c7`.
+- Release is published, `draft=false`, `prerelease=false`; the permanent signing certificate SHA-256 is `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`.
+- Active visual-shell work: draft [PR #43](https://github.com/gonscharovd/rftv-launcher/pull/43), branch `feature/visual-shell-execution`, head `7f65d8a0c4acda26e416084ffdc065f23fb39402` before the current follow-up commits.
+- PR #43 already contains shared glass tokens/materials, the two-column Control Center, five layered scenes (14 offline image assets), the clock shader, Auto/Photo/manual scene selection and Settings parent focus/scroll restoration.
+- Current PR CI #43616405382 passed: wallpaper and pinned scene asset packaging, unit tests, Android lint, Debug build, package/SDK metadata and APK checks for all 20 wallpapers plus 14 scene assets. Signed Release verification is skipped on feature branches by design; signed artifact verification will run on main after merge.
+- Scene teardown now detaches ImageViews/shaders before recycling bitmaps. Existing dialogs share the glass theme; secondary panels and Settings have consistent reveal transitions. Donor scene assets are pinned to immutable upstream commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`. Documentation is reconciled with stable v0.9.4.
+- Candidate version is being advanced to v0.9.5 / versionCode 17 so it can upgrade stable v0.9.4. No candidate Release has been published.
 - Physical acceptance on Sber SDX-50U4123B has not been confirmed. Do not claim TV testing.
 
 ## Immediate work order
 
-1. Complete and verify 4A with unit tests and CI. Physical acceptance: Back-close catalog, close-button path, launch app from catalog and return via Home/Back, then DPAD/OK/Back.
-2. Only after 4A is stable, implement 4B responsive Dock width and 4C shared frosted-glass material.
-3. Update device acceptance, architecture, current state, tasks and handoff documents before PR review.
-4. Do not merge PR or publish a candidate until all requested iteration scope and release checks pass.
+1. Finish Dock/Settings visual refinement and DPAD/focus regression review; existing dialogs and secondary-panel reveal transitions are now unified.
+2. Run current-head GitHub Actions; fix any failing source, lint, asset or build checks.
+3. Merge PR #43 only after required checks pass.
+4. Verify the actual signed v0.9.5 APK: package, version, versionCode 17, ABI, size, SHA-256 and permanent certificate.
+5. Publish the stable Release and verify its assets/OTA metadata. If signing or artifact verification fails, do not publish.
+6. After the user updates the TV through OTA, complete the physical acceptance checklist in DEVICE_TESTING.md.
+
+Historical roadmap and release notes follow. Treat dated status snapshots below as history, not as current repository state.
 
 # RFTV Launcher — Product Roadmap
 
@@ -41,7 +47,7 @@ The primary product is a lightweight, premium-feeling Android TV launcher for a 
 
 Stability, remote navigation and performance remain constraints throughout. No new TV Manager feature work until the primary launcher scope is complete.
 
-## Current release and verification baseline
+## Historical release baseline — v0.9.0
 
 - Stable Release: [v0.9.0 / versionCode 12](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.0), published 2026-11-10.
 - Android CI run 42810753407 and publisher run 42811138590 are recorded as successful in the release audit.

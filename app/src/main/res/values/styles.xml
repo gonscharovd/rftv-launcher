@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark, TV-readable dialog theme with the same restrained glass surface as RFTV panels. -->
+    <style name="RftvDialogTheme" parent="@android:style/Theme.Material.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/rftv_dialog_glass</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:colorAccent">@color/rftv_dialog_accent</item>
+        <item name="android:textColorPrimary">@color/rftv_dialog_text_primary</item>
+        <item name="android:textColorSecondary">@color/rftv_dialog_text_secondary</item>
+        <item name="android:windowMinWidthMajor">58%</item>
+        <item name="android:windowMinWidthMinor">78%</item>
+    </style>
+</resources>
