@@ -1,18 +1,17 @@
 # Changelog
 
-## 0.9.5 (candidate) — visual shell / PR #43
+## 0.9.5 (2026-11-14) — stable Release
 
-- Extends the shared RFTV design system with reusable glass materials, centralized visual tokens and consistent focus treatment.
-- Reworks the existing Control Center into the approved two-column tvOS-style layout while preserving its current actions.
-- Adds five layered photographic scenes with five backgrounds, five glass textures and four transparent foreground cut-outs; scene assets are packaged offline with Apache-2.0 LICENSE/NOTICE attribution.
-- Adds the Home scene renderer, glass clock shader, Auto day/night scene selection, manual scene selection and the existing 20-photo wallpaper mode.
-- Restores Settings parent selection, scroll positions and originating focus when returning from existing subpages.
-- Applies one shared glass theme to all seven existing AlertDialogs without changing their actions; secondary panels and the Settings shell receive lightweight reveal transitions.
-- Pins the donor scene asset source to upstream commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`; the build task reads the revision from the scene manifest.
-- Hardens scene bitmap teardown so ImageViews and shaders release references before bitmaps are recycled.
-- Candidate: `com.rftv.launcher`, versionName `0.9.5`, versionCode `17`. Not published; PR #43 remains under verification.
-- Current PR CI #43616405382 passed: wallpaper and pinned scene asset packaging, unit tests, Android lint, Debug build, package/SDK metadata and APK checks for all 20 wallpapers plus 14 scene assets. Signed Release verification is skipped on feature branches by design; signed artifact verification will run on main after merge.
-- No physical TV test is claimed.
+- [Stable Release v0.9.5](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.5) published successfully; `draft=false`, `prerelease=false`.
+- PR #43 merged into main at `d218dd744c816e4607e45a054e2c9ba089ceb976`; Publisher workflow fix PR #44 merged at `0e7ce1e5b9e8d9bcf5b06a5793249c7ad59466c7`.
+- APK: `com.rftv.launcher`, versionName `0.9.5`, versionCode `17`, 9,837,340 bytes; no native libraries (ABI-independent).
+- APK SHA-256: `be224eaf0d1a916b9a2b37ee09cf2c016ce807e2816d3b1f567fded1eca9304a`.
+- Release signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917` (matches the permanent signing certificate).
+- Main Android CI #43616923593 and Publisher #43617178052 succeeded. The Publisher verified artifact identity, checksum and signature before publishing.
+- APK contains 20 offline wallpaper photographs, 14 layered scene images (including four transparent foreground cut-outs), donor LICENSE/NOTICE and source attribution.
+- Implements the shared Liquid Glass design system, five layered Home scenes, glass clock, Auto/Photo/manual scene selection, two-column Control Center, Settings focus/scroll restoration, unified glass dialogs and secondary-panel reveal transitions.
+- Donor scene assets are pinned to upstream tvOS Launcher commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`.
+- Physical acceptance on Sber SDX-50U4123B remains pending; automated checks do not replace the TV test.
 
 ## 0.9.4 (2026-11-10) — stable Release
 

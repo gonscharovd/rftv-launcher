@@ -1,6 +1,6 @@
 # RFTV Launcher
 
-**Current stable release: [0.9.4](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.4) · versionCode 16 · 7,993,855 bytes.** Signed APK SHA-256: `398ec55a1ce62cccde33afccc7827356016c145c1e097e745b4551457a1174c7`. Release signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`. Physical acceptance on the target Sber TV is still pending; see [DEVICE_TESTING.md](DEVICE_TESTING.md). Portable context: [docs/PROJECT_MEMORY.md](docs/PROJECT_MEMORY.md).
+**Current stable release: [0.9.5](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.5) · versionCode 17 · 9,837,340 bytes.** Signed APK SHA-256: `be224eaf0d1a916b9a2b37ee09cf2c016ce807e2816d3b1f567fded1eca9304a`. Release signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`. Physical acceptance on the target Sber TV is still pending; see [DEVICE_TESTING.md](DEVICE_TESTING.md). Portable context: [docs/PROJECT_MEMORY.md](docs/PROJECT_MEMORY.md).
 
 A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direction.
 
@@ -8,7 +8,7 @@ A lightweight Android TV launcher with a tvOS-inspired Liquid Glass visual direc
 
 The primary product is a lightweight, attractive launcher for a broad range of Android TV devices. The Sber SDX-50U4123B (Android 9/API 28, MT9632, ARMv7, approximately 1.4 GB RAM) remains the main physical test target, not the only supported device.
 
-The intended Home composition is a photographic scene with large iOS-style clock typography **between two image layers**: a background photograph plus a separately cut-out transparent foreground element that overlaps part of the clock. Start with 3–5 complete layered scenes; the 20-photo flat wallpaper catalogue in v0.9.0 is existing shipped content, not the final depth-effect design.
+The intended Home composition is now shipped in v0.9.5: five layered photographic scenes place the large glass clock **between a background image and a transparent foreground cut-out**. The existing 20-photo day/night wallpaper catalogue remains available as a separate mode.
 
 Weather belongs beside the clock. The city and provider configuration must be changeable; neither is to remain permanently hard-coded. The Dock contains favourites and an All Apps entry. All Apps opens an app grid over a full-screen blurred backdrop. The gear opens Control Center over a full-screen blurred backdrop. Settings use tvOS-style left navigation and a right content pane, preserving focus when entering and leaving nested screens.
 
@@ -16,13 +16,13 @@ The screensaver is available from Control Center and, where supported by firmwar
 
 TV Manager is retained as an existing, lower-priority subsystem. Do not expand it while the primary launcher work is in progress. Its future safety requirements are documented in [TV_MANAGER.md](TV_MANAGER.md).
 
-## Implemented features (stable v0.9.4)
+## Implemented features (stable v0.9.5)
 
 - Native Kotlin Android Views (no Compose and no third-party UI dependencies).
-- Home screen with a large centered clock/date over a full-screen photograph, a compact weather status pill, a five-day forecast overlay, and the Control Center entry point. The shipped clock is not yet interleaved between a separate background and transparent foreground layer.
+- Home screen with five layered photographic scenes, a glass clock/date composited between background and transparent foreground layers, compact weather status pill, five-day forecast overlay and Control Center entry point.
 - Single-row content-sized glass Dock capsule with favorite apps, dedicated All Apps entry, centered responsive width and focused-app label; DPAD Down does not expand the dock.
 - Dock and catalog refresh automatically after app installation, removal or replacement, without restarting the launcher; focus and favorite ordering are preserved.
-- 10 real daytime and 10 real nighttime landscape photographs from Unsplash, bundled in the APK for reliable first-run and offline display. These are flat photos; the five layered depth scenes are being integrated separately in draft PR #43 and are not part of stable v0.9.4.
+- 10 real daytime and 10 real nighttime landscape photographs from Unsplash remain bundled for first-run/offline display, alongside five layered scenes with 14 pinned donor image assets.
 - Separate day/night wallpaper selection and carousel modes, with a configurable 1–60 minute interval.
 - Wallpaper photographs are validated and packaged at build time, then restored into app-private cache; TV runtime access to Unsplash is not required.
 - Floating right-side dark-glass Control Center with vector icons, grouped Wi-Fi/Bluetooth, theme, RAM, screensaver and settings actions; it stays clear of the Dock.
@@ -58,7 +58,7 @@ gradle --no-daemon assembleDebug
 
 Debug APK: app/build/outputs/apk/debug/app-debug.apk
 
-Stable Release APKs are published through [GitHub Releases](https://github.com/gonscharovd/rftv-launcher/releases). Stable v0.9.4 uses versionCode 16. The visual-shell candidate is v0.9.5 / versionCode 17 on draft PR #43; it is not published. Use the in-app OTA updater for upgrades; it verifies SHA-256, package identity, increasing versionCode, ARMv7 compatibility when native libraries are present, and the installed signing certificate before opening Android's installer.
+Stable Release APKs are published through [GitHub Releases](https://github.com/gonscharovd/rftv-launcher/releases). Stable v0.9.5 uses versionCode 17. Its signed APK is 9,837,340 bytes with SHA-256 `be224eaf0d1a916b9a2b37ee09cf2c016ce807e2816d3b1f567fded1eca9304a`. Use the in-app OTA updater for upgrades; it verifies SHA-256, package identity, increasing versionCode, ARMv7 compatibility when native libraries are present, and the installed signing certificate before opening Android's installer.
 
 GitHub Actions builds pushes to main and feature/** branches and pull requests targeting main.
 
@@ -88,19 +88,16 @@ The Shizuku bridge and cleanup flow have passed automated CI checks, but have no
 All 20 photographs are linked to their original Unsplash photo pages and used under the Unsplash License. The app downloads optimized 1920×1080 JPEG derivatives from Unsplash's image CDN. See [WALLPAPER_CREDITS.md](WALLPAPER_CREDITS.md) for photographer attribution and original photo links.
 
 
-## Current visual-shell work — draft PR #43
+## Visual shell implementation — stable v0.9.5
 
-The active implementation branch is [feature/visual-shell-execution](https://github.com/gonscharovd/rftv-launcher/pull/43). It contains the shared glass design-system pass, tvOS Control Center grid, five layered photographic scenes with offline assets, glass clock rendering, scene selection (Auto / Photo wallpapers / five manual scenes), and settings focus restoration. These changes are not part of stable v0.9.4 until PR review, merge and a verified v0.9.5 Release.
+The approved visual/UX implementation was merged in [PR #43](https://github.com/gonscharovd/rftv-launcher/pull/43) (merge commit `d218dd744c816e4607e45a054e2c9ba089ceb976`) and published as [stable Release v0.9.5](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.5).
 
-Implemented in the current draft:
-- All seven existing AlertDialogs now use one dark glass theme with shared colors, rounded gradient surfaces and TV-readable text.
-- Secondary panels and the Settings shell use lightweight, consistent reveal transitions; Control Center retains its existing right-side reveal.
-- Donor scene assets are pinned to upstream commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f` so fresh builds do not follow a mutable branch.
+- Five layered Home scenes, glass clock rendering, Auto day/night scene selection, manual scene selection and the existing 20-photo wallpaper mode.
+- Shared Liquid Glass design tokens/materials, two-column Control Center, Settings parent focus/scroll restoration and consistent Dock/overlay surfaces.
+- All seven existing AlertDialogs use one dark glass theme; secondary panels and Settings use lightweight reveal transitions.
+- Donor scene assets are pinned to upstream tvOS Launcher commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`; Apache-2.0 LICENSE/NOTICE and attribution are included.
+- Existing Dock, catalog, TV Manager, screensaver and OTA behavior are preserved.
 
-Remaining review work:
-1. Finish Dock and Settings visual refinement while preserving every existing control.
-2. Complete source-level DPAD/OK/Back and focus-return regression review.
-3. Pass current-head GitHub Actions.
-4. Merge only after checks pass, then verify signed v0.9.5 / versionCode 17 and its OTA Release.
+**Automated verification:** main Android CI #43616923593 and Publisher #43617178052 succeeded. The signed APK matches the permanent certificate SHA-256 `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`. It contains 20 wallpapers, 14 layered scene images and no native libraries.
 
-Physical testing on Sber SDX-50U4123B remains pending. Never install a Debug APK on the TV.
+Physical acceptance on Sber SDX-50U4123B remains pending. Install only through the in-app OTA updater or the stable Release; never install a Debug APK on the TV.

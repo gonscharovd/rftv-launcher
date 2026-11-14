@@ -1,14 +1,14 @@
 # RFTV — физическая приёмка и измерения на Sber TV
 
-Дата актуализации: 2026-11-14. v0.9.4 — текущая stable-база; новый продуктовый чек-лист добавлен в конце документа. Чек-лист предназначен для единственного подтверждённого тестового устройства: **Sber SDX-50U4123B, Salute TV / StarOS 1.103.91, Android 9/API 28, ARMv7, MediaTek MT9632**.
+Дата актуализации: 2026-11-14. v0.9.5 — текущая stable-база; новый продуктовый чек-лист добавлен в конце документа. Чек-лист предназначен для единственного подтверждённого тестового устройства: **Sber SDX-50U4123B, Salute TV / StarOS 1.103.91, Android 9/API 28, ARMv7, MediaTek MT9632**.
 
 ## Зафиксированная сборка
 
-- Stable Release: [RFTV Launcher 0.9.4](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.4)
+- Stable Release: [RFTV Launcher 0.9.5](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.5)
 - Package: `com.rftv.launcher`
-- versionCode: `16`
-- APK: `app-release.apk`, 7 993 855 bytes
-- SHA-256: `398ec55a1ce62cccde33afccc7827356016c145c1e097e745b4551457a1174c7`
+- versionCode: `17`
+- APK: `app-release.apk`, 9 837 340 bytes
+- SHA-256: `be224eaf0d1a916b9a2b37ee09cf2c016ce807e2816d3b1f567fded1eca9304a`
 - Signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`
 - Установка: только встроенный OTA либо официальный стабильный APK из ссылки выше. **Debug APK не устанавливать.**
 - Не очищать данные RFTV, не удалять приложение, не сбрасывать ТВ, не отключать системные пакеты и не менять штатный HOME/launcher в ходе этой приёмки.
@@ -20,7 +20,7 @@
 - [ ] В настройках ТВ записать фактическую версию StarOS, Android/API и модель.
 - [ ] Зафиксировать текущую версию RFTV до обновления.
 - [ ] Открыть RFTV → «О системе» / OTA.
-- [ ] OTA обнаруживает стабильный `v0.9.4`, не draft и не prerelease.
+- [ ] OTA обнаруживает стабильный `v0.9.5`, не draft и не prerelease.
 - [ ] Отображаются версия и changelog.
 - [ ] Загрузка завершается без ошибки.
 - [ ] SHA-256 проверяется успешно.
@@ -28,7 +28,7 @@
 - [ ] Открывается штатный Android installer; имя приложения — RFTV Launcher.
 - [ ] Подтвердить установку штатным установщиком.
 - [ ] Обновление завершается успешно, без удаления приложения/данных.
-- [ ] После обновления версия — 0.9.4 / versionCode 16.
+- [ ] После обновления версия — 0.9.5 / versionCode 17.
 - [ ] Сохранены тема, выбранные дневные/ночные обои, режим карусели, интервал, Dock dimensions, избранное, порядок и скрытые приложения.
 
 ## 1. Home
@@ -54,6 +54,17 @@
 - [ ] При первом запуске без кэша используется безопасный fallback; интерфейс не зависает.
 - [ ] Повторный тик часов не вызывает повторную загрузку или перерисовку фонового изображения.
 - [ ] Нет заметного мерцания при смене темы/обоев/возврате с панели.
+
+### 1.1 Layered Home scenes and glass dialogs — v0.9.5
+
+- [ ] Auto mode selects the daytime/nighttime scene according to the configured automatic theme/time mode.
+- [ ] Manually select each of the five scenes; the selected scene survives launcher restart.
+- [ ] The four transparent foreground cut-outs overlap the clock as intended and do not cover Dock controls.
+- [ ] The water scene without a foreground cut-out still renders its background and glass clock correctly.
+- [ ] The glass clock remains readable on bright, dark and mixed photographic regions.
+- [ ] Switching to Photo wallpapers returns to the existing 10 daytime / 10 nighttime wallpaper sets and carousel.
+- [ ] Open existing confirmation dialogs, Dock context actions and catalog/Settings dialogs: glass surfaces render, text is readable from TV distance, and DPAD/OK/Back work.
+- [ ] Secondary panels and Settings reveal without a black flash, focus loss or visible backdrop recapture.
 
 ## 2. Dock и каталог приложений
 
@@ -319,7 +330,7 @@ TV Manager не является частью ближайшей разрабо�
 ### OTA-обновление
 
 - [ ] На ТВ открыть **Настройки RFTV → О системе → Обновления**.
-- [ ] Убедиться, что текущая версия указана как 0.9.4 (если обновление ещё не установлено).
+- [ ] Убедиться, что текущая версия указана как 0.9.5 (если обновление ещё не установлено).
 - [ ] Нажать **Скачать и установить обновление**.
 - [ ] Дождаться загрузки и автоматических проверок; при запросе Android разрешить установку приложений для RFTV и вернуться в лаунчер.
 - [ ] В штатном установщике Android подтвердить обновление RFTV Launcher.
