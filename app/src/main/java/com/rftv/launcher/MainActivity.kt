@@ -2566,8 +2566,17 @@ class MainActivity : Activity() {
         }
         shell.addView(sidebar, LinearLayout.LayoutParams(dp(288), -1).apply { rightMargin = dp(26) })
         shell.addView(contentColumn, LinearLayout.LayoutParams(0, -1, 1f))
+        shell.alpha = 0f
+        shell.scaleX = 0.985f
+        shell.scaleY = 0.985f
         root.addView(shell, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
+        shell.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(RftvDesignSystem.Motion.SECONDARY_REVEAL_DURATION_MS)
+            .start()
         renderSection(settingsSelectedIndex)
         sidebar.post {
             navigationScroll.scrollTo(0, settingsSidebarScrollY)
