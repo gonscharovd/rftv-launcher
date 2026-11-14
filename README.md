@@ -92,11 +92,15 @@ All 20 photographs are linked to their original Unsplash photo pages and used un
 
 The active implementation branch is [feature/visual-shell-execution](https://github.com/gonscharovd/rftv-launcher/pull/43). It contains the shared glass design-system pass, tvOS Control Center grid, five layered photographic scenes with offline assets, glass clock rendering, scene selection (Auto / Photo wallpapers / five manual scenes), and settings focus restoration. These changes are not part of stable v0.9.4 until PR review, merge and a verified v0.9.5 Release.
 
-Remaining approved work:
-1. Unify existing AlertDialogs and transient popups with the shared RFTV glass language without changing their actions.
-2. Finish consistent open/close transitions for Home overlays and settings surfaces.
-3. Refine Dock and Settings visuals against the tvOS reference while preserving every existing control.
-4. Complete source-level DPAD/focus regression review and CI.
-5. Merge only after checks pass, then verify signed v0.9.5 / versionCode 17 and its OTA Release.
+Implemented in the current draft:
+- All seven existing AlertDialogs now use one dark glass theme with shared colors, rounded gradient surfaces and TV-readable text.
+- Secondary panels and the Settings shell use lightweight, consistent reveal transitions; Control Center retains its existing right-side reveal.
+- Donor scene assets are pinned to upstream commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f` so fresh builds do not follow a mutable branch.
+
+Remaining review work:
+1. Finish Dock and Settings visual refinement while preserving every existing control.
+2. Complete source-level DPAD/OK/Back and focus-return regression review.
+3. Pass current-head GitHub Actions.
+4. Merge only after checks pass, then verify signed v0.9.5 / versionCode 17 and its OTA Release.
 
 Physical testing on Sber SDX-50U4123B remains pending. Never install a Debug APK on the TV.
