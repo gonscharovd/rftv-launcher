@@ -1,13 +1,27 @@
 # Changelog
 
-## 0.9.4 (candidate) — Iteration 4A
+## 0.9.5 (candidate) — visual shell / PR #43
 
-- Fixes the missing All Apps Dock focus tag: the Back/Close return path now finds the actual Dock tile and explicitly requests focus, with a fallback to the first app tile.
-- Returning from an app launched from the catalog is now treated as a catalog-exit lifecycle transition in `onResume()`: the catalog is closed, Home is rebuilt, and focus returns to the All Apps tile.
-- Added a pure catalog-return policy and unit regression tests for the lifecycle return condition and stable Dock tag.
-- 4B: Dock capsule now wraps the number of visible favorite tiles plus All Apps, centered with a three-tile minimum and a configurable existing maximum-width cap; existing squircle tiles, scrolling, favorites and catalog entry are preserved.
-- 4C: Dock now receives a cropped low-resolution blur of the exact wallpaper area behind it; Control Center and catalog retain screenshot blur; Settings now uses the same screenshot/GlassBackdrop pipeline. All use radius 7, 3 passes and a shared dark scrim/edge treatment. No user-facing transparency controls added.
-- Candidate: `com.rftv.launcher`, versionName `0.9.4`, versionCode `16`. Not a published Release; automated verification is pending.
+- Extends the shared RFTV design system with reusable glass materials, centralized visual tokens and consistent focus treatment.
+- Reworks the existing Control Center into the approved two-column tvOS-style layout while preserving its current actions.
+- Adds five layered photographic scenes with five backgrounds, five glass textures and four transparent foreground cut-outs; scene assets are packaged offline with Apache-2.0 LICENSE/NOTICE attribution.
+- Adds the Home scene renderer, glass clock shader, Auto day/night scene selection, manual scene selection and the existing 20-photo wallpaper mode.
+- Restores Settings parent selection, scroll positions and originating focus when returning from existing subpages.
+- Hardens scene bitmap teardown so ImageViews and shaders release references before bitmaps are recycled.
+- Candidate: `com.rftv.launcher`, versionName `0.9.5`, versionCode `17`. Not published; PR #43 remains under verification.
+- Current feature-branch CI run #42884493320: source tests, lint, Debug build and scene/wallpaper asset validation passed. Signed Release verification is skipped on feature branches by design.
+- No physical TV test is claimed.
+
+## 0.9.4 (2026-11-10) — stable Release
+
+- [Stable Release v0.9.4](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.4) published; PR #42 merged into main (merge commit `4981dce3629592ac1edb243ba2e6c7cae2fe23fa`).
+- APK: `com.rftv.launcher`, versionName `0.9.4`, versionCode `16`, 7,993,855 bytes; no native libraries (ABI-independent).
+- APK SHA-256: `398ec55a1ce62cccde33afccc7827356016c145c1e097e745b4551457a1174c7`.
+- Release signing certificate SHA-256 remains `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`.
+- Iteration 4A: repaired catalog focus restoration after Back/Close and after returning from an external app.
+- Iteration 4B: Dock width adapts to favorites plus All Apps while preserving existing size preferences and ordering.
+- Iteration 4C: unified real backdrop blur for Dock, Control Center, catalog and Settings.
+- Physical acceptance on Sber SDX-50U4123B remains pending.
 
 ## 0.9.3 (2026-11-10) — stable Release
 
