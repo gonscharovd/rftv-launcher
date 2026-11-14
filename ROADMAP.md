@@ -1,23 +1,20 @@
-# Current project status — verified 2026-11-14 21:26 +05:00
+# Current project status — verified 2026-11-14
 
-- Repository: `gonscharovd/rftv-launcher`; `main` HEAD: `4981dce3629592ac1edb243ba2e6c7cae2fe23fa`.
-- Latest stable Release: [v0.9.4](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.4), versionCode 16; APK size 7,993,855 bytes; SHA-256 `398ec55a1ce62cccde33afccc7827356016c145c1e097e745b4551457a1174c7`.
-- Release is published, `draft=false`, `prerelease=false`; the permanent signing certificate SHA-256 is `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`.
-- Active visual-shell work: draft [PR #43](https://github.com/gonscharovd/rftv-launcher/pull/43), branch `feature/visual-shell-execution`, head `7f65d8a0c4acda26e416084ffdc065f23fb39402` before the current follow-up commits.
-- PR #43 already contains shared glass tokens/materials, the two-column Control Center, five layered scenes (14 offline image assets), the clock shader, Auto/Photo/manual scene selection and Settings parent focus/scroll restoration.
-- Current PR CI #43616405382 passed: wallpaper and pinned scene asset packaging, unit tests, Android lint, Debug build, package/SDK metadata and APK checks for all 20 wallpapers plus 14 scene assets. Signed Release verification is skipped on feature branches by design; signed artifact verification will run on main after merge.
-- Scene teardown now detaches ImageViews/shaders before recycling bitmaps. Existing dialogs share the glass theme; secondary panels and Settings have consistent reveal transitions. Donor scene assets are pinned to immutable upstream commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`. Documentation is reconciled with stable v0.9.4.
-- Candidate version is being advanced to v0.9.5 / versionCode 17 so it can upgrade stable v0.9.4. No candidate Release has been published.
+- Repository: `gonscharovd/rftv-launcher`; main HEAD: `0e7ce1e5b9e8d9bcf5b06a5793249c7ad59466c7`.
+- Latest stable Release: [v0.9.5](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.5), versionCode 17; APK size 9,837,340 bytes; SHA-256 `be224eaf0d1a916b9a2b37ee09cf2c016ce807e2816d3b1f567fded1eca9304a`.
+- Release is published (`draft=false`, `prerelease=false`); permanent signing certificate SHA-256 `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`.
+- PR #43 visual-shell implementation merged at `d218dd744c816e4607e45a054e2c9ba089ceb976`. Publisher trigger hardening PR #44 merged at `0e7ce1e5b9e8d9bcf5b06a5793249c7ad59466c7`.
+- Main Android CI #43616923593 and Publisher #43617178052 succeeded. The signed artifact passed package/version, versionCode 17, SDK, ABI-independent packaging, checksum and permanent-certificate checks.
+- APK includes 20 wallpapers, 14 layered scene images, four transparent foreground cut-outs, and donor LICENSE/NOTICE. Scene source is pinned to tvOS Launcher commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`.
+- Visual-shell scope is implemented: shared glass design system, five layered scenes, glass clock, Auto/Photo/manual selection, two-column Control Center, Settings focus/scroll restoration, unified glass dialogs and panel transitions.
 - Physical acceptance on Sber SDX-50U4123B has not been confirmed. Do not claim TV testing.
 
 ## Immediate work order
 
-1. Finish Dock/Settings visual refinement and DPAD/focus regression review; existing dialogs and secondary-panel reveal transitions are now unified.
-2. Run current-head GitHub Actions; fix any failing source, lint, asset or build checks.
-3. Merge PR #43 only after required checks pass.
-4. Verify the actual signed v0.9.5 APK: package, version, versionCode 17, ABI, size, SHA-256 and permanent certificate.
-5. Publish the stable Release and verify its assets/OTA metadata. If signing or artifact verification fails, do not publish.
-6. After the user updates the TV through OTA, complete the physical acceptance checklist in DEVICE_TESTING.md.
+1. User updates the TV from v0.9.4 to v0.9.5 through the in-app OTA updater.
+2. Complete the v0.9.5 physical acceptance checklist in DEVICE_TESTING.md: Home scenes, wallpaper modes, Dock/catalog, Control Center, dialogs, Settings focus, DPAD/OK/Back, screensaver, TV Manager, OTA and settings preservation.
+3. Record any device-specific defects and fix them in a new feature branch/PR; do not alter package/OTA behavior without evidence.
+4. Do not install Debug APK or perform resets/data clearing/system package changes during acceptance.
 
 Historical roadmap and release notes follow. Treat dated status snapshots below as history, not as current repository state.
 
