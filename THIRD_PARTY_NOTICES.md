@@ -117,6 +117,6 @@ These are measured donor source values adapted to RFTV's existing eight-section 
 
 ## tvOS Launcher photographic scene assets
 The five layered scene sets (background, glass texture and available transparent foreground cut-outs) are sourced from the upstream `techgenius1/tvOS-Launcher` repository:
-https://github.com/techgenius1/tvOS-Launcher/tree/main/assets/backgrounds
+https://github.com/techgenius1/tvOS-Launcher/tree/463fa6c2a9b7322c4407f1d00db935ef09d20f4f/assets/backgrounds
 
-They are distributed with the upstream Apache License 2.0 and NOTICE. The corresponding upstream `LICENSE` and `NOTICE` are included in the RFTV source tree and packaged APK. Scene assets are bundled for offline use; no runtime request to GitHub is made.
+The source is pinned to upstream commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`. They are distributed with the upstream Apache License 2.0 and NOTICE. The corresponding upstream `LICENSE` and `NOTICE` are included in the RFTV source tree and packaged APK. Scene assets are bundled for offline use; no runtime request to GitHub is made.
