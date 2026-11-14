@@ -35,6 +35,7 @@ import android.os.RemoteException
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
@@ -1541,7 +1542,7 @@ class MainActivity : Activity() {
         } else {
             arrayOf("Добавить в избранное", "Скрыть приложение")
         }
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(ContextThemeWrapper(this, R.style.RftvDialogTheme))
             .setTitle(app.label)
             .setItems(actions) { _, which ->
                 if (isFavorite) {
@@ -3624,7 +3625,7 @@ class MainActivity : Activity() {
             if (candidates.isNotEmpty() && channelReady) {
                 body.addView(glassButton("Подтвердить и запустить очистку") {
                     val summary = candidates.joinToString("\n") { "• ${it.label} — ${it.packageName}" }
-                    AlertDialog.Builder(this)
+                    AlertDialog.Builder(ContextThemeWrapper(this, R.style.RftvDialogTheme))
                         .setTitle("Запустить автоматическую очистку?")
                         .setMessage("Будут отключены только эти пакеты:\n\n$summary\n\nRFTV сохранит исходные состояния перед каждой операцией. При первой ошибке остановится и восстановит уже изменённые пакеты в обратном порядке.")
                         .setNegativeButton("Отмена", null)
@@ -3769,7 +3770,7 @@ class MainActivity : Activity() {
                         button.isEnabled = false
                         if (!checked && !disabled) {
                             val warning = preview?.decision?.reason ?: "Назначение пакета не подтверждено."
-                            AlertDialog.Builder(this)
+                            AlertDialog.Builder(ContextThemeWrapper(this, R.style.RftvDialogTheme))
                                 .setTitle("Отключить пакет вручную?")
                                 .setMessage("$label\n${app.packageName}\n\n$warning\n\nВозможные последствия: приложение или зависимые функции ТВ могут перестать работать. Данные не удаляются. RFTV сохранит исходное состояние и попытается откатить изменение при ошибке.")
                                 .setNegativeButton("Отмена") { _, _ -> showTvManualCleanup() }
@@ -3786,7 +3787,7 @@ class MainActivity : Activity() {
                                 }.setOnCancelListener { showTvManualCleanup() }
                                 .show()
                         } else if (checked && disabled && owned != null) {
-                            AlertDialog.Builder(this)
+                            AlertDialog.Builder(ContextThemeWrapper(this, R.style.RftvDialogTheme))
                                 .setTitle("Восстановить пакет?")
                                 .setMessage("$label\n${app.packageName}\n\nRFTV вернёт точное сохранённое состояние: ${owned.originalEnabledSetting}.")
                                 .setNegativeButton("Отмена") { _, _ -> showTvManualCleanup() }
@@ -3814,7 +3815,7 @@ class MainActivity : Activity() {
                     }
                     if (owned != null && !disabled && channelReady) {
                         list.addView(glassButton("Проверить и вернуть исходное состояние") {
-                            AlertDialog.Builder(this)
+                            AlertDialog.Builder(ContextThemeWrapper(this, R.style.RftvDialogTheme))
                                 .setTitle("Завершить незавершённую операцию?")
                                 .setMessage("${app.packageName}\nRFTV сохранил исходный snapshot, но текущее состояние не подтверждено. Команда вернёт сохранённое состояние и проверит результат.")
                                 .setNegativeButton("Отмена", null)
@@ -3892,7 +3893,7 @@ class MainActivity : Activity() {
                 "Можно восстановить только пакеты, которые RFTV изменил и для которых сохранил snapshot. Восстановление выполняется в обратном порядке; ранее отключённые пользователем пакеты не затрагиваются."))
             if (owned.isNotEmpty()) {
                 body.addView(glassButton("Восстановить все изменения RFTV") {
-                    AlertDialog.Builder(this)
+                    AlertDialog.Builder(ContextThemeWrapper(this, R.style.RftvDialogTheme))
                         .setTitle("Восстановить все пакеты RFTV?")
                         .setMessage("Будет восстановлено ${owned.size} сохранённых состояний. Пакеты, отключённые до RFTV, не затрагиваются.")
                         .setNegativeButton("Отмена", null)
@@ -3950,7 +3951,7 @@ class MainActivity : Activity() {
                             else "Отключено до RFTV или другим способом · восстановление заблокировано."))
                         if (snapshot != null) {
                             list.addView(glassButton("Восстановить исходное состояние") {
-                                AlertDialog.Builder(this)
+                                AlertDialog.Builder(ContextThemeWrapper(this, R.style.RftvDialogTheme))
                                     .setTitle("Восстановить пакет?")
                                     .setMessage("$label\n${app.packageName}\nRFTV вернёт сохранённое состояние ${snapshot.originalEnabledSetting}.")
                                     .setNegativeButton("Отмена", null)
@@ -4133,6 +4134,20 @@ class MainActivity : Activity() {
             recordOverlayLayout(perf, root, layoutStartedAt)
             root.post { logOverlayOpen(perf) }
         }
+        // Use the same restrained reveal on every secondary panel. The backdrop and
+        // shell animate independently so the photo stays stable and no blur is repeated.
+        panelBackground.alpha = 0f
+        shell.alpha = 0f
+        shell.translationY = dp(12).toFloat()
+        panelBackground.animate()
+            .alpha(1f)
+            .setDuration(RftvDesignSystem.Motion.SECONDARY_REVEAL_DURATION_MS)
+            .start()
+        shell.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(RftvDesignSystem.Motion.SECONDARY_REVEAL_DURATION_MS)
+            .start()
         // Start on the first actionable item, not the close button. This keeps
         // the panel usable immediately with a TV remote; fall back to Close
         // only for informational panels without focusable controls.
