@@ -6,13 +6,13 @@
 - Active visual-shell work: draft [PR #43](https://github.com/gonscharovd/rftv-launcher/pull/43), branch `feature/visual-shell-execution`, head `7f65d8a0c4acda26e416084ffdc065f23fb39402` before the current follow-up commits.
 - PR #43 already contains shared glass tokens/materials, the two-column Control Center, five layered scenes (14 offline image assets), the clock shader, Auto/Photo/manual scene selection and Settings parent focus/scroll restoration.
 - Current feature-branch CI #42884493320: source tests, wallpaper/scene packaging, Android lint and Debug build succeeded. Signed Release job is skipped on feature branches; this does not certify a Release APK.
-- A teardown improvement is being added to detach scene ImageViews/shaders before recycling their bitmaps. Documentation is being reconciled with the published v0.9.4 baseline.
+- Scene teardown now detaches ImageViews/shaders before recycling bitmaps. Existing dialogs share the glass theme; secondary panels and Settings have consistent reveal transitions. Donor scene assets are pinned to immutable upstream commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`. Documentation is reconciled with stable v0.9.4.
 - Candidate version is being advanced to v0.9.5 / versionCode 17 so it can upgrade stable v0.9.4. No candidate Release has been published.
 - Physical acceptance on Sber SDX-50U4123B has not been confirmed. Do not claim TV testing.
 
 ## Immediate work order
 
-1. Finish the approved visual-shell scope: existing dialogs/popups, transitions, Dock/Settings refinement and DPAD/focus regression review.
+1. Finish Dock/Settings visual refinement and DPAD/focus regression review; existing dialogs and secondary-panel reveal transitions are now unified.
 2. Run current-head GitHub Actions; fix any failing source, lint, asset or build checks.
 3. Merge PR #43 only after required checks pass.
 4. Verify the actual signed v0.9.5 APK: package, version, versionCode 17, ABI, size, SHA-256 and permanent certificate.
