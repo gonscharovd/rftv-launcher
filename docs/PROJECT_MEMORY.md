@@ -29,7 +29,8 @@
 - PR scope includes centralized glass tokens/materials, two-column Control Center, Home layered scene renderer, five scenes and 14 offline scene assets, glass clock shader, Auto/Photo/manual scene selection, Settings parent scroll/focus restoration, and regression tests.
 - Upstream scene imagery comes from tvOS Launcher; Apache-2.0 LICENSE/NOTICE and attribution are included. Existing 20 Unsplash wallpapers remain.
 - Current feature CI run #42884493320 passed source tests, wallpaper/scene packaging, lint and Debug build. Release verification was skipped because this is a feature branch; no Release is certified by this run.
-- A follow-up teardown fix detaches scene ImageViews and shader references before recycling scene bitmaps.
+- A follow-up teardown fix detaches scene ImageViews and shader references before recycling scene bitmaps. All seven existing AlertDialogs now share a glass dialog theme; secondary panels and Settings use lightweight reveal transitions.
+- Donor scene source is pinned to immutable upstream commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`; the asset manifest and Gradle task use the same revision.
 
 ## Candidate version
 
@@ -39,11 +40,9 @@
 
 ## Remaining approved visual-shell work
 
-1. Unify the existing AlertDialogs and transient popups with the shared glass style without changing their actions.
-2. Finish open/close transitions across Home overlays, panels and Settings.
-3. Refine Dock and Settings visual details against tvOS while preserving all RFTV controls and features.
-4. Complete DPAD/OK/Back, initial focus, focus restoration and scroll regression review.
-5. Update acceptance documentation, run current-head CI, merge PR #43 when all checks pass, then verify and publish v0.9.5.
+1. Refine Dock and Settings visual details against tvOS while preserving all RFTV controls and features.
+2. Complete DPAD/OK/Back, initial focus, focus restoration and scroll regression review.
+3. Run current-head CI, merge PR #43 when all checks pass, then verify and publish v0.9.5.
 
 ## Boundaries
 
