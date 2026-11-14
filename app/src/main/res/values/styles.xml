@@ -5,9 +5,9 @@
         <item name="android:windowBackground">@drawable/rftv_dialog_glass</item>
         <item name="android:windowDimAmount">0.52</item>
         <item name="android:backgroundDimEnabled">true</item>
-        <item name="android:colorAccent">#FFFFFFFF</item>
-        <item name="android:textColorPrimary">#FFFFFFFF</item>
-        <item name="android:textColorSecondary">#CCFFFFFF</item>
+        <item name="android:colorAccent">@color/rftv_dialog_accent</item>
+        <item name="android:textColorPrimary">@color/rftv_dialog_text_primary</item>
+        <item name="android:textColorSecondary">@color/rftv_dialog_text_secondary</item>
         <item name="android:windowMinWidthMajor">58%</item>
         <item name="android:windowMinWidthMinor">78%</item>
     </style>
