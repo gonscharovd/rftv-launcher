@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="rftv_dialog_text_primary">#FFFFFFFF</color>
+    <color name="rftv_dialog_text_secondary">#CCFFFFFF</color>
+    <color name="rftv_dialog_accent">#FFFFFFFF</color>
+    <color name="rftv_dialog_gradient_start">#E91C2028</color>
+    <color name="rftv_dialog_gradient_middle">#E31A1E26</color>
+    <color name="rftv_dialog_gradient_end">#EA0D1118</color>
+    <color name="rftv_dialog_highlight_top">#30FFFFFF</color>
+    <color name="rftv_dialog_highlight_middle">#10FFFFFF</color>
+    <color name="rftv_dialog_highlight_bottom">#00FFFFFF</color>
+    <color name="rftv_dialog_stroke">#38FFFFFF</color>
+</resources>
