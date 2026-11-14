@@ -468,7 +468,18 @@ class MainActivity : Activity() {
         }
         sceneLoadGeneration++
         loadingHomeSceneId = null
-        if (::clockText.isInitialized) (clockText as? RftvGlassClockTextView)?.setGlassTexture(null)
+        // Detach every View/Shader reference before recycling scene bitmaps. This
+        // keeps the Activity teardown path symmetrical with releaseHomeScene().
+        homeSceneBackgroundView?.setImageDrawable(null)
+        homeSceneForegroundView?.setImageDrawable(null)
+        homeSceneBackgroundView = null
+        homeSceneForegroundView = null
+        if (::clockText.isInitialized) {
+            (clockText as? RftvGlassClockTextView)?.apply {
+                setGlassTexture(null)
+                setDarkText(false)
+            }
+        }
         loadedHomeScene?.recycle()
         loadedHomeScene = null
         wallpaperExecutor.shutdownNow()
