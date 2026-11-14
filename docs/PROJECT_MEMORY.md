@@ -1,11 +1,11 @@
 # RFTV Launcher — единая память проекта
 
-Последняя сверка: 2026-11-14 21:26 +05:00. Источник истины — GitHub; перед каждой новой работой перепроверяй репозиторий, PR, CI и Release.
+Последняя сверка: 2026-11-14. Источник истины — GitHub; перед следующей работой перепроверяй репозиторий, PR, CI и Release.
 
 ## Репозиторий и стек
 
 - Repository: https://github.com/gonscharovd/rftv-launcher
-- Main HEAD: `4981dce3629592ac1edb243ba2e6c7cae2fe23fa`
+- Main HEAD: `0e7ce1e5b9e8d9bcf5b06a5793249c7ad59466c7`
 - Kotlin / Android Views; Gradle 8.9; AGP 8.7.3; JDK 17
 - minSdk 24; targetSdk 28; compileSdk 35
 - package `com.rftv.launcher`
@@ -13,36 +13,31 @@
 
 ## Latest stable Release
 
-- [v0.9.4](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.4), published 2026-11-10
-- versionName `0.9.4`, versionCode `16`, package `com.rftv.launcher`
-- APK size: 7,993,855 bytes
-- APK SHA-256: `398ec55a1ce62cccde33afccc7827356016c145c1e097e745b4551457a1174c7`
+- [v0.9.5](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.5), published 2026-11-14
+- versionName `0.9.5`, versionCode `17`, package `com.rftv.launcher`
+- APK size: 9,837,340 bytes
+- APK SHA-256: `be224eaf0d1a916b9a2b37ee09cf2c016ce807e2816d3b1f567fded1eca9304a`
 - Permanent signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`
-- Release: draft=false, prerelease=false; assets include app-release.apk, checksum, metadata and signature report.
+- Release: draft=false, prerelease=false; assets include APK, checksum, metadata and signature report.
+- Main Android CI #43616923593 and Publisher #43617178052 succeeded; Publisher verified the artifact before stable publication.
 - Physical acceptance on the target TV is not confirmed.
 
-## Current approved work — visual shell
+## Completed visual shell
 
-- Draft PR: https://github.com/gonscharovd/rftv-launcher/pull/43
-- Branch: `feature/visual-shell-execution`
-- Original PR head: `7f65d8a0c4acda26e416084ffdc065f23fb39402`; follow-up commit: `59545758caca9afbaec256ab7e221c5a32b43b73`
-- PR scope includes centralized glass tokens/materials, two-column Control Center, Home layered scene renderer, five scenes and 14 offline scene assets, glass clock shader, Auto/Photo/manual scene selection, Settings parent scroll/focus restoration, and regression tests.
-- Upstream scene imagery comes from tvOS Launcher; Apache-2.0 LICENSE/NOTICE and attribution are included. Existing 20 Unsplash wallpapers remain.
-- Current PR CI run #43616405382 passed source tests, wallpaper/scene packaging, lint, Debug build, package/SDK metadata and checks for all 20 wallpapers plus 14 scene assets. Signed Release verification is skipped on feature branches; no Release is certified by this run.
-- A follow-up teardown fix detaches scene ImageViews and shader references before recycling scene bitmaps. All seven existing AlertDialogs now share a glass dialog theme; secondary panels and Settings use lightweight reveal transitions.
-- Donor scene source is pinned to immutable upstream commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`; the asset manifest and Gradle task use the same revision.
+- PR #43: https://github.com/gonscharovd/rftv-launcher/pull/43 — merged at `d218dd744c816e4607e45a054e2c9ba089ceb976`.
+- PR #44: https://github.com/gonscharovd/rftv-launcher/pull/44 — merged at `0e7ce1e5b9e8d9bcf5b06a5793249c7ad59466c7`; scopes Publisher workflow_run events to main and requires successful Android CI.
+- Five layered Home scenes, 14 offline scene assets, four transparent foreground cut-outs, glass clock shader, Auto/Photo/manual scene selection and existing 20-photo wallpaper mode.
+- Shared Liquid Glass materials/tokens, two-column Control Center, Settings parent scroll/focus restoration, unified dark-glass theme for seven existing AlertDialogs, secondary panel/Settings reveal transitions.
+- Existing Dock, catalog, TV Manager, screensaver and OTA behavior retained.
+- Donor scene source pinned to upstream tvOS Launcher commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`; Apache-2.0 LICENSE/NOTICE and attribution included.
+- Source tests, Android lint, Debug CI build, signed Release build, package/version/SDK, checksum and permanent certificate checks passed. APK contains 20 wallpaper assets and 14 scene assets; no native libraries.
 
-## Candidate version
+## Next work
 
-- PR branch is prepared for `0.9.5` / versionCode `17`, which is required to upgrade stable `0.9.4` / code `16`.
-- Do not publish until PR checks, signed APK artifact, package/version metadata, ABI, file SHA-256 and permanent signing certificate all verify.
-- If the permanent signing key is unavailable or the certificate differs, stop publication. Never create or substitute a key.
-
-## Remaining approved visual-shell work
-
-1. Refine Dock and Settings visual details against tvOS while preserving all RFTV controls and features.
-2. Complete DPAD/OK/Back, initial focus, focus restoration and scroll regression review.
-3. Run current-head CI, merge PR #43 when all checks pass, then verify and publish v0.9.5.
+- No pending visual-shell implementation remains in the approved scope.
+- Next required step is physical acceptance after the user updates the target TV through OTA.
+- Use DEVICE_TESTING.md for the v0.9.5 checklist; do not claim physical acceptance until the user confirms results.
+- Fix device-discovered issues in feature branches and PRs. Do not install Debug APK on the TV.
 
 ## Boundaries
 
