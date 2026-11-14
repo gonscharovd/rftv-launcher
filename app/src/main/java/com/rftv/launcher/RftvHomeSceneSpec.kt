@@ -18,8 +18,9 @@ internal data class SceneAsset(
 }
 
 internal object RftvHomeSceneSpec {
+    const val SOURCE_REVISION = "463fa6c2a9b7322c4407f1d00db935ef09d20f4f"
     const val SOURCE_BASE_URL =
-        "https://raw.githubusercontent.com/techgenius1/tvOS-Launcher/main/assets/backgrounds/"
+        "https://raw.githubusercontent.com/techgenius1/tvOS-Launcher/$SOURCE_REVISION/assets/backgrounds/"
 
     val ALL = listOf(
         SceneAsset("night", "Ночь", "scene-night.jpg", "scene-night-fg.webp", "scene-night-glass.jpg", false),
