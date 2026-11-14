@@ -7,9 +7,11 @@
 - Adds five layered photographic scenes with five backgrounds, five glass textures and four transparent foreground cut-outs; scene assets are packaged offline with Apache-2.0 LICENSE/NOTICE attribution.
 - Adds the Home scene renderer, glass clock shader, Auto day/night scene selection, manual scene selection and the existing 20-photo wallpaper mode.
 - Restores Settings parent selection, scroll positions and originating focus when returning from existing subpages.
+- Applies one shared glass theme to all seven existing AlertDialogs without changing their actions; secondary panels and the Settings shell receive lightweight reveal transitions.
+- Pins the donor scene asset source to upstream commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`; the build task reads the revision from the scene manifest.
 - Hardens scene bitmap teardown so ImageViews and shaders release references before bitmaps are recycled.
 - Candidate: `com.rftv.launcher`, versionName `0.9.5`, versionCode `17`. Not published; PR #43 remains under verification.
-- Current feature-branch CI run #42884493320: source tests, lint, Debug build and scene/wallpaper asset validation passed. Signed Release verification is skipped on feature branches by design.
+- Existing feature-branch CI #42884493320 passed source tests, lint, Debug build and scene/wallpaper asset validation. A fresh current-head run is required after the dialog, transition and pinned-source changes; signed Release verification is skipped on feature branches by design.
 - No physical TV test is claimed.
 
 ## 0.9.4 (2026-11-10) — stable Release
