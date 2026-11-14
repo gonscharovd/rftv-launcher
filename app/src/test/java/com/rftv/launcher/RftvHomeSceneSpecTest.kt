@@ -21,6 +21,12 @@ class RftvHomeSceneSpecTest {
     }
 
     @Test
+    fun donorAssetsArePinnedToAnImmutableUpstreamRevision() {
+        assertEquals("463fa6c2a9b7322c4407f1d00db935ef09d20f4f", RftvHomeSceneSpec.SOURCE_REVISION)
+        assertTrue(RftvHomeSceneSpec.SOURCE_BASE_URL.endsWith("/${RftvHomeSceneSpec.SOURCE_REVISION}/assets/backgrounds/"))
+    }
+
+    @Test
     fun automaticSceneSelectionFollowsTheme() {
         assertEquals("night", RftvHomeSceneSpec.automaticSceneId(true))
         assertEquals("golden", RftvHomeSceneSpec.automaticSceneId(false))
