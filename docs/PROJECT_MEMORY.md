@@ -28,7 +28,7 @@
 - Original PR head: `7f65d8a0c4acda26e416084ffdc065f23fb39402`; follow-up commit: `59545758caca9afbaec256ab7e221c5a32b43b73`
 - PR scope includes centralized glass tokens/materials, two-column Control Center, Home layered scene renderer, five scenes and 14 offline scene assets, glass clock shader, Auto/Photo/manual scene selection, Settings parent scroll/focus restoration, and regression tests.
 - Upstream scene imagery comes from tvOS Launcher; Apache-2.0 LICENSE/NOTICE and attribution are included. Existing 20 Unsplash wallpapers remain.
-- Current feature CI run #42884493320 passed source tests, wallpaper/scene packaging, lint and Debug build. Release verification was skipped because this is a feature branch; no Release is certified by this run.
+- Current PR CI run #43616405382 passed source tests, wallpaper/scene packaging, lint, Debug build, package/SDK metadata and checks for all 20 wallpapers plus 14 scene assets. Signed Release verification is skipped on feature branches; no Release is certified by this run.
 - A follow-up teardown fix detaches scene ImageViews and shader references before recycling scene bitmaps. All seven existing AlertDialogs now share a glass dialog theme; secondary panels and Settings use lightweight reveal transitions.
 - Donor scene source is pinned to immutable upstream commit `463fa6c2a9b7322c4407f1d00db935ef09d20f4f`; the asset manifest and Gradle task use the same revision.
 
