@@ -165,6 +165,9 @@ val packageWallpapers by tasks.registering {
         // Package upstream multi-layer scenes as offline assets. The upstream repository's
         // Apache-2.0 LICENSE and NOTICE are copied above and shipped in the APK.
         val sceneSourceText = sceneSource.asFile.readText()
+        val sourceRevision = Regex("""const val SOURCE_REVISION = "([0-9a-f]{40})"""")
+            .find(sceneSourceText)?.groupValues?.get(1)
+            ?: error("Layered scene source revision is missing or invalid")
         val scenePattern = Regex("""SceneAsset\("([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*(null|"[^"]*"),\s*"([^"]+)",\s*(true|false)\)""")
         val sceneMatches = scenePattern.findAll(sceneSourceText).toList()
         check(sceneMatches.size == 5) {
@@ -176,7 +179,7 @@ val packageWallpapers by tasks.registering {
         fun fetchSceneAsset(sourceName: String, targetName: String, webp: Boolean) {
             val target = sceneDir.resolve(targetName)
             if (!target.isFile || target.length() <= 10_000L) {
-                val address = "https://raw.githubusercontent.com/techgenius1/tvOS-Launcher/main/assets/backgrounds/$sourceName"
+                val address = "https://raw.githubusercontent.com/techgenius1/tvOS-Launcher/$sourceRevision/assets/backgrounds/$sourceName"
                 val connection = URL(address).openConnection() as HttpURLConnection
                 val part = sceneDir.resolve("$targetName.part")
                 try {
