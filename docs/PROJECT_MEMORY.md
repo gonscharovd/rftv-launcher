@@ -1,88 +1,67 @@
 # RFTV Launcher — единая память проекта
 
-Последняя сверка: 2026-11-10 22:44 +05:00. GitHub `main` HEAD: `2038bd822961772773affae63aa7119f4c1fa889`.
+Последняя сверка: 2026-11-14 21:26 +05:00. Источник истины — GitHub; перед каждой новой работой перепроверяй репозиторий, PR, CI и Release.
 
-## Источник истины и порядок чтения
-
-GitHub repository — источник истины для исходников, PR, workflows, Release и актуальных документов. Перед работой сверяй GitHub заново; этот файл — переносимый handoff, не замена коду.
+## Репозиторий и стек
 
 - Repository: https://github.com/gonscharovd/rftv-launcher
-- Main: `main`
-- README: [../README.md](../README.md)
-- Roadmap: [../ROADMAP.md](../ROADMAP.md)
-- Changelog: [../CHANGELOG.md](../CHANGELOG.md)
-- Device acceptance: [../DEVICE_TESTING.md](../DEVICE_TESTING.md)
-- Third-party notices: [../THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md)
-- Donor analysis: [../DONOR_ANALYSIS.md](../DONOR_ANALYSIS.md)
-- Iteration 4 checklist: [ITERATION_4_ACCEPTANCE.md](ITERATION_4_ACCEPTANCE.md)
+- Main HEAD: `4981dce3629592ac1edb243ba2e6c7cae2fe23fa`
+- Kotlin / Android Views; Gradle 8.9; AGP 8.7.3; JDK 17
+- minSdk 24; targetSdk 28; compileSdk 35
+- package `com.rftv.launcher`
+- Test target: Sber SDX-50U4123B / StarOS 1.103.91 / Android 9 API 28 / ARMv7 / MediaTek MT9632. This is the first physical target, not a universal OEM profile.
 
-## Product and stack
+## Latest stable Release
 
-RFTV is a native Android TV launcher using Kotlin and Android Views. It is not a firmware replacement or a universal OEM device manager.
-
-- Package: `com.rftv.launcher`
-- Kotlin / Android Views; no Compose
-- Gradle 8.9, AGP 8.7.3, JDK 17
-- minSdk 24, targetSdk 28, compileSdk 35
-- Sber SDX-50U4123B / StarOS 1.103.91 / Android 9 API 28 / ARMv7 / MediaTek MT9632 is the first physical test device, not a universal compatibility guarantee.
-
-## Stable Release
-
-- Latest stable: [v0.9.3](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.3)
-- versionCode 15, versionName 0.9.3, package `com.rftv.launcher`
-- APK size 7,990,843 bytes
-- APK SHA-256: `ce7bfcd6639ab9df57b1982518a867089ecd99bd0fac339dda3cb5840f11240e`
+- [v0.9.4](https://github.com/gonscharovd/rftv-launcher/releases/tag/v0.9.4), published 2026-11-10
+- versionName `0.9.4`, versionCode `16`, package `com.rftv.launcher`
+- APK size: 7,993,855 bytes
+- APK SHA-256: `398ec55a1ce62cccde33afccc7827356016c145c1e097e745b4551457a1174c7`
 - Permanent signing certificate SHA-256: `22b4f71da5f543e933780f05f8573783ad4718036b5bfc1b36fe258695e30917`
-- Main CI #42865839755: success
-- Publisher #42866314971: success
-- Stable Release, draft=false, prerelease=false; assets: `app-release.apk`, `app-release.apk.sha256`, `apk-metadata.txt`, `signature.txt`.
-- Physical acceptance on the Sber TV is not confirmed.
+- Release: draft=false, prerelease=false; assets include app-release.apk, checksum, metadata and signature report.
+- Physical acceptance on the target TV is not confirmed.
 
-## Current work — Iteration 4
+## Current approved work — visual shell
 
-Feature branch: `feature/iteration-4-catalog-focus-glass`.
+- Draft PR: https://github.com/gonscharovd/rftv-launcher/pull/43
+- Branch: `feature/visual-shell-execution`
+- Original PR head: `7f65d8a0c4acda26e416084ffdc065f23fb39402`; follow-up commit: `59545758caca9afbaec256ab7e221c5a32b43b73`
+- PR scope includes centralized glass tokens/materials, two-column Control Center, Home layered scene renderer, five scenes and 14 offline scene assets, glass clock shader, Auto/Photo/manual scene selection, Settings parent scroll/focus restoration, and regression tests.
+- Upstream scene imagery comes from tvOS Launcher; Apache-2.0 LICENSE/NOTICE and attribution are included. Existing 20 Unsplash wallpapers remain.
+- Current feature CI run #42884493320 passed source tests, wallpaper/scene packaging, lint and Debug build. Release verification was skipped because this is a feature branch; no Release is certified by this run.
+- A follow-up teardown fix detaches scene ImageViews and shader references before recycling scene bitmaps.
 
-### 4A — code fix committed; CI pending
+## Candidate version
 
-Root cause in `MainActivity.kt`:
-1. `showHome()` attempts to find the All Apps Dock tile by tag `rftv-all-apps-trigger` when `returnFocusToCatalogButton` is set.
-2. The Dock tile builder did not assign that tag. The lookup returned null and the code skipped the normal first-app focus fallback.
-3. When an app was launched from the catalog, `launchApp()` did not record the origin and `onResume()` left the catalog as the active panel rather than rebuilding Home.
+- PR branch is prepared for `0.9.5` / versionCode `17`, which is required to upgrade stable `0.9.4` / code `16`.
+- Do not publish until PR checks, signed APK artifact, package/version metadata, ABI, file SHA-256 and permanent signing certificate all verify.
+- If the permanent signing key is unavailable or the certificate differs, stop publication. Never create or substitute a key.
 
-Fix committed:
-- Stable tag assigned to the All Apps Dock tile.
-- Back and Close paths request focus on that tile with fallback to first app.
-- Catalog-origin app launches are tracked; on return, Home is rebuilt and focus is restored.
-- Added pure `CatalogReturnPolicy` and unit regression tests.
-- Candidate version: 0.9.4 / versionCode 16. Not released.
+## Remaining approved visual-shell work
 
-Current feature branch has subsequent 4B/4C commits beyond the initial 4A head; always check latest branch HEAD and latest Actions run before relying on CI status.
+1. Unify the existing AlertDialogs and transient popups with the shared glass style without changing their actions.
+2. Finish open/close transitions across Home overlays, panels and Settings.
+3. Refine Dock and Settings visual details against tvOS while preserving all RFTV controls and features.
+4. Complete DPAD/OK/Back, initial focus, focus restoration and scroll regression review.
+5. Update acceptance documentation, run current-head CI, merge PR #43 when all checks pass, then verify and publish v0.9.5.
 
-### 4B — implemented on the feature branch
+## Boundaries
 
-Dock width is derived from favorites plus All Apps, centered, minimum three tiles and capped below full screen by the existing width preference. Existing tile geometry, favorites and scrolling remain. `DockWidthPolicy` has unit tests.
+- No new user-facing sections, features or product-concept changes without separate approval.
+- Preserve TV Manager, Diagnostics, screensaver, OTA, settings and user data.
+- Never clear data, reset DB/settings, uninstall system packages or perform irreversible device operations.
+- Never install Debug APK on the TV. Physical testing uses only a verified signed stable Release through OTA.
+- Do not claim physical acceptance without user confirmation.
+- Do not replace, recreate, lose or disclose the permanent Release signing key.
+- Work in feature branches and PRs; do not modify main directly unless unavoidable.
+- Merge only after required checks pass. The user has authorized normal PR creation, merge and verified stable Release publication; no repeat permission is needed for those steps.
 
-### 4C — implemented on the feature branch
+## Project documents
 
-Pre-change audit: Dock had no blur; Control Center and catalog used real screenshot blur; Settings used only cached wallpaper blur, not a current Home screenshot. Changes: Dock now uses a cropped low-resolution blur of the exact wallpaper region behind it; Settings captures Home and uses the same screenshot blur path as catalog and Control Center. Shared blur radius 7 / 3 passes and matched scrim/edge treatment; no user transparency controls.
-
-## Important document issues already corrected on the Iteration 4 branch
-
-- README stable baseline updated from v0.9.1 to v0.9.3.
-- ROADMAP current status refreshed; old sections remain historical.
-- CHANGELOG now records verified v0.9.3 and 0.9.4 candidate.
-- DEVICE_TESTING updated to v0.9.3 and obsolete instruction to install Debug APK on TV replaced with the rule that Debug is CI/diagnostics only.
-- Added the 4A physical acceptance checklist.
-- The old open PR #15 `docs/project-memory-system` is stale, based on an old main SHA and currently not mergeable. Do not merge it as-is; this new memory file supersedes its outdated snapshot until its useful content is reconciled.
-
-## Working rules
-
-- Work in feature branches and PRs; do not push directly to main.
-- Fixes, optimizations, compatibility, tests and documentation inside the approved scope can be done autonomously.
-- New user-facing features, sections, scenarios or concept changes require owner approval.
-- Do not merge this iteration's PR without explicit approval for this iteration.
-- Do not publish a candidate unless CI, signed APK identity, persistent certificate, SHA-256, size and uploaded Release asset all verify.
-- Never replace or expose the persistent signing key.
-- Never install Debug APK on the TV. Physical acceptance uses only signed stable Release via OTA.
-- Do not claim physical testing without owner confirmation.
-- Do not touch TV Manager, Diagnostics, screensaver, photo scenes or OTA pipeline unless the owner explicitly scopes that work.
+- [README](../README.md)
+- [ROADMAP](../ROADMAP.md)
+- [CHANGELOG](../CHANGELOG.md)
+- [DEVICE_TESTING](../DEVICE_TESTING.md)
+- [Third-party notices](../THIRD_PARTY_NOTICES.md)
+- [Donor analysis](../DONOR_ANALYSIS.md)
+- [Iteration 4 acceptance](ITERATION_4_ACCEPTANCE.md)
